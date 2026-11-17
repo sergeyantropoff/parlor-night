@@ -1,0 +1,112 @@
+{{- if .Values.turn.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "parlor.fullname" . }}-coturn
+  labels:
+    {{- include "parlor.labels" . | nindent 4 }}
+    app.kubernetes.io/component: coturn
+data:
+  turnserver.conf: |
+    listening-port={{ .Values.turn.port }}
+    tls-listening-port={{ .Values.turn.tlsPort }}
+    listening-ip=0.0.0.0
+    relay-ip={{ .Values.turn.relayIp }}
+    external-ip={{ required "Задайте turn.externalIp — белый адрес роутера" .Values.turn.externalIp }}/{{ .Values.turn.relayIp }}
+    min-port={{ .Values.turn.minPort }}
+    max-port={{ .Values.turn.maxPort }}
+    realm={{ .Values.turn.realm }}
+    server-name={{ .Values.turn.host }}
+    cert=/tls/tls.crt
+    pkey=/tls/tls.key
+    use-auth-secret
+    lt-cred-mech
+    fingerprint
+    no-multicast-peers
+    no-cli
+    log-file=stdout
+    denied-peer-ip=0.0.0.0-0.255.255.255
+    denied-peer-ip=10.0.0.0-10.255.255.255
+    denied-peer-ip=127.0.0.0-127.255.255.255
+    denied-peer-ip=169.254.0.0-169.254.255.255
+    denied-peer-ip=172.16.0.0-172.31.255.255
+    denied-peer-ip=192.168.0.0-192.168.255.255
+    denied-peer-ip=240.0.0.0-255.255.255.255
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "parlor.fullname" . }}-coturn
+  labels:
+    {{- include "parlor.labels" . | nindent 4 }}
+    app.kubernetes.io/component: coturn
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "parlor.selector" . | nindent 6 }}
+      app.kubernetes.io/component: coturn
+  template:
+    metadata:
+      labels:
+        {{- include "parlor.selector" . | nindent 8 }}
+        app.kubernetes.io/component: coturn
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeName: {{ .Values.turn.nodeName | quote }}
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: coturn
+          image: {{ .Values.turn.image }}
+          imagePullPolicy: IfNotPresent
+          command: ["turnserver"]
+          args:
+            - -c
+            - /etc/coturn/turnserver.conf
+            - --static-auth-secret=$(TURN_SECRET)
+          env:
+            - name: TURN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "parlor.secretName" . }}
+                  key: TURN_SECRET
+          ports:
+            - name: turn
+              containerPort: {{ .Values.turn.port }}
+              protocol: UDP
+            - name: turn-tcp
+              containerPort: {{ .Values.turn.port }}
+              protocol: TCP
+            - name: turns
+              containerPort: {{ .Values.turn.tlsPort }}
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/coturn
+              readOnly: true
+            - name: tls
+              mountPath: /tls
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "parlor.fullname" . }}-coturn
+        - name: tls
+          secret:
+            secretName: {{ include "parlor.fullname" . }}-tls
+            defaultMode: 0444
+{{- end }}

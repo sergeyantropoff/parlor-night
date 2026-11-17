@@ -12,3 +12,9 @@ Parlor Night поставлен в пространство {{ .Release.Namespac
 
 Первого администратора создаёт команда make kube-admin с ADMIN_USERNAME и ADMIN_PASSWORD.
 При ENV=production учётные записи admin и user сами не появляются.
+{{- if .Values.turn.enabled }}
+
+Созвон: coturn на узле {{ .Values.turn.nodeName }} ({{ .Values.turn.relayIp }}).
+На роутере туда пробрасываются UDP и TCP {{ .Values.turn.port }}, TCP {{ .Values.turn.tlsPort }} и UDP {{ .Values.turn.minPort }}–{{ .Values.turn.maxPort }}.
+Белый адрес в turn.externalIp — тот, на который уже приходят 80 и 443.
+{{- end }}

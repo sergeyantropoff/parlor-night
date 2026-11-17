@@ -3635,7 +3635,10 @@ function feature(id) {
 function makePeer(id) {
   const existing = peers.get(id);
   if (existing) return existing;
-  const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+  const servers = Array.isArray(current.ice_servers) && current.ice_servers.length
+    ? current.ice_servers
+    : [{ urls: "stun:stun.l.google.com:19302" }];
+  const pc = new RTCPeerConnection({ iceServers: servers });
   pc.onicecandidate = (event) => {
     if (event.candidate) sendSignal({ type: "signal", to: id, data: { kind: "ice", candidate: event.candidate } });
   };

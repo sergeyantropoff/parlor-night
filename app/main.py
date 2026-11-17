@@ -34,6 +34,7 @@ from app.social.routes import router as social_router
 from app.templating import render
 from app.web.routes import router as page_router
 from app.workers.engines import EngineRuntime
+from app.workers.remote import RemoteEngineRuntime
 
 os.environ.setdefault("OTEL_SDK_DISABLED", "true")
 
@@ -42,13 +43,21 @@ os.environ.setdefault("OTEL_SDK_DISABLED", "true")
 async def lifespan(app: FastAPI):
     settings: Settings = app.state.settings
     pool = await create_pool(settings.database_url)
-    engines = EngineRuntime(settings)
+    engines: EngineRuntime | RemoteEngineRuntime
+    if settings.engine_mode == "remote":
+        engines = RemoteEngineRuntime(settings)
+    else:
+        engines = EngineRuntime(settings)
     await engines.start()
     app.state.pool = pool
     app.state.engines = engines
     app.state.passwords = Passwords(settings)
     app.state.service = GameService(pool, engines, settings)
     app.state.hub = TableHub()
+    try:
+        await app.state.hub.start(settings.valkey_url)
+    except Exception:
+        logging.getLogger(__name__).warning("сигнал созвона остаётся в этом процессе")
     gate = Gate()
     try:
         await gate.start(settings.valkey_url)
@@ -63,6 +72,7 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        await app.state.hub.close()
         await gate.close()
         await engines.shutdown()
         await pool.close()

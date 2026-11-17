@@ -1,0 +1,44 @@
+{{- if eq .Values.web.engineMode "remote" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "parlor.fullname" . }}-engines
+  labels:
+    {{- include "parlor.labels" . | nindent 4 }}
+    app.kubernetes.io/component: engines
+spec:
+  replicas: {{ .Values.engines.replicas }}
+  selector:
+    matchLabels:
+      {{- include "parlor.selector" . | nindent 6 }}
+      app.kubernetes.io/component: engines
+  template:
+    metadata:
+      labels:
+        {{- include "parlor.selector" . | nindent 8 }}
+        app.kubernetes.io/component: engines
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: engines
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "-m", "scripts.engine_worker"]
+          env:
+            - name: ENGINE_MODE
+              value: local
+          envFrom:
+            - configMapRef:
+                name: {{ include "parlor.fullname" . }}
+            - secretRef:
+                name: {{ include "parlor.secretName" . }}
+          resources:
+            {{- toYaml .Values.engines.resources | nindent 12 }}
+{{- end }}

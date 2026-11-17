@@ -57,8 +57,10 @@ from app.go.match import apply_action, dump_state, load_state, new_match
 from app.go.rules import GoRuleError
 from app.go.sgf import export_sgf
 from app.site_policy import load_policy
+from app.turn import ice_servers
 from app.wallet import adult_denial, already_paid, balance, charge, credit, poker_denial, seat_user
 from app.workers.engines import EngineRuntime
+from app.workers.remote import RemoteEngineRuntime
 
 logger = logging.getLogger(__name__)
 
@@ -186,7 +188,7 @@ def _watch_people(rows: list[asyncpg.Record], user_id: uuid.UUID) -> list[dict[s
 
 
 class GameService:
-    def __init__(self, pool: asyncpg.Pool, engines: EngineRuntime, settings: Settings) -> None:
+    def __init__(self, pool: asyncpg.Pool, engines: EngineRuntime | RemoteEngineRuntime, settings: Settings) -> None:
         self.pool = pool
         self.engines = engines
         self.settings = settings
@@ -471,6 +473,7 @@ class GameService:
             state["rematch"] = self._rematch_if_solvent(game, state["rematch"], str(state.get("seat_color") or ""))
         state["can_sit"] = _open_seat(game, user)
         state["watchers"] = _watch_people(watched, user.id)
+        state["ice_servers"] = ice_servers(self.settings, str(user.id))
         return state
 
     async def history(self, user: User, game_id: uuid.UUID) -> dict[str, Any]:

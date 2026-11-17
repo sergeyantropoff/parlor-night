@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     login_window_seconds: int = 900
     engine_rate_per_minute: int = 300
     valkey_url: str = ""
+    engine_mode: str = "local"
+    turn_secret: str = ""
+    turn_host: str = ""
+    turn_port: int = 3478
+    turn_tls_port: int = 5349
     request_limit: int = 240
     request_window_seconds: int = 10
     max_body_bytes: int = 65_536
@@ -49,6 +54,13 @@ class Settings(BaseSettings):
     argon_memory_cost: int = 32_768
     argon_parallelism: int = 1
     asset_version: str = "3"
+
+    @field_validator("engine_mode")
+    @classmethod
+    def engine_mode_known(cls, value: str) -> str:
+        if value not in {"local", "remote"}:
+            raise ValueError("ENGINE_MODE должен быть local или remote")
+        return value
 
     @field_validator("secret_key")
     @classmethod

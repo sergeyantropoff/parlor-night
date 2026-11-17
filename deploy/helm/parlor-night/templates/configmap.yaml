@@ -22,6 +22,10 @@ data:
   LOGIN_WINDOW_SECONDS: "900"
   ENGINE_RATE_PER_MINUTE: "300"
   VALKEY_URL: redis://{{ include "parlor.fullname" . }}-valkey:6379/0
+  ENGINE_MODE: {{ .Values.web.engineMode | quote }}
+  TURN_HOST: {{ .Values.turn.host | quote }}
+  TURN_PORT: {{ .Values.turn.port | quote }}
+  TURN_TLS_PORT: {{ .Values.turn.tlsPort | quote }}
   REQUEST_LIMIT: "240"
   REQUEST_WINDOW_SECONDS: "10"
   MAX_BODY_BYTES: "65536"

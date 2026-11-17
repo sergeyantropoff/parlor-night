@@ -76,12 +76,19 @@ ensure-secret: namespace
 		echo "Секрет $(RELEASE)-env уже есть"; \
 	else \
 		url=$$(DB_HOST='$(RELEASE)-db' POSTGRES_USER='$(POSTGRES_USER)' POSTGRES_DB='$(POSTGRES_DB)' python3 deploy/scripts/database_url.py); \
+		turn=$$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))'); \
 		$(KUBECTL) -n $(KUBE_NAMESPACE) create secret generic $(RELEASE)-env \
 			--from-literal=SECRET_KEY="$$SECRET_KEY" \
 			--from-literal=POSTGRES_USER='$(POSTGRES_USER)' \
 			--from-literal=POSTGRES_PASSWORD="$$POSTGRES_PASSWORD" \
 			--from-literal=POSTGRES_DB='$(POSTGRES_DB)' \
-			--from-literal=DATABASE_URL="$$url"; \
+			--from-literal=DATABASE_URL="$$url" \
+			--from-literal=TURN_SECRET="$$turn"; \
+	fi; \
+	if ! $(KUBECTL) -n $(KUBE_NAMESPACE) get secret $(RELEASE)-env -o jsonpath='{.data.TURN_SECRET}' | grep -q .; then \
+		turn=$$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))'); \
+		$(KUBECTL) -n $(KUBE_NAMESPACE) patch secret $(RELEASE)-env --type merge -p "{\"stringData\":{\"TURN_SECRET\":\"$$turn\"}}"; \
+		echo "В секрет $(RELEASE)-env добавлен TURN_SECRET"; \
 	fi
 
 registry-secret: namespace
@@ -94,6 +101,7 @@ registry-secret: namespace
 	fi
 
 deploy: image ensure-secret registry-secret
+	@test -n "$$TURN_EXTERNAL_IP" || { echo "Задайте TURN_EXTERNAL_IP — белый адрес роутера"; exit 1; }
 	@pull=""; \
 	if $(KUBECTL) -n $(KUBE_NAMESPACE) get secret hub-antropoff >/dev/null 2>&1; then \
 		pull="--set imagePullSecrets[0].name=hub-antropoff"; \
@@ -103,6 +111,7 @@ deploy: image ensure-secret registry-secret
 		--set fullnameOverride=$(RELEASE) \
 		--set image.repository=$(IMAGE) \
 		--set image.tag=$(TAG) \
+		--set turn.externalIp="$$TURN_EXTERNAL_IP" \
 		$$pull \
 		--wait --timeout 10m
 
