@@ -9,6 +9,48 @@ from app.games.access import can_hint, undo_count, user_may_move, user_may_reque
 from app.games.present import project
 
 
+def test_live_table_uses_the_people_who_sat() -> None:
+    from app.web.routes import _table_players
+
+    filled = {
+        "mode": "online",
+        "creator_name": "Pavel",
+        "opponent_name": None,
+        "human_names": "Pavel\x1fСережа",
+    }
+    assert _table_players(filled, vacancies=0, waiting=False, cpu_label="") == "Pavel — Сережа"
+    waiting = {
+        "mode": "online",
+        "creator_name": "Pavel",
+        "opponent_name": None,
+        "human_names": "Pavel",
+    }
+    assert _table_players(waiting, vacancies=1, waiting=True, cpu_label="") == "Pavel"
+    paired = {
+        "mode": "online",
+        "creator_name": "Pavel",
+        "opponent_name": "Сережа",
+        "human_names": "",
+    }
+    assert _table_players(paired, vacancies=0, waiting=False, cpu_label="") == "Pavel — Сережа"
+    named = {
+        "mode": "online",
+        "creator_full": "\x1fСережа\x1f",
+        "creator_login": "admin",
+        "creator_name": "Сережа",
+        "opponent_name": None,
+        "human_roster": "\x1fСережа\x1f\x1eadmin\x1d\x1fИван\x1fИванович\x1euser",
+    }
+    assert _table_players(named, vacancies=0, waiting=False, cpu_label="") == "Сережа — Иван"
+
+
+def test_checkers_hint_uses_the_board_letters() -> None:
+    from app.games.service import _checkers_hint_notation
+
+    assert _checkers_hint_notation({"notation": "11-16", "path": ["11", "16"]}) == "f6-g5"
+    assert _checkers_hint_notation({"notation": "21:14:7", "path": [21, 14, 7]}) == "a3:c5:e7"
+
+
 def test_hints_are_admin_only() -> None:
     assert can_hint("admin") is True
     assert can_hint("user") is False

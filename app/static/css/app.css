@@ -1148,7 +1148,7 @@ button.salon-tool[aria-pressed="true"] {
   background: color-mix(in srgb, var(--accent) 16%, var(--panel));
   color: var(--accent);
 }
-.salon-call { display: grid; gap: 0.45rem; flex: none; min-width: 0; }
+.salon-call { display: grid; gap: 0.45rem; flex: none; min-width: 0; max-width: 100%; }
 .salon-panel .table-chat {
   display: flex;
   flex-direction: column;
@@ -1520,7 +1520,16 @@ main:has(.play) { padding-bottom: 12px; }
 .sq-dark { background: var(--dark); color: #f4efe5; }
 .sq-last { background: #e4d2a4; }
 .sq-dark.sq-last { background: #6a7d58; }
-.sq-hint { box-shadow: inset 0 0 0 3px var(--brass); }
+.sq-hint,
+.sq-dark.sq-hint { background: var(--hint); box-shadow: none; }
+.sq-hint::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 0 4px #f7f4ee, inset 0 0 0 8px var(--hint);
+  pointer-events: none;
+  z-index: 3;
+}
 .sq-check { background: #c45c4a; }
 .sq-selected { background: #d5e2c6; }
 .sq-dark.sq-selected { background: #8aab7e; }
@@ -1775,25 +1784,23 @@ main:has(.play) { padding-bottom: 12px; }
 .seat-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.55rem; }
 .seat-actions button { min-height: 30px; padding: 0.15rem 0.5rem; font-size: 0.78rem; }
 .seat-actions button.is-on { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
-.call-board { display: grid; gap: 0.45rem; min-width: 0; }
+.call-board { display: grid; gap: 0.45rem; min-width: 0; max-width: 100%; }
+.call-main { min-width: 0; max-width: 100%; }
 .call-tile { position: relative; min-width: 0; }
 .call-main .call-tile { cursor: default; }
 .call-row {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: nowrap;
   gap: 0.35rem;
   align-items: start;
+  justify-content: flex-start;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
-.call-slot { min-width: 0; }
+.call-row[hidden] { display: none; }
+.call-slot { flex: 0 0 var(--thumb, 5.5rem); width: var(--thumb, 5.5rem); min-width: 0; }
 .call-slot .call-tile { cursor: pointer; }
-.call-slot.is-empty .tile-frame {
-  aspect-ratio: 1;
-  border-radius: 12px;
-  background:
-    radial-gradient(circle at 50% 46%, rgba(244, 239, 229, 0.16), transparent 46%),
-    #16130f;
-  box-shadow: inset 0 0 0 1px rgba(244, 239, 229, 0.16);
-}
 .tile-frame { position: relative; border-radius: 12px; overflow: hidden; }
 .call-tile.is-main .tile-frame { box-shadow: inset 0 0 0 2px var(--brass); }
 .call-slot .call-tile:hover .tile-frame { box-shadow: inset 0 0 0 2px var(--accent); }

@@ -2640,7 +2640,9 @@ async function act(path, body, key) {
         note = "Позиция уже изменилась.";
         return;
       }
-      hintPath = data.lines?.[0]?.path || [];
+      hintPath = (data.lines?.[0]?.path || []).map(String);
+      const spoken = (data.lines || []).map((line) => line.notation).filter(Boolean);
+      if (spoken.length) note = `Подсказка: ${spoken.join(" · ")}`;
       const box = document.querySelector("#lines");
       box.replaceChildren();
       for (const line of data.lines || []) {
@@ -3459,7 +3461,6 @@ function videoFor(id) {
   if (!box) return null;
   let tile = box.querySelector(`[data-tile="${id}"]`);
   if (!tile) {
-    if (id !== "self" && box.querySelectorAll('.call-tile:not([data-tile="self"])').length >= 5) return null;
     tile = document.createElement("article");
     tile.className = "call-tile";
     tile.dataset.tile = id;
@@ -3492,19 +3493,17 @@ function paintRoster() {
   const box = document.querySelector("#call-board");
   if (!box || !current.in_call) return;
   const people = (Array.isArray(current.call_roster) ? current.call_roster : [])
-    .filter((person) => person && person.id && person.id !== current.you)
-    .slice(0, 5);
+    .filter((person) => person && person.id && person.id !== current.you);
+  const keep = new Set(["self", ...people.map((person) => person.id)]);
+  for (const tile of box.querySelectorAll(".call-tile")) {
+    if (!keep.has(tile.dataset.tile || "")) tile.remove();
+  }
+  if (!keep.has(featured)) {
+    featured = "self";
+    featuredChosen = false;
+  }
   for (const person of people) videoFor(person.id);
   applyFeature();
-}
-
-function emptySlot() {
-  const slot = document.createElement("article");
-  slot.className = "call-slot is-empty";
-  const frame = document.createElement("div");
-  frame.className = "tile-frame";
-  slot.append(frame);
-  return slot;
 }
 
 function applyFeature() {
@@ -3521,21 +3520,15 @@ function applyFeature() {
   main.classList.add("is-main");
   main.setAttribute("aria-pressed", "true");
   mainBox.replaceChildren(main);
-  const slots = [];
-  for (let index = 0; index < 5; index += 1) {
-    const tile = rest[index];
-    if (!tile) {
-      slots.push(emptySlot());
-      continue;
-    }
+  row.replaceChildren(...rest.map((tile) => {
     const slot = document.createElement("article");
     slot.className = "call-slot";
     tile.classList.remove("is-main");
     tile.setAttribute("aria-pressed", "false");
     slot.append(tile);
-    slots.push(slot);
-  }
-  row.replaceChildren(...slots);
+    return slot;
+  }));
+  row.hidden = rest.length === 0;
   fitThumbNames();
 }
 
@@ -3604,9 +3597,32 @@ function shrinkToFit(node, full) {
   writeName(node, chosen);
 }
 
+function fitThumbSize() {
+  const main = document.querySelector("#call-main .tile-frame");
+  const row = document.querySelector("#call-row");
+  if (!main || !row) return;
+  const count = row.querySelectorAll(".call-slot").length;
+  if (!count) {
+    row.style.removeProperty("--thumb");
+    return;
+  }
+  const panel = row.closest("#table-salon");
+  const panelStyle = panel ? getComputedStyle(panel) : null;
+  const room = panel
+    ? panel.clientWidth - (parseFloat(panelStyle.paddingLeft) || 0) - (parseFloat(panelStyle.paddingRight) || 0)
+    : row.clientWidth;
+  const mainBox = main.getBoundingClientRect();
+  if (mainBox.height < 8 || room < 8) return;
+  const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
+  const share = (room - gap * Math.max(0, count - 1)) / count;
+  const cap = Math.min(mainBox.width, mainBox.height) * 0.86;
+  row.style.setProperty("--thumb", `${Math.max(0, Math.floor(Math.min(share, cap)))}px`);
+}
+
 function fitThumbNames() {
   const main = document.querySelector("#call-main .tile-name");
   if (main) writeName(main, fullNameOf(main));
+  fitThumbSize();
   for (const node of document.querySelectorAll("#call-row .tile-name")) shrinkToFit(node, fullNameOf(node));
 }
 

@@ -87,11 +87,7 @@
               <p class="tile-name">{{ user.display_name }}</p>
             </article>
           </div>
-          <div id="call-row" class="call-row" aria-label="Другие игроки">
-            {% for slot in range(5) %}
-            <article class="call-slot is-empty" data-slot="{{ slot }}"><div class="tile-frame"></div></article>
-            {% endfor %}
-          </div>
+          <div id="call-row" class="call-row" aria-label="Другие игроки" hidden></div>
         </div>
       </div>
       {% endif %}

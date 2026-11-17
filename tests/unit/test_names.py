@@ -1,7 +1,7 @@
 import pytest
 
 from app.errors import AppError
-from app.names import parse_full_name, shown, split_full_name
+from app.names import called, parse_full_name, shown, split_full_name
 
 
 def test_full_name_keeps_three_parts() -> None:
@@ -36,6 +36,12 @@ def test_any_pair_is_enough() -> None:
     assert split_full_name(parse_full_name("Иванов", "", "Иванович")) == ("Иванов", "", "Иванович")
     assert shown(parse_full_name("", "Анна", "Сергеевна"), "u") == "Анна Сергеевна"
     assert split_full_name(parse_full_name("", "Анна", "Сергеевна")) == ("", "Анна", "Сергеевна")
+
+
+def test_table_uses_the_given_name_before_the_login() -> None:
+    assert called(parse_full_name("Иванов", "Иван", "Иванович"), "ivan") == "Иван"
+    assert called(parse_full_name("Иванов", "", ""), "ivan") == "Иванов"
+    assert called("", "user") == "user"
 
 
 def test_empty_name_is_allowed() -> None:

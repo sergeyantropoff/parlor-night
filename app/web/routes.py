@@ -6,6 +6,7 @@ import re
 import secrets
 import uuid
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 from pathlib import Path
 
 from fastapi import APIRouter, Request
@@ -29,7 +30,7 @@ from app.games.present import computer_names
 from app.games.schemas import SettingsBody
 from app.games.service import _summarize
 from app.greeting import greeting
-from app.names import parse_full_name, shown, split_full_name
+from app.names import called, parse_full_name, shown, split_full_name
 from app.news_images import image_file, media_type
 from app.paging import page_links
 from app.profile_stats import tally
@@ -825,6 +826,51 @@ def _elapsed(started: datetime) -> str:
     return _phrase(minutes // 60, "час", "часа", "часов")
 
 
+def _person_name(full: object, login: object, fallback: object = "") -> str:
+    name = called(full, login)
+    if name:
+        return name
+    text = str(fallback or "")
+    return "" if text == "None" else text
+
+
+def _roster_names(raw: object) -> list[str]:
+    names: list[str] = []
+    for item in str(raw or "").split("\x1d"):
+        if "\x1e" not in item:
+            continue
+        full, _, login = item.partition("\x1e")
+        name = _person_name(full, login)
+        if name and name not in names:
+            names.append(name)
+    return names
+
+
+def _shown_names(raw: object) -> list[str]:
+    return [name for name in str(raw or "").split("\x1f") if name and name != "None"]
+
+
+def _table_players(row: Any, *, vacancies: int, waiting: bool, cpu_label: str) -> str:
+    creator = _person_name(row.get("creator_full"), row.get("creator_login"), row.get("creator_name"))
+    seated = _roster_names(row.get("human_roster")) or _shown_names(row.get("human_names"))
+    if row["mode"] == "vs_computer" and vacancies == 0:
+        return f"{creator} · {cpu_label}" if cpu_label else creator
+    names: list[str] = [creator] if creator else []
+    for name in seated:
+        if name not in names:
+            names.append(name)
+    rival = _person_name(row.get("opponent_full"), row.get("opponent_login"), row.get("opponent_name"))
+    if rival and rival not in names:
+        names.append(rival)
+    if waiting and len(names) < 2:
+        return creator
+    if len(names) == 2:
+        return f"{names[0]} — {names[1]}"
+    if len(names) > 2:
+        return " · ".join(names)
+    return creator
+
+
 def _phrase(count: int, one: str, few: str, many: str) -> str:
     tail, hundred = count % 10, count % 100
     if tail == 1 and hundred != 11:
@@ -859,21 +905,19 @@ async def live_tables(request: Request, user: object) -> dict[str, object]:
         vacancies = int(row["vacancies"])
         waiting = row["status"] == "waiting" or (row["mode"] == "online" and not row["opponent_name"] and vacancies > 0)
         cpu_label = ""
+        creator_name = _person_name(row["creator_full"], row["creator_login"], row["creator_name"])
+        rival_name = _person_name(row["opponent_full"], row["opponent_login"], row["opponent_name"])
         if row["mode"] == "vs_computer":
             names = computer_names(
                 row["id"],
                 row["player_side"],
                 row["cpu_seats"],
-                [row["creator_name"], row["opponent_name"], row["human_names"]],
+                [creator_name, rival_name, *_roster_names(row["human_roster"])],
             )
             cpu_label = ", ".join(names)
         if row["mode"] == "vs_computer" and vacancies == 0:
-            players = f"{row['creator_name']} · {cpu_label}"
             waiting = False
-        elif waiting:
-            players = row["creator_name"]
-        else:
-            players = f"{row['creator_name']} — {row['opponent_name']}"
+        players = _table_players(row, vacancies=vacancies, waiting=waiting, cpu_label=cpu_label)
         moves = int(row["moves"])
         watchers = int(row["watchers"])
         seats = int(row["seats"])
@@ -894,7 +938,6 @@ async def live_tables(request: Request, user: object) -> dict[str, object]:
         else:
             watch_label = "Без наблюдателей"
         blocked = adult_message(born_on, str(row["game_type"])) is not None
-        creator_name = str(row["creator_name"] or "")
         tables.append(
             {
                 "id": row["id"],
@@ -904,10 +947,10 @@ async def live_tables(request: Request, user: object) -> dict[str, object]:
                 "players": players,
                 "cpu_label": cpu_label,
                 "initial": creator_name.strip()[:1].upper(),
-                "creator": row["creator_name"],
+                "creator": creator_name,
                 "creator_login": row["creator_login"],
                 "creator_avatar": row["creator_avatar"] or "",
-                "opponent": row["opponent_name"] or "",
+                "opponent": rival_name,
                 "opponent_login": row["opponent_login"] or "",
                 "opponent_avatar": row["opponent_avatar"] or "",
                 "computer": row["mode"] == "vs_computer",

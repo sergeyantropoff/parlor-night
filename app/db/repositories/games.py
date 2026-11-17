@@ -402,6 +402,7 @@ async def list_live_tables(conn: asyncpg.Connection, user_id: uuid.UUID) -> list
                ) AS seated,
                shown_name(cu.full_name, cu.username) AS creator_name,
                shown_name(ou.full_name, ou.username) AS opponent_name,
+               cu.full_name AS creator_full, ou.full_name AS opponent_full,
                cu.username AS creator_login, ou.username AS opponent_login,
                cu.avatar AS creator_avatar, ou.avatar AS opponent_avatar,
                (SELECT count(*) FROM game_seats AS s WHERE s.game_id = g.id) AS seats,
@@ -418,6 +419,15 @@ async def list_live_tables(conn: asyncpg.Connection, user_id: uuid.UUID) -> list
                    JOIN users AS u ON u.id = s.user_id
                    WHERE s.game_id = g.id AND s.kind = 'human'
                ) AS human_names,
+               (
+                   SELECT string_agg(
+                       COALESCE(u.full_name, '') || E'\x1e' || u.username,
+                       E'\x1d' ORDER BY s.seat_key
+                   )
+                   FROM game_seats AS s
+                   JOIN users AS u ON u.id = s.user_id
+                   WHERE s.game_id = g.id AND s.kind = 'human'
+               ) AS human_roster,
                EXISTS (
                    SELECT 1 FROM watchers AS w WHERE w.game_id = g.id AND w.user_id = $1
                ) AS watching

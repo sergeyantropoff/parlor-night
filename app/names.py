@@ -22,6 +22,14 @@ def shown(full_name: object, username: object) -> str:
     return visible_name(full_name) or str(username or "")
 
 
+def called(full_name: object, username: object) -> str:
+    family, given, patronymic = split_full_name(full_name)
+    for part in (given, family, patronymic):
+        if part:
+            return part
+    return str(username or "")
+
+
 def split_full_name(value: object) -> tuple[str, str, str]:
     raw = str(value or "")
     if _SEP in raw:

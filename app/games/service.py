@@ -18,7 +18,7 @@ from app.cards import poker, preferans, uno
 from app.cards.registry import ADULT_GAMES, CARD_GAMES, CHIP_GAMES, card_module
 from app.checkers.engine import LEVELS
 from app.checkers.evaluation import DEFAULT_WEIGHTS, EvalWeights
-from app.checkers.notation import dump_game_record, format_move, format_move_algebraic, parse_notation
+from app.checkers.notation import dump_game_record, format_algebraic, format_move, format_move_algebraic, parse_notation
 from app.checkers.rules import apply_move, move_from_path
 from app.checkers.rules import outcome as checkers_outcome
 from app.checkers.serialization import INITIAL_RCP, dump_rcp, parse_rcp
@@ -113,6 +113,17 @@ def _move_dicts(rows: list[Any]) -> list[dict[str, Any]]:
 def _hash(value: object) -> str:
     raw = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def _checkers_hint_notation(line: dict[str, Any]) -> str:
+    raw = str(line.get("notation") or "")
+    try:
+        squares = tuple(int(item) for item in line.get("path") or [])
+    except (TypeError, ValueError):
+        return raw
+    if len(squares) < 2:
+        return raw
+    return format_algebraic(squares, ":" in raw)
 
 
 def _weights(preferences: dict[str, Any]) -> EvalWeights:
@@ -1055,12 +1066,16 @@ class GameService:
             fresh = await games_repo.get_visible(conn, game_id, user.id)
         if fresh is None or fresh["position_version"] != version:
             raise AppError(409, "stale_position", "Позиция уже изменилась.")
+        lines = [dict(item) for item in analysis["lines"]]
+        if row["game_type"] == "checkers":
+            for line in lines:
+                line["notation"] = _checkers_hint_notation(line)
         return {
             "version": version,
             "private": True,
             "engine": analysis["engine"],
             "nodes": analysis["nodes"],
-            "lines": analysis["lines"],
+            "lines": lines,
         }
 
     async def flip(self, user: User, game_id: uuid.UUID) -> dict[str, Any]:
