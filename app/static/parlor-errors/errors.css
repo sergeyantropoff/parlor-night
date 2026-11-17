@@ -148,11 +148,11 @@ html[data-theme="dark"] .theme-dark { display: block; }
 .brand .mark { width: 52px; height: 52px; grid-row: 1 / span 2; object-fit: contain; }
 .brand-title {
   margin: 0;
-  font-family: var(--pn-serif);
+  font-family: Palatino, "Palatino Linotype", "Iowan Old Style", Georgia, serif;
   font-size: 1.35rem;
   font-weight: 600;
   letter-spacing: -0.02em;
-  line-height: 1.1;
+  line-height: 1.45;
   color: var(--pn-ink);
 }
 html[data-theme="dark"] .brand-title { color: #d5bb85; }
@@ -161,8 +161,9 @@ html[data-theme="dark"] .brand-title { color: #d5bb85; }
   align-items: center;
   gap: 0.45rem;
   margin: 0;
-  color: #cbbba6;
+  color: var(--pn-brass);
   font-size: 0.72rem;
+  line-height: 1.45;
   letter-spacing: 0.12em;
 }
 html[data-theme="light"] .brand-rule { color: var(--pn-muted); }

@@ -245,6 +245,25 @@ def _salon_faces(
     return rows
 
 
+def _preferans_marks(card: dict[str, object]) -> dict[str, str]:
+    marks: dict[str, str] = {}
+    bidding = card.get("bidding") if isinstance(card.get("bidding"), dict) else {}
+    for key, value in bidding.items():
+        if value == "passed":
+            marks[str(key)] = "pass"
+    whist = card.get("whist") if isinstance(card.get("whist"), dict) else {}
+    words = {"yes": "whist", "half": "half", "no": "pass-whist"}
+    for key, value in whist.items():
+        if value is True or value == "yes":
+            mode = "yes"
+        elif value == "half":
+            mode = "half"
+        else:
+            mode = "no"
+        marks[str(key)] = words[mode]
+    return marks
+
+
 def _chip(mapping: object, key: str) -> int | None:
     if not isinstance(mapping, dict) or key not in mapping:
         return None
@@ -451,6 +470,8 @@ def _project_cards(
     report = _card_report(game, payloads, state)
     if str(game["game_type"]) == "uno":
         marks = {str(key): str(value) for key, value in (card.get("acts") or {}).items()}
+    elif str(game["game_type"]) == "preferans":
+        marks = _preferans_marks(card)
     else:
         marks = (report.get("last") or {}) if report else {}
     for item in public_seats:

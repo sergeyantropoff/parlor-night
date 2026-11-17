@@ -45,11 +45,11 @@ spec:
               containerPort: 6379
           readinessProbe:
             exec:
-              command: ["valkey-cli", "ping"]
+              command: ["sh", "-c", "redis-cli ping || valkey-cli ping"]
             periodSeconds: 10
           livenessProbe:
             exec:
-              command: ["valkey-cli", "ping"]
+              command: ["sh", "-c", "redis-cli ping || valkey-cli ping"]
             periodSeconds: 30
           resources:
             {{- toYaml .Values.valkey.resources | nindent 12 }}

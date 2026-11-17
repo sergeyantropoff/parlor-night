@@ -1325,6 +1325,20 @@ const UNO_WORD = {
   miss: "не сказал УНО",
 };
 
+const PREFERANS_WORD = {
+  pass: "пас",
+  whist: "вист",
+  half: "полвиста",
+  "pass-whist": "пас на вист",
+};
+
+const PREFERANS_TONE = {
+  pass: "fold",
+  whist: "call",
+  half: "raise",
+  "pass-whist": "check",
+};
+
 function unoRoster(youName) {
   if (Array.isArray(current.seats) && current.seats.length > 1) {
     return current.seats.map((seat) => ({
@@ -1367,7 +1381,7 @@ function unoPlate(seat, x, y) {
   const said = (current.said || []).includes(seat.key);
   const mark = said ? "uno" : ((current.marks || {})[seat.key] || "");
   const won = current.result === `${seat.key}_win`;
-  const tone = won ? "win" : mark;
+  const tone = won ? "win" : (PREFERANS_TONE[mark] || mark);
   const node = document.createElement("div");
   const classes = ["plate"];
   if (seat.turn && current.status === "active") classes.push("is-active");
@@ -1385,7 +1399,7 @@ function unoPlate(seat, x, y) {
   const cards = Number(seat.count || 0);
   count.textContent = `${cards} ${cardsWord(cards)}`;
   copy.append(title, count);
-  const word = won ? "победитель" : (UNO_WORD[tone] || "");
+  const word = won ? "победитель" : (PREFERANS_WORD[mark] || UNO_WORD[tone] || "");
   if (word) {
     const action = document.createElement("span");
     action.className = "plate-action";
@@ -1950,6 +1964,7 @@ function bidLadder(moves) {
 function salonDock(discardMoves, bidMoves, selected) {
   const dock = document.createElement("div");
   dock.className = "salon-dock";
+  if (bidMoves.length) dock.append(bidLadder(bidMoves));
   if (discardMoves.length) {
     const drop = document.createElement("button");
     drop.type = "button";
@@ -1969,7 +1984,6 @@ function salonDock(discardMoves, bidMoves, selected) {
   const acts = (current.legal_moves || []).filter((move) => !["play", "uno", "discard", "bid"].includes(move.path[0]));
   acts.sort((left, right) => (actRank[left.path[1]] ?? 5) - (actRank[right.path[1]] ?? 5));
   for (const move of acts) dock.append(actionButton(move));
-  if (bidMoves.length) dock.append(bidLadder(bidMoves));
   if (!dock.childElementCount) dock.hidden = true;
   return dock;
 }

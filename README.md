@@ -1,3 +1,5 @@
+![Игры гостиной: шахматы, шашки, го и карты](docs/images/banners/games.webp)
+
 # Parlor Night
 
 Демо: [https://pn.antropoff.ru](https://pn.antropoff.ru)

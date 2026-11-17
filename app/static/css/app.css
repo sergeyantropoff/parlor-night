@@ -2416,7 +2416,8 @@ html[data-theme="dark"] .lede.only-dark { display: block; }
 }
 .mast .mark, .foot-brand .mark { width: 52px; height: 52px; grid-row: 1 / span 2; object-fit: contain; }
 .mast .brand-title, .foot-brand .brand-title { margin: 0; font-size: 1.35rem; color: var(--ink); }
-html[data-theme="dark"] body.public .mast .brand-title { color: #d5bb85; }
+html[data-theme="dark"] body.public .mast .brand-title,
+html[data-theme="dark"] body.public .foot-brand .brand-title { color: #d5bb85; }
 .mast .brand-rule, .foot-brand .brand-rule { margin: 0; color: var(--brass); }
 .mast nav { display: flex; gap: 1.4rem; margin-left: auto; }
 .mast nav a {

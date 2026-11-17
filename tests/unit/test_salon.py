@@ -13,6 +13,7 @@ from app.cards.preferans import deal as deal_preferans
 from app.cards.preferans import legal as legal_preferans
 from app.cards.preferans import suggest as suggest_preferans
 from app.cards.preferans import view as view_preferans
+from app.games.present import _preferans_marks
 
 
 def _until_done(state: dict, legal, suggest, apply, limit: int = 240) -> dict:
@@ -301,3 +302,40 @@ def test_preferans_blank_hands_pass_and_say_why() -> None:
     assert state["phase"] == "bid"
     assert int(state["deals"]) == 2
     assert "без розыгрыша" in state["line"]
+
+
+def test_preferans_can_raise_the_contract_after_the_talon() -> None:
+    state = deal_preferans(["p0", "p1", "p2"], "pool-12")
+    state["phase"] = "discard"
+    state["to_move"] = "p0"
+    state["declarer"] = "p0"
+    state["contract"] = {"level": 6, "suit": "S"}
+    state["trump"] = "S"
+    state["hands"]["p0"] = ["AS", "KS", "QS", "JS", "TS", "9S", "8S", "7S", "AH", "KH", "AD", "KD"]
+    paths = [item["path"] for item in legal_preferans(state)]
+    assert ["bid", "6", "D"] in paths
+    assert ["bid", "7", "C"] in paths
+    assert ["bid", "6", "S"] not in paths
+    assert ["bid", "6", "C"] in paths
+    assert ["bid", "pass"] not in paths
+    raised, _charges = play_preferans(state, ["bid", "6", "D"])
+    assert raised["phase"] == "discard"
+    assert raised["contract"] == {"level": 6, "suit": "D"}
+    assert raised["trump"] == "D"
+    assert len(raised["hands"]["p0"]) == 12
+    assert ["bid", "6", "S"] not in [item["path"] for item in legal_preferans(raised)]
+    assert suggest_preferans(raised, 1)[0] == "discard"
+
+
+def test_preferans_view_shows_pass_and_whist() -> None:
+    state = deal_preferans(["p0", "p1", "p2"], "pool-12")
+    state["phase"] = "play"
+    state["bidding"] = {"p0": "bid", "p1": "passed", "p2": "passed"}
+    state["whist"] = {"p1": "yes", "p2": "half"}
+    shown = view_preferans(state, "p0")
+    assert shown["bidding"]["p0"] == "bid"
+    assert shown["whist"] == {"p1": "yes", "p2": "half"}
+    assert _preferans_marks(shown) == {"p1": "whist", "p2": "half"}
+    state["whist"] = {"p1": "no"}
+    answered = view_preferans(state, "p2")
+    assert _preferans_marks(answered) == {"p1": "pass-whist", "p2": "pass"}

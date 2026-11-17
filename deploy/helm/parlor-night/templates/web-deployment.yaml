@@ -71,6 +71,7 @@ spec:
                 - name: Host
                   value: 127.0.0.1
             periodSeconds: 2
+            timeoutSeconds: 5
             failureThreshold: 40
           readinessProbe:
             httpGet:

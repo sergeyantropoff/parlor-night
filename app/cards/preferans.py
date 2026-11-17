@@ -2,7 +2,7 @@
 
 Колода в 32 карты, по десять на руки и две в прикуп.
 Торг идёт от шести в пиках до десяти без козыря. Мизер дороже семёрки без козыря и дешевле восьмёрки.
-Распасы — если все пасуют. Кто взял игру, забирает прикуп и сбрасывает две карты.
+Распасы — если все пасуют. Кто взял игру, забирает прикуп, может повысить заказ и сбрасывает две карты.
 Соперники вистуют или пасуют.
 
 Партия идёт, пока у каждого в пуле не наберётся выбранное число очков. Обычная пуля — 12.
@@ -183,6 +183,27 @@ def _next(state: dict[str, Any], seat: str) -> str:
     return order[(order.index(seat) + 1) % len(order)]
 
 
+def _raise_bids(state: dict[str, Any], *, allow_pass: bool, allow_miser: bool) -> list[dict[str, Any]]:
+    current = _contract_rank(state.get("contract"))
+    actions: list[dict[str, Any]] = []
+    if allow_pass:
+        actions.append({"path": ["bid", "pass"], "notation": "Пас", "promotion": None})
+    if allow_miser and current < 7 * 5 + 4 + 0.5:
+        actions.append({"path": ["bid", "miser"], "notation": "Мизер", "promotion": None})
+    for level in range(6, 11):
+        for suit in SUIT_ORDER:
+            rank = level * 5 + SUIT_ORDER.index(suit)
+            if rank > current:
+                actions.append(
+                    {
+                        "path": ["bid", str(level), suit],
+                        "notation": f"{level} {SUIT_TITLE[suit]}",
+                        "promotion": None,
+                    }
+                )
+    return actions
+
+
 def legal(state: dict[str, Any]) -> list[dict[str, Any]]:
     if state.get("result"):
         return []
@@ -190,23 +211,9 @@ def legal(state: dict[str, Any]) -> list[dict[str, Any]]:
     seat = state.get("to_move")
     actions: list[dict[str, Any]] = []
     if phase == "bid":
-        current = _contract_rank(state.get("contract"))
-        actions.append({"path": ["bid", "pass"], "notation": "Пас", "promotion": None})
-        if current < 7 * 5 + 4 + 0.5:
-            actions.append({"path": ["bid", "miser"], "notation": "Мизер", "promotion": None})
-        for level in range(6, 11):
-            for suit in SUIT_ORDER:
-                rank = level * 5 + SUIT_ORDER.index(suit)
-                if rank > current:
-                    actions.append(
-                        {
-                            "path": ["bid", str(level), suit],
-                            "notation": f"{level} {SUIT_TITLE[suit]}",
-                            "promotion": None,
-                        }
-                    )
-        return actions
+        return _raise_bids(state, allow_pass=True, allow_miser=True)
     if phase == "discard":
+        actions.extend(_raise_bids(state, allow_pass=False, allow_miser=False))
         hand = list(state["hands"][seat])
         seen: set[tuple[str, str]] = set()
         for left in range(len(hand)):
@@ -255,7 +262,9 @@ def apply(state: dict[str, Any], path: list[str]) -> tuple[dict[str, Any], list[
         raise ValueError("Такой ход в преферансе не принимается.")
     seat = nxt["to_move"]
     if path[0] == "bid":
-        nxt["last_trick"] = []
+        revising = nxt["phase"] == "discard"
+        if not revising:
+            nxt["last_trick"] = []
         if path[1] == "pass":
             nxt["bidding"][seat] = "passed"
         elif path[1] == "miser":
@@ -264,6 +273,10 @@ def apply(state: dict[str, Any], path: list[str]) -> tuple[dict[str, Any], list[
         else:
             nxt["contract"] = {"level": int(path[1]), "suit": path[2]}
             nxt["bidding"][seat] = "bid"
+        if revising:
+            suit = str(nxt["contract"].get("suit") or "")
+            nxt["trump"] = "" if suit in {"", "NT"} else suit
+            return nxt, []
         _after_bid(nxt)
         return nxt, []
     if path[0] == "discard":
@@ -672,10 +685,11 @@ def _suggest_discard(state: dict[str, Any], seat: str, actions: list[dict[str, A
     hand = list(state["hands"][seat])
     ranked = sorted(hand, key=lambda card: (_value(card) + (30 if card[1] == trump else 0)))
     drop = tuple(sorted(ranked[:2]))
-    for item in actions:
+    drops = [item for item in actions if item["path"][0] == "discard"]
+    for item in drops:
         if tuple(sorted(item["path"][1:])) == drop:
             return list(item["path"])
-    return list(actions[0]["path"])
+    return list(drops[0]["path"])
 
 
 def leave(state: dict[str, Any], seat: str) -> dict[str, Any]:
@@ -759,7 +773,7 @@ def view(state: dict[str, Any], seat: str | None) -> dict[str, Any]:
         trade = f"Сейчас на столе: {title}." if state.get("contract") else "Можно заказать игру или спасовать."
         message = f"{progress} Торг. {trade}"
     elif phase == "discard":
-        message = f"{progress} Возьмите прикуп и сбросьте две карты."
+        message = f"{progress} {title}. Можно повысить заказ или сбросить две карты."
     elif phase == "whist":
         message = f"{progress} {title}. Вист, полвиста или пас."
     elif phase == "play":
@@ -807,4 +821,12 @@ def view(state: dict[str, Any], seat: str | None) -> dict[str, Any]:
         "shown": shown,
         "stacks": {},
         "committed": state.get("committed") or {},
+        "bidding": {
+            str(seat): str((state.get("bidding") or {}).get(seat) or "open")
+            for seat in state.get("order") or []
+        },
+        "whist": {
+            str(seat): _whist_mode(value)
+            for seat, value in (state.get("whist") or {}).items()
+        },
     }
