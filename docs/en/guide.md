@@ -4,7 +4,7 @@
 
 Parlor Night is a closed parlor for table games. One evening can hold chess, Russian checkers, Go, UNO, Texas Hold'em, Durak, blackjack, and Preferans. Play uses chips. There is no money in the parlor.
 
-Chess is calculated by Stockfish. Checkers and Go use the parlor's own search. A game does not call outside APIs and does not send telemetry. Picture and voice go directly between browsers: the server only introduces the people already seated at one table.
+Chess is calculated by Stockfish. Checkers and Go use the parlor's own search. A game does not call outside APIs and does not send telemetry. Picture and voice go between browsers. The server introduces the people seated at one table and, when the direct path is closed, gives them TURN.
 
 This guide describes the website the way guests use it. The contract for a mobile app is the [API reference](api.md). По-русски: [руководство](../ru/guide.md).
 
@@ -208,7 +208,7 @@ Rules, privacy, and contact are separate site pages: `/rules`, `/privacy`, `/con
 
 ![A call at the table](../images/banners/communication.webp)
 
-Camera and microphone are buttons on the game page. Play works without them. A call holds up to six players seated at one online table. Watchers are outside that limit: they watch the game and do not send sound or video. If the browsers cannot see each other directly, the picture may not appear: there is no separate media server.
+Camera and microphone are buttons on the game page. Play works without them. A call holds up to six players seated at one online table. Watchers are outside that limit: they watch the game and do not send sound or video. The streams go between browsers. On the public parlor, a closed direct path receives TURN and the stream goes through it. A local start without `TURN_HOST` keeps only a public STUN server. There is no mixer that folds everyone into one picture.
 
 ## Administrator
 
@@ -238,7 +238,7 @@ The address is `http://127.0.0.1` and the port from `WEB_PORT`. The sample envir
 
 Checks without Docker need Python 3.12: `make install`, then `make test`. Integration tests skip themselves when PostgreSQL at `TEST_DATABASE_URL` is down. `make backup` writes a dump into `backups/`.
 
-`SECRET_KEY` is longer than 32 characters. The sample in `.env.example` is fit only for `ENV=local`. The database, the chess engine, cookies, trusted hosts, and registration are described there. There is one web process: engine pools and call rooms live inside that process. Valkey sits beside it and holds request counters, failed sign-ins, and the "player is here" marks. Games and sessions stay in PostgreSQL, so sign-out and an expired session take effect at once.
+`SECRET_KEY` is longer than 32 characters. The sample in `.env.example` is fit only for `ENV=local`. The database, the chess engine, cookies, trusted hosts, registration, `ENGINE_MODE`, and `TURN_*` are described there. One web process runs inside a pod. The cluster runs two such pods, and a separate pod calculates chess, checkers, and Go. Valkey carries the call signal between pods. Card games stay in the site pod. Games and sessions stay in PostgreSQL, so sign-out and an expired session take effect at once. Valkey also holds request counters, failed sign-ins, and the "player is here" marks.
 
 The site and the database currently listen only on the local address. If the parlor is opened to the internet, it needs a filter at the network entrance.
 
@@ -249,7 +249,7 @@ A new game is added in `app/catalog.py`: a title and a rules module that deals, 
 - An online game has no chess clock and no automatic award when the connection drops.
 - The checkers engine does not count threefold repetition inside its search.
 - Go does not claim the strength of a professional program.
-- The call has no separate media server.
+- The call has no mixer for every participant: a stream is either direct or relayed through TURN. A network that allows only port 443 does not get a relay.
 - Lc0 and other networks are not included: they need weights and often a GPU. Any local UCI engine can be set in `CHESS_ENGINE_PATH`.
 - The parlor does not push notifications to a phone.
 

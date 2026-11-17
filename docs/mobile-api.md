@@ -819,6 +819,7 @@ https://app.example/callback?code=...&state=xyz
 | `join_code`, `audience`, `waiting` | Код входа, открытость и ожидание соперника |
 | `opponent_name`, `you_name`, `creator_name` | Имена за столом |
 | `in_call`, `call_roster` | Можно ли звать в видео и кто уже за столом |
+| `ice_servers` | Список ICE для `RTCPeerConnection`: STUN, а при настроенном TURN ещё TURN и TURNS |
 | `live` | Пока `true`, стол стоит опрашивать |
 | `rematch` | `available`, `state` (`idle`, `outgoing`, `incoming`, `accepted`, `declined`), `game_id`, `note` |
 | `white_name`, `black_name`, `white_login`, `black_login`, `white_avatar`, `black_avatar` | Лица двух сторон, когда стол на белых и чёрных |
@@ -958,7 +959,7 @@ https://app.example/callback?code=...&state=xyz
 
 ## Видео и голос
 
-Сокет не передаёт ходы. Он только знакомит игроков, которые уже сидят за одним онлайн-столом. Потоки идут между телефонами.
+Сокет не передаёт ходы. Он только знакомит игроков, которые уже сидят за одним онлайн-столом. Потоки идут между телефонами. Список ICE лежит в поле `ice_servers` состояния партии. На публичной гостиной там STUN, TURN и TURNS. Если Valkey доступен, сигнал доходит до игрока и на другом поде сайта.
 
 ```text
 GET /ws/tables/{game_id}

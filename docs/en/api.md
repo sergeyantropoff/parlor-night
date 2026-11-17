@@ -820,6 +820,7 @@ These exist for the board and for cards.
 | `join_code`, `audience`, `waiting` | The entry code, openness, and whether the table is waiting |
 | `opponent_name`, `you_name`, `creator_name` | Names at the table |
 | `in_call`, `call_roster` | Whether a video call is possible, and who is already at the table |
+| `ice_servers` | The ICE list for `RTCPeerConnection`: STUN, and TURN plus TURNS when TURN is configured |
 | `live` | While `true`, keep polling the table |
 | `rematch` | `available`, `state` (`idle`, `outgoing`, `incoming`, `accepted`, `declined`), `game_id`, `note` |
 | `white_name`, `black_name`, `white_login`, `black_login`, `white_avatar`, `black_avatar` | The two faces when the table is white and black |
@@ -959,7 +960,7 @@ Theme alone, without the other settings: `POST /api/v1/settings/theme` with `{ "
 
 ## Video and voice
 
-The socket does not carry moves. It only introduces players who are already seated at one online table. The streams go between the phones.
+The socket does not carry moves. It only introduces players who are already seated at one online table. The streams go between the phones. The ICE list is the `ice_servers` field of the game state. On the public parlor it contains STUN, TURN, and TURNS. When Valkey is available, the signal reaches a player on another site pod.
 
 ```text
 GET /ws/tables/{game_id}
