@@ -58,8 +58,8 @@ turn:
   enabled: true
   nodeName: worker01
   relayIp: 192.168.1.251
-  # Белый адрес роутера, тот же, на который уже приходят 80 и 443. Задаётся при выкладке.
-  externalIp: ""
+  # A-запись pn.antropoff.ru. Coturn называет её в кандидате реле, DNS сайтов не меняется.
+  externalIp: 217.150.201.203
   host: pn.antropoff.ru
   port: 3478
   tlsPort: 5349

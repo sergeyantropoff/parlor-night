@@ -101,7 +101,6 @@ registry-secret: namespace
 	fi
 
 deploy: image ensure-secret registry-secret
-	@test -n "$$TURN_EXTERNAL_IP" || { echo "Задайте TURN_EXTERNAL_IP — белый адрес роутера"; exit 1; }
 	@pull=""; \
 	if $(KUBECTL) -n $(KUBE_NAMESPACE) get secret hub-antropoff >/dev/null 2>&1; then \
 		pull="--set imagePullSecrets[0].name=hub-antropoff"; \
@@ -111,7 +110,6 @@ deploy: image ensure-secret registry-secret
 		--set fullnameOverride=$(RELEASE) \
 		--set image.repository=$(IMAGE) \
 		--set image.tag=$(TAG) \
-		--set turn.externalIp="$$TURN_EXTERNAL_IP" \
 		$$pull \
 		--wait --timeout 10m
 
