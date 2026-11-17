@@ -13,6 +13,7 @@ from starlette.responses import JSONResponse, RedirectResponse, Response
 from app.cards.registry import ADULT_GAMES
 from app.catalog import GAMES, visible_games
 from app.clock import current_zone
+from app.db.repositories import games as games_repo
 from app.db.repositories.users import User
 from app.errors import AppError
 from app.games.present import computer_names
@@ -480,26 +481,18 @@ async def age_save(request: Request) -> Response:
     return RedirectResponse("/settings", status_code=303)
 
 
+async def _require_table(conn: asyncpg.Connection, game_id: uuid.UUID, user_id: uuid.UUID) -> None:
+    if await games_repo.get_visible(conn, game_id, user_id) is None:
+        raise AppError(404, "not_found", "Партия не найдена.")
+
+
 @router.get("/api/v1/games/{game_id}/chat")
 async def table_chat(request: Request, game_id: uuid.UUID) -> JSONResponse:
     user = request.state.user
     if user is None:
         raise AppError(401, "unauthorized", "Нужно войти в систему.")
     async with request.app.state.pool.acquire() as conn:
-        visible = await conn.fetchval(
-            """
-            SELECT 1 FROM games AS g
-            WHERE g.id = $1 AND (
-                g.user_id = $2 OR g.opponent_id = $2
-                OR EXISTS (SELECT 1 FROM watchers AS w WHERE w.game_id = g.id AND w.user_id = $2)
-                OR (g.audience = 'open' AND g.mode IN ('online', 'vs_computer'))
-            )
-            """,
-            game_id,
-            user.id,
-        )
-        if visible is None:
-            raise AppError(404, "not_found", "Партия не найдена.")
+        await _require_table(conn, game_id, user.id)
         rows = await conn.fetch(
             """
             SELECT m.body, m.created_at,
@@ -537,20 +530,7 @@ async def table_chat_send(request: Request, game_id: uuid.UUID) -> JSONResponse:
         raise AppError(422, "bad_message", "Сообщение должно быть от 1 до 1000 символов.")
     await _pace(request, f"chat:{user.id}", 30)
     async with request.app.state.pool.acquire() as conn:
-        visible = await conn.fetchval(
-            """
-            SELECT 1 FROM games AS g
-            WHERE g.id = $1 AND (
-                g.user_id = $2 OR g.opponent_id = $2
-                OR EXISTS (SELECT 1 FROM watchers AS w WHERE w.game_id = g.id AND w.user_id = $2)
-                OR (g.audience = 'open' AND g.mode IN ('online', 'vs_computer'))
-            )
-            """,
-            game_id,
-            user.id,
-        )
-        if visible is None:
-            raise AppError(404, "not_found", "Партия не найдена.")
+        await _require_table(conn, game_id, user.id)
         await conn.execute(
             "INSERT INTO messages (sender_id, game_id, body) VALUES ($1, $2, $3)",
             user.id,

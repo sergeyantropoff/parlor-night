@@ -1151,6 +1151,57 @@ async def test_watcher_count_drops_when_the_guest_leaves(clients) -> None:
     assert still == 0
 
 
+async def test_invited_seat_can_write_in_the_table_chat(clients) -> None:
+    admin, player, database = clients
+    admin_csrf = await _login(admin, "admin", "admin-pass-1")
+    player_csrf = await _login(player, "player", "player-pass-1")
+    created = await player.post(
+        "/api/v1/games",
+        headers={"X-CSRF-Token": player_csrf},
+        json={
+            "game_type": "uno",
+            "mode": "online",
+            "player_side": "white",
+            "audience": "closed",
+            "engine_level": 1,
+            "engine_time_ms": 200,
+            "computers": 0,
+            "open_seats": 2,
+        },
+    )
+    assert created.status_code == 201
+    game_id = created.json()["id"]
+    code = created.json()["join_code"]
+    locked = await admin.get(f"/api/v1/games/{game_id}/chat")
+    assert locked.status_code == 404
+
+    joined = await admin.post(
+        "/api/v1/games/join",
+        headers={"X-CSRF-Token": admin_csrf},
+        json={"code": code},
+    )
+    assert joined.status_code == 200
+    game_uuid = uuid.UUID(game_id)
+    opponent = await database["conn"].fetchval("SELECT opponent_id FROM games WHERE id = $1", game_uuid)
+    assert opponent is None
+    seated = await database["conn"].fetchval(
+        "SELECT 1 FROM game_seats WHERE game_id = $1 AND user_id = $2",
+        game_uuid,
+        database["admin_id"],
+    )
+    assert seated == 1
+
+    sent = await admin.post(
+        f"/api/v1/games/{game_id}/chat",
+        headers={"X-CSRF-Token": admin_csrf},
+        json={"body": "Сажусь рядом"},
+    )
+    assert sent.status_code == 200
+    log = await player.get(f"/api/v1/games/{game_id}/chat")
+    assert log.status_code == 200
+    assert log.json()["messages"][0]["body"] == "Сажусь рядом"
+
+
 async def test_logout_revokes_session(clients) -> None:
     admin, _player, _db = clients
     csrf = await _login(admin, "admin", "admin-pass-1")

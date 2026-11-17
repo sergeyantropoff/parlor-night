@@ -61,42 +61,79 @@
       </div>
     </div>
     {% if state.table == "cards" %}{{ invite_strip("Код стола") }}{% endif %}
+    <div class="stage-band">
+    {% if state.mode != "vs_computer" %}
+    <aside id="table-salon" class="salon-panel" aria-hidden="true">
+      <div class="notes-head">
+        <h2>{% if state.in_call %}Чат и видео{% else %}Чат стола{% endif %}</h2>
+        <div class="salon-tools">
+          {% if state.in_call %}
+          <button type="button" id="cam" class="salon-tool tip-host" data-tip="Камера" data-tip-below aria-label="Камера" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-video"/></svg></button>
+          <button type="button" id="mic" class="salon-tool tip-host" data-tip="Микрофон" data-tip-below aria-label="Микрофон" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mic"/></svg></button>
+          <button type="button" id="blur" class="salon-tool tip-host" data-tip="Блюр фона" data-tip-below aria-label="Блюр фона" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-blur"/></svg></button>
+          {% endif %}
+          <button type="button" class="salon-tool tip-host" data-salon-close data-tip="Закрыть" data-tip-below data-tip-edge aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg></button>
+        </div>
+      </div>
+      {% if state.in_call %}
+      <div id="table-call" class="salon-call">
+        <div id="call-board" class="call-board">
+          <div id="call-main" class="call-main">
+            <article class="call-tile is-main" data-tile="self">
+              <div class="tile-frame">
+                <p class="tile-wait">Камера выключена</p>
+                <video id="self-video" autoplay="autoplay" muted="muted" playsinline="playsinline"></video>
+              </div>
+              <p class="tile-name">{{ user.display_name }}</p>
+            </article>
+          </div>
+          <div id="call-row" class="call-row" aria-label="Другие игроки">
+            {% for slot in range(5) %}
+            <article class="call-slot is-empty" data-slot="{{ slot }}"><div class="tile-frame"></div></article>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+      <section class="table-chat">
+        <ol id="chat-log"></ol>
+        <form id="chat-form" class="chat-form">
+          <label class="sr" for="chat-body">Сообщение</label>
+          <button type="button" class="emoji-open secondary" data-emoji-for="chat-body" aria-label="Смайлики" aria-expanded="false" aria-haspopup="true">😊</button>
+          <input id="chat-body" maxlength="1000" autocomplete="off" placeholder="Сообщение..." />
+          <button type="submit" class="tip-host" data-tip="Отправить" data-tip-edge aria-label="Отправить"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-send"/></svg></button>
+        </form>
+      </section>
+    </aside>
+    {% endif %}
     <div class="table-stage">
       <div class="tool-col{% if state.watching and state.table != 'board' %} is-quiet{% endif %}" role="toolbar" aria-label="За столом">
-        <span class="icon-tool"{% if state.watching or state.game_type == "go" %} hidden="hidden"{% endif %}>
-          <button type="button" id="undo" aria-label="Отменить"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-undo"/></svg></button>
+        <span class="icon-tool"{% if state.watching or state.game_type == "go" or state.table == "cards" or state.mode == "online" %} hidden="hidden"{% endif %}>
+          <button type="button" id="undo" aria-label="Отменить"{% if state.watching or state.game_type == "go" or state.table == "cards" or state.mode == "online" %} hidden{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-undo"/></svg></button>
           <span class="tip" role="tooltip">Отменить</span>
         </span>
         <span class="icon-tool"{% if state.game_type == "go" %} hidden="hidden"{% endif %}>
           <button type="button" id="flip" aria-label="Повернуть"{% if state.table == "cards" %} hidden{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-flip"/></svg></button>
           <span class="tip" role="tooltip">Повернуть</span>
         </span>
-        <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
-          <button type="button" id="save" aria-label="Сохранить"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-save"/></svg></button>
+        <span class="icon-tool" hidden="hidden">
+          <button type="button" id="save" aria-label="Сохранить" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-save"/></svg></button>
           <span class="tip" role="tooltip">Сохранить</span>
         </span>
         <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
           <button type="button" id="open-notes" data-drawer-open="notes" aria-label="Ходы" aria-expanded="false" aria-controls="table-notes"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-book"/></svg></button>
           <span class="tip" role="tooltip">Ходы</span>
         </span>
-        {% if state.in_call %}
-        <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
-          <button type="button" id="open-call" data-drawer-open="call" aria-label="Видео" aria-expanded="false" aria-controls="table-call"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-video"/></svg></button>
-          <span class="tip" role="tooltip">Видео</span>
-        </span>
-        {% endif %}
         {% if state.mode != "vs_computer" %}
         <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
-          <button type="button" id="open-chat" data-drawer-open="chat" aria-label="Чат стола" aria-expanded="false" aria-controls="table-chat"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chat"/></svg></button>
-          <span class="tip" role="tooltip">Чат стола</span>
+          <button type="button" id="open-salon" data-salon-open aria-expanded="false" aria-controls="table-salon" aria-label="{% if state.in_call %}Чат и видео{% else %}Чат стола{% endif %}"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="{% if state.in_call %}#i-video{% else %}#i-chat{% endif %}"/></svg></button>
+          <span class="tip" role="tooltip">{% if state.in_call %}Чат и видео{% else %}Чат стола{% endif %}</span>
         </span>
         {% endif %}
-        {% if not analysis and state.game_type != "go" %}
-        <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
-          <button type="button" id="continue" aria-label="К позиции"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></button>
+        <span class="icon-tool" hidden="hidden">
+          <button type="button" id="continue" aria-label="К позиции" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></button>
           <span class="tip" role="tooltip">К позиции</span>
         </span>
-        {% endif %}
         {% if state.mode not in ["online", "vs_computer"] %}
         <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
           <button type="button" id="engine-move" aria-label="Ход компьютера"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-dice"/></svg></button>
@@ -127,9 +164,6 @@
       <section id="go-score" class="go-score" hidden="hidden"></section>
     </div>
     <p id="near-seat" class="seat-line"></p>
-    {% if user.is_admin %}
-    <button type="button" id="hint" class="hint-btn tip-host" data-tip="Подсказка" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bulb"/></svg><span class="sr">Подсказка</span></button>
-    {% endif %}
     <div id="rematch-offer" class="rematch-offer" hidden>
         <span id="rematch-text"></span>
         <span class="rematch-actions">
@@ -140,6 +174,12 @@
     <p class="quiet keys"{% if state.table == "cards" or state.table == "go" %} hidden="hidden"{% endif %}>Касание или перетаскивание: фигура, затем поле. С клавиатуры — стрелки и Enter, Escape снимает выбор.</p>
       </div>
       <div class="tool-col is-end{% if state.watching %} is-quiet{% endif %}" role="toolbar" aria-label="Дальше">
+        {% if user.is_admin %}
+        <span class="icon-tool"{% if state.table != "board" or not state.can_hint or state.watching %} hidden="hidden"{% endif %}>
+          <button type="button" id="hint" aria-label="Подсказка"{% if state.table != "board" or not state.can_hint or state.watching %} hidden{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bulb"/></svg></button>
+          <span class="tip" role="tooltip">Подсказка</span>
+        </span>
+        {% endif %}
         {% if not analysis and state.can_stop and not state.watching %}
         <span class="icon-tool">
           <button type="button" id="stop-game" class="is-quiet" aria-label="Остановить"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-stop"/></svg></button>
@@ -153,8 +193,8 @@
         </span>
         {% endif %}
         {% if analysis %}
-        <span class="icon-tool">
-          <a href="/games/new" aria-label="Новая партия"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-add"/></svg></a>
+        <span class="icon-tool" hidden="hidden">
+          <a id="new-game" href="/games/new" aria-label="Новая партия" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-add"/></svg></a>
           <span class="tip" role="tooltip">Новая партия</span>
         </span>
         <span class="icon-tool">
@@ -162,14 +202,15 @@
           <span class="tip" role="tooltip">К партии</span>
         </span>
         {% else %}
+        {% set review = state.table != "cards" and state.game_type != "go" and (state.mode != "online" or state.status in ["finished", "scoring"]) %}
         {% if state.game_type != "go" and not state.watching %}
-        <span class="icon-tool">
-          <a href="/games/{{ state.id }}/analysis" aria-label="Анализ"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chart"/></svg></a>
+        <span class="icon-tool"{% if not review %} hidden="hidden"{% endif %}>
+          <a id="open-analysis" href="/games/{{ state.id }}/analysis" aria-label="Анализ"{% if not review %} hidden{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chart"/></svg></a>
           <span class="tip" role="tooltip">Анализ</span>
         </span>
         {% endif %}
-        <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
-          <a id="new-game" href="/games/new" aria-label="Новая партия"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-add"/></svg></a>
+        <span class="icon-tool" hidden="hidden">
+          <a id="new-game" href="/games/new" aria-label="Новая партия" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-add"/></svg></a>
           <span class="tip" role="tooltip">Новая партия</span>
         </span>
         <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
@@ -178,6 +219,7 @@
         </span>
         {% endif %}
       </div>
+    </div>
     </div>
   </div>
   <dialog id="watcher-dialog" class="confirm-dialog watcher-dialog" aria-labelledby="watcher-title">
@@ -212,48 +254,6 @@
       <p class="download"><a href="/api/v1/games/{{ state.id }}/export"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-save"/></svg> {% if state.game_type == "go" %}Сохранить SGF{% else %}Скачать запись{% endif %}</a></p>
     </section>
   </aside>
-  {% if state.mode != "vs_computer" %}
-  <aside id="table-chat" class="side-panel" data-drawer="chat" aria-hidden="true">
-    <div class="notes-head">
-      <h2>Чат стола</h2>
-      <button type="button" class="secondary" data-drawer-close>Закрыть</button>
-    </div>
-    <section class="table-chat">
-      <ol id="chat-log"></ol>
-      <form id="chat-form" class="chat-form">
-        <label class="sr" for="chat-body">Сообщение</label>
-        <input id="chat-body" maxlength="1000" autocomplete="off" placeholder="Сообщение..." />
-        <button type="submit" class="tip-host" data-tip="Отправить" data-tip-edge aria-label="Отправить"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-send"/></svg></button>
-      </form>
-    </section>
-  </aside>
-  {% endif %}
-  {% if state.in_call %}
-  <aside id="table-call" class="side-panel" data-drawer="call" aria-hidden="true">
-    <div class="notes-head">
-      <h2>Видео</h2>
-      <button type="button" class="secondary" data-drawer-close>Закрыть</button>
-    </div>
-    <div id="call-board" class="call-board">
-      <div id="call-tiles" class="call-tiles">
-        <article class="call-tile" data-tile="self">
-          <div class="tile-frame">
-            <p class="tile-wait">Камера выключена</p>
-            <video id="self-video" autoplay="autoplay" muted="muted" playsinline="playsinline"></video>
-            <button type="button" class="tile-pin" data-pin="self">Главное</button>
-          </div>
-          <p class="tile-name"><a class="person-link" href="/players/{{ user.username }}" target="_blank" rel="noopener">{{ user.display_name }} · вы</a></p>
-        </article>
-      </div>
-    </div>
-    <div class="seat-actions">
-      <button type="button" id="cam" class="secondary">Камера</button>
-      <button type="button" id="mic" class="secondary">Микрофон</button>
-      <button type="button" id="blur" class="secondary">Блюр фона</button>
-    </div>
-    <p id="call-status" class="quiet">Камера и микрофон только у игроков за столом, до шести человек. Нажмите «Главное», чтобы увеличить выбранного игрока. Наблюдатели звук и видео не передают.</p>
-  </aside>
-  {% endif %}
 </section>
 {% if state.game_type == "poker" %}
 <dialog id="poker-ranks" class="ranks-dialog">

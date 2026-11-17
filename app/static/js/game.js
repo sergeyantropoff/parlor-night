@@ -1,4 +1,5 @@
 import { pokerFace, svgDataUrl, unoFace } from "./cards.mjs";
+import { mountEmoji } from "./emoji.js";
 import { attachPager } from "./pager.js";
 import { bindGo, paintGo } from "./go.js";
 
@@ -140,20 +141,14 @@ function fillSeat(id, seat) {
 }
 
 function paintSeats() {
-  const hint = document.querySelector("#hint");
   if (current.table === "go") {
     const near = document.querySelector("#near-seat");
     const far = document.querySelector("#far-seat");
     if (near) near.hidden = true;
     if (far) far.hidden = true;
-    if (hint) hint.hidden = true;
     return;
   }
-  if (current.table === "cards") {
-    if (hint) hint.hidden = true;
-    return;
-  }
-  hint?.remove();
+  if (current.table === "cards") return;
   const bottomSide = current.black_at_bottom ? "black" : "white";
   const topSide = current.black_at_bottom ? "white" : "black";
   let bottom = seatLabel(bottomSide);
@@ -170,11 +165,6 @@ function paintSeats() {
   }
   fillSeat("#near-seat", bottom);
   fillSeat("#far-seat", top);
-  if (!hint) return;
-  const mineOnTop = current.your_side ? current.your_side === topSide : false;
-  const host = document.querySelector(mineOnTop ? "#far-seat" : "#near-seat");
-  if (host && !host.hidden) host.append(hint);
-  else document.querySelector(".stage")?.append(hint);
 }
 
 function rows() {
@@ -245,6 +235,12 @@ function asset(file) {
   return version ? `${file}?v=${version}` : file;
 }
 
+function leavePreview() {
+  preview = null;
+  prefix = [];
+  render();
+}
+
 function moveButton(move, index) {
   const control = document.createElement("button");
   control.type = "button";
@@ -252,10 +248,21 @@ function moveButton(move, index) {
   if (preview === index) control.classList.add("is-on");
   control.textContent = move.algebraic || move.notation;
   control.addEventListener("click", () => {
+    if (current.table === "cards" || current.table === "go") return;
     preview = index;
-    say(`Просмотр хода ${index + 1}. Нажмите «Продолжить», чтобы вернуться.`);
+    render();
+    say(`Просмотр хода ${index + 1}.`);
   });
   return control;
+}
+
+function backToPosition() {
+  const back = document.createElement("button");
+  back.type = "button";
+  back.className = "move-back";
+  back.textContent = "К позиции";
+  back.addEventListener("click", () => leavePreview());
+  return back;
 }
 
 let historyPager = null;
@@ -269,12 +276,21 @@ function paintHistory() {
     const number = document.createElement("span");
     number.className = "move-num";
     number.textContent = `${index / 2 + 1}.`;
-    row.append(number, moveButton(current.moves[index], index));
-    if (current.moves[index + 1]) row.append(moveButton(current.moves[index + 1], index + 1));
+    row.append(number, moveSlot(current.moves[index], index));
+    if (current.moves[index + 1]) row.append(moveSlot(current.moves[index + 1], index + 1));
     history.append(row);
   }
   if (!historyPager) historyPager = attachPager(history, { size: 12, newest: true, label: "Страницы ходов" });
   historyPager();
+}
+
+function moveSlot(move, index) {
+  const control = moveButton(move, index);
+  if (preview !== index || current.table === "cards" || current.table === "go") return control;
+  const slot = document.createElement("span");
+  slot.className = "move-pick";
+  slot.append(control, backToPosition());
+  return slot;
 }
 
 function paintChrome() {
@@ -290,8 +306,7 @@ function paintChrome() {
   if (keys) keys.hidden = cards || go;
   const flip = document.querySelector("#flip");
   if (flip) flip.hidden = cards || go;
-  const hint = document.querySelector("#hint");
-  if (hint) hint.hidden = current.table === "cards" || !current.can_hint;
+  showTool("hint", current.table === "board" && Boolean(current.can_hint) && !current.watching);
   const invite = document.querySelector("#invite");
   if (invite) invite.hidden = inviteDismissed() || !current.join_code;
   paintSeats();
@@ -311,17 +326,30 @@ function paintChrome() {
   if (end) end.hidden = !canEnd;
   const stop = document.querySelector("#stop-game");
   if (stop) stop.hidden = !current.can_stop || busy;
+  const boardGame = current.table !== "cards" && current.table !== "go";
   const undo = document.querySelector("#undo");
-  if (undo) {
-    undo.disabled = !current.can_undo || busy;
-    undo.hidden = current.table === "go";
-  }
+  if (undo) undo.disabled = !current.can_undo || busy;
+  showTool("undo", boardGame && current.mode !== "online" && !current.watching);
+  showTool("save", false);
+  showTool("continue", false);
+  showTool("new-game", false);
+  const review = current.status === "finished" || current.status === "scoring";
+  showTool("open-analysis", boardGame && !current.watching && (current.mode !== "online" || review));
   paintWatchTools();
   paintWatchers();
+  paintRoster();
   if (!preview && hintPath.length === 0 && !captureFocus) say(current.status_line);
   paintWinnerLine(status, status.textContent || "");
   paintRematch();
   paintSummary();
+}
+
+function showTool(id, visible) {
+  const node = document.getElementById(id);
+  if (!node) return;
+  node.hidden = !visible;
+  const tool = node.closest(".icon-tool");
+  if (tool) tool.hidden = !visible;
 }
 
 function paintWatchTools() {
@@ -1302,13 +1330,17 @@ function chipBet(amount, spot) {
   return anchor(node, spot.x, spot.y, "bet-chip");
 }
 
-function dealerMark(x, y) {
+function dealerMark(spot) {
   const node = document.createElement("div");
   node.textContent = "Д";
-  node.title = "Дилер";
-  const dx = x >= 50 ? -10 : 10;
-  const dy = y >= 48 ? 9 : -9;
-  return anchor(node, x + dx, y + dy, "dealer-btn");
+  node.setAttribute("aria-label", "Дилер");
+  let x = spot.x >= 50 ? spot.x + 5.8 : spot.x - 5.8;
+  let y = spot.y;
+  if (x > 94 || x < 6) {
+    x = spot.x;
+    y = spot.y >= 50 ? Math.min(94, spot.y + 6) : Math.max(6, spot.y - 6);
+  }
+  return anchor(node, Math.min(96, Math.max(4, x)), Math.min(94, Math.max(6, y)), "dealer-btn");
 }
 
 function paintPokerRing(box, heroCards) {
@@ -1338,8 +1370,9 @@ function paintPokerRing(box, heroCards) {
     const badge = playerPlate(seat, plate.x, plate.y);
     badge.classList.add(`is-${plate.side}`);
     box.append(badge);
+    const stackSpot = purseAnchor(x, y, place, plate);
     placePurse(box, plate, place, x, y, seat.stack);
-    if (seat.dealer) box.append(dealerMark(place.x, place.y));
+    if (seat.dealer) box.append(dealerMark(stackSpot));
   });
   const boardCards = Array.isArray(current.board) ? current.board : [];
   if (boardCards.length) {
@@ -1443,7 +1476,7 @@ function preferansStatusSpot(seatY, cards, plate) {
 }
 
 function clearPassWhist(box, status, where, plateNode) {
-  if (status.textContent !== "пас на вист" || !where.lift) return;
+  if (!where.lift) return;
   const table = box.getBoundingClientRect();
   const plate = plateNode.getBoundingClientRect();
   const badge = status.getBoundingClientRect();
@@ -2989,11 +3022,7 @@ document.querySelector("#watcher-close")?.addEventListener("click", () => {
   document.querySelector("#watcher-dialog")?.close();
 });
 document.querySelector("#save")?.addEventListener("click", () => act("save", {}, "save"));
-document.querySelector("#continue")?.addEventListener("click", () => {
-  preview = null;
-  prefix = [];
-  render();
-});
+document.querySelector("#continue")?.addEventListener("click", () => leavePreview());
 function inviteDismissed() {
   if (!current?.id) return false;
   try {
@@ -3426,28 +3455,29 @@ function peerName(id) {
 }
 
 function videoFor(id) {
-  const box = document.querySelector("#call-tiles");
+  const box = document.querySelector("#call-board");
   if (!box) return null;
   let tile = box.querySelector(`[data-tile="${id}"]`);
   if (!tile) {
+    if (id !== "self" && box.querySelectorAll('.call-tile:not([data-tile="self"])').length >= 5) return null;
     tile = document.createElement("article");
     tile.className = "call-tile";
     tile.dataset.tile = id;
     const frame = document.createElement("div");
     frame.className = "tile-frame";
+    const wait = document.createElement("p");
+    wait.className = "tile-wait";
+    wait.textContent = "Камера выключена";
     const video = document.createElement("video");
     video.dataset.peer = id;
     video.autoplay = true;
     video.playsInline = true;
-    const pin = document.createElement("button");
-    pin.type = "button";
-    pin.className = "tile-pin";
-    pin.dataset.pin = id;
-    pin.textContent = "Главное";
     const name = document.createElement("p");
     name.className = "tile-name";
-    fillPersonName(name, peerIdentity(id));
-    frame.append(video, pin);
+    const person = peerIdentity(id);
+    fillPersonName(name, person);
+    name.dataset.full = person.name;
+    frame.append(wait, video);
     tile.append(frame, name);
     box.append(tile);
     applyFeature();
@@ -3456,23 +3486,133 @@ function videoFor(id) {
 }
 
 let featured = "";
+let featuredChosen = false;
+
+function paintRoster() {
+  const box = document.querySelector("#call-board");
+  if (!box || !current.in_call) return;
+  const people = (Array.isArray(current.call_roster) ? current.call_roster : [])
+    .filter((person) => person && person.id && person.id !== current.you)
+    .slice(0, 5);
+  for (const person of people) videoFor(person.id);
+  applyFeature();
+}
+
+function emptySlot() {
+  const slot = document.createElement("article");
+  slot.className = "call-slot is-empty";
+  const frame = document.createElement("div");
+  frame.className = "tile-frame";
+  slot.append(frame);
+  return slot;
+}
 
 function applyFeature() {
   const board = document.querySelector("#call-board");
-  board?.classList.toggle("has-featured", Boolean(featured));
-  for (const tile of document.querySelectorAll(".call-tile")) {
-    const on = tile.dataset.tile === featured;
-    tile.classList.toggle("is-featured", on);
-    const pin = tile.querySelector(".tile-pin");
-    if (pin) {
-      pin.textContent = on ? "Обычный размер" : "Главное";
-      pin.setAttribute("aria-pressed", on ? "true" : "false");
+  const mainBox = document.querySelector("#call-main");
+  const row = document.querySelector("#call-row");
+  if (!board || !mainBox || !row) return;
+  const tiles = [...board.querySelectorAll(".call-tile")];
+  if (!tiles.length) return;
+  const known = tiles.some((tile) => tile.dataset.tile === featured);
+  if (!featuredChosen || !known) featured = "self";
+  const main = tiles.find((tile) => tile.dataset.tile === featured) || tiles.find((tile) => tile.dataset.tile === "self") || tiles[0];
+  const rest = tiles.filter((tile) => tile !== main);
+  main.classList.add("is-main");
+  main.setAttribute("aria-pressed", "true");
+  mainBox.replaceChildren(main);
+  const slots = [];
+  for (let index = 0; index < 5; index += 1) {
+    const tile = rest[index];
+    if (!tile) {
+      slots.push(emptySlot());
+      continue;
     }
+    const slot = document.createElement("article");
+    slot.className = "call-slot";
+    tile.classList.remove("is-main");
+    tile.setAttribute("aria-pressed", "false");
+    slot.append(tile);
+    slots.push(slot);
   }
+  row.replaceChildren(...slots);
+  fitThumbNames();
+}
+
+function fullNameOf(node) {
+  if (node.dataset.full) return node.dataset.full;
+  const link = node.querySelector("a");
+  const text = (link ? link.textContent : node.textContent).replace(/\s+/g, " ").trim();
+  node.dataset.full = text;
+  return text;
+}
+
+function writeName(node, text) {
+  const link = node.querySelector("a");
+  if (link) link.textContent = text;
+  else node.textContent = text;
+}
+
+function nameForms(full) {
+  const text = full.replace(/\s+/g, " ").trim();
+  const parts = text.split(" ").filter(Boolean);
+  const forms = [];
+  const push = (value) => {
+    const clean = value.replace(/\s+/g, " ").trim();
+    if (clean && !forms.includes(clean)) forms.push(clean);
+  };
+  push(text);
+  if (parts.length >= 2) {
+    const initials = parts.slice(1).map((part) => `${part.slice(0, 1).toUpperCase()}.`).join(" ");
+    push(`${parts[0]} ${initials}`);
+    push(`${parts[0]} ${parts[1].slice(0, 1).toUpperCase()}.`);
+  }
+  if (parts.length >= 3) push(`${parts[1]} ${parts[0].slice(0, 1).toUpperCase()}.`);
+  else if (parts.length === 2) push(parts[0]);
+  return forms.length ? forms : [text];
+}
+
+function overflowsTwoLines(node) {
+  if (node.clientWidth < 8) return false;
+  const previous = node.style.webkitLineClamp;
+  node.style.webkitLineClamp = "none";
+  const line = parseFloat(getComputedStyle(node).lineHeight) || 0;
+  const over = line > 0 && node.scrollHeight > line * 2 + 1;
+  node.style.webkitLineClamp = previous;
+  return over;
+}
+
+function shrinkToFit(node, full) {
+  const forms = nameForms(full);
+  for (const form of forms) {
+    writeName(node, form);
+    if (!overflowsTwoLines(node)) return;
+  }
+  const base = forms[forms.length - 1] || full;
+  let low = 1;
+  let high = base.length;
+  let chosen = "…";
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const trial = mid >= base.length ? base : `${base.slice(0, mid).trimEnd()}…`;
+    writeName(node, trial);
+    if (!overflowsTwoLines(node)) {
+      chosen = trial;
+      low = mid + 1;
+    } else high = mid - 1;
+  }
+  writeName(node, chosen);
+}
+
+function fitThumbNames() {
+  const main = document.querySelector("#call-main .tile-name");
+  if (main) writeName(main, fullNameOf(main));
+  for (const node of document.querySelectorAll("#call-row .tile-name")) shrinkToFit(node, fullNameOf(node));
 }
 
 function feature(id) {
-  featured = featured === id ? "" : id;
+  featured = id || "";
+  featuredChosen = Boolean(id);
   applyFeature();
 }
 
@@ -3519,7 +3659,7 @@ async function onSignal(message) {
   if (message.type === "peer-left") {
     peers.get(message.id)?.close();
     peers.delete(message.id);
-    document.querySelector(`#call-tiles [data-tile="${message.id}"]`)?.remove();
+    document.querySelector(`#call-board [data-tile="${message.id}"]`)?.remove();
     if (featured === message.id) feature("");
     return;
   }
@@ -3703,7 +3843,7 @@ async function refreshMedia() {
 }
 
 function startCall() {
-  if (!current.in_call || !document.querySelector("#table-call")) return;
+  if (!current.in_call || !document.querySelector("#call-board")) return;
   const proto = location.protocol === "https:" ? "wss" : "ws";
   callSocket = new WebSocket(`${proto}://${location.host}/ws/tables/${current.id}`);
   callSocket.onmessage = (event) => {
@@ -3730,8 +3870,9 @@ document.querySelector("#blur")?.addEventListener("click", () => {
   if (camOn) refreshMedia();
 });
 document.querySelector("#call-board")?.addEventListener("click", (event) => {
-  const tile = event.target instanceof Element ? event.target.closest(".call-tile") : null;
-  if (!tile) return;
+  if (!(event.target instanceof Element) || event.target.closest("a")) return;
+  const tile = event.target.closest(".call-tile");
+  if (!tile || tile.classList.contains("is-main")) return;
   feature(tile.dataset.tile || "");
 });
 
@@ -3762,8 +3903,39 @@ function setDrawer(name) {
     button.setAttribute("aria-expanded", button.dataset.drawerOpen === open ? "true" : "false");
   }
 }
+function placeSalon() {
+  const panel = document.querySelector("#table-salon");
+  const tool = document.querySelector(".table-stage .tool-col:not(.is-end)");
+  if (!panel || !tool) return;
+  const edge = tool.getBoundingClientRect().left;
+  panel.style.width = `${Math.max(0, Math.round(edge - 10))}px`;
+  fitThumbNames();
+}
+
+function setSalon(open) {
+  const panel = document.querySelector("#table-salon");
+  if (!panel) return;
+  if (open) placeSalon();
+  panel.classList.toggle("is-open", open);
+  panel.setAttribute("aria-hidden", open ? "false" : "true");
+  document.querySelector("#open-salon")?.setAttribute("aria-expanded", open ? "true" : "false");
+  if (open) applyFeature();
+}
+
+window.addEventListener("resize", () => {
+  if (document.querySelector("#table-salon")?.classList.contains("is-open")) placeSalon();
+});
+
 document.querySelector(".play")?.addEventListener("click", (event) => {
   if (!(event.target instanceof Element)) return;
+  if (event.target.closest("[data-salon-open]")) {
+    setSalon(!document.querySelector("#table-salon")?.classList.contains("is-open"));
+    return;
+  }
+  if (event.target.closest("[data-salon-close]")) {
+    setSalon(false);
+    return;
+  }
   const open = event.target.closest("[data-drawer-open]");
   if (open instanceof HTMLElement) {
     const name = open.dataset.drawerOpen || "";
@@ -3802,3 +3974,4 @@ if (current.mode !== "vs_computer") {
   loadChat().catch(() => {});
 }
 startCall();
+mountEmoji();

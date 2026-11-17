@@ -1,3 +1,4 @@
+import { mountEmoji } from "./emoji.js";
 import { attachPager } from "./pager.js";
 
 const root = document.querySelector("[data-social]");
@@ -100,6 +101,8 @@ if (root) {
     chatSearch?.addEventListener("input", () => paintInbox({ reset: true }));
     paintInbox();
   }
+
+  mountEmoji(root);
 
   const body = root.querySelector("#chat-body");
   body?.addEventListener("keydown", (event) => {
