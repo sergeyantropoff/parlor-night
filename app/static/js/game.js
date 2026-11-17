@@ -3473,6 +3473,7 @@ function videoFor(id) {
     video.dataset.peer = id;
     video.autoplay = true;
     video.playsInline = true;
+    video.setAttribute("playsinline", "");
     const name = document.createElement("p");
     name.className = "tile-name";
     const person = peerIdentity(id);
@@ -3632,6 +3633,49 @@ function feature(id) {
   applyFeature();
 }
 
+function liveTrack(kind) {
+  return localStream?.getTracks().find((track) => track.kind === kind && track.readyState === "live") || null;
+}
+
+async function ensureSenders(pc) {
+  for (const kind of ["audio", "video"]) {
+    const track = liveTrack(kind);
+    const transceiver = pc.getTransceivers().find((item) => {
+      return item.sender?.track?.kind === kind || item.receiver?.track?.kind === kind;
+    });
+    if (!track && !transceiver) continue;
+    const current = transceiver || pc.addTransceiver(kind, { direction: "sendrecv" });
+    if (current.sender.track !== track) await current.sender.replaceTrack(track);
+  }
+}
+
+function mountRemoteTrack(video, event) {
+  const stream = video.srcObject instanceof MediaStream ? video.srcObject : new MediaStream();
+  const incoming = [...(event.streams?.[0]?.getTracks() || []), event.track];
+  for (const track of incoming) {
+    if (track && !stream.getTracks().some((have) => have.id === track.id)) stream.addTrack(track);
+  }
+  if (video.srcObject !== stream) video.srcObject = stream;
+  video.muted = false;
+  video.defaultMuted = false;
+  video.removeAttribute("muted");
+  video.volume = 1;
+  video.playsInline = true;
+  video.classList.add("is-live");
+  return video.play().catch(() => {});
+}
+
+function unlockCallAudio() {
+  for (const video of document.querySelectorAll("#call-board video")) {
+    if (video.id === "self-video" || !(video.srcObject instanceof MediaStream)) continue;
+    video.muted = false;
+    video.defaultMuted = false;
+    video.removeAttribute("muted");
+    video.volume = 1;
+    video.play().catch(() => {});
+  }
+}
+
 function makePeer(id) {
   const existing = peers.get(id);
   if (existing) return existing;
@@ -3645,10 +3689,7 @@ function makePeer(id) {
   pc.ontrack = (event) => {
     const video = videoFor(id);
     if (!video) return;
-    video.muted = false;
-    video.srcObject = event.streams[0] || new MediaStream([event.track]);
-    video.classList.add("is-live");
-    video.play().catch(() => {});
+    mountRemoteTrack(video, event);
   };
   peers.set(id, pc);
   return pc;
@@ -3656,11 +3697,7 @@ function makePeer(id) {
 
 async function offerTo(id) {
   const pc = makePeer(id);
-  if (localStream) {
-    for (const track of localStream.getTracks()) {
-      if (!pc.getSenders().some((sender) => sender.track === track)) pc.addTrack(track, localStream);
-    }
-  }
+  await ensureSenders(pc);
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
   sendSignal({ type: "signal", to: id, data: { kind: "offer", sdp: pc.localDescription } });
@@ -3690,6 +3727,7 @@ async function onSignal(message) {
       await pc.setLocalDescription({ type: "rollback" });
     }
     await pc.setRemoteDescription(data.sdp);
+    await ensureSenders(pc);
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     sendSignal({ type: "signal", to: message.from, data: { kind: "answer", sdp: pc.localDescription } });
@@ -3842,7 +3880,7 @@ async function refreshMedia() {
     }
     cameraStream = await navigator.mediaDevices.getUserMedia({
       video: camOn ? { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } : false,
-      audio: micOn,
+      audio: micOn ? { echoCancellation: true, noiseSuppression: true } : false,
     });
     localStream = camOn && blurOn ? await withBlur(cameraStream) : cameraStream;
     const self = document.querySelector("#self-video");
@@ -3874,12 +3912,14 @@ document.querySelector("#cam")?.addEventListener("click", () => {
   camOn = !camOn;
   document.querySelector("#cam")?.classList.toggle("is-on", camOn);
   document.querySelector("#cam")?.setAttribute("aria-pressed", camOn ? "true" : "false");
+  unlockCallAudio();
   refreshMedia();
 });
 document.querySelector("#mic")?.addEventListener("click", () => {
   micOn = !micOn;
   document.querySelector("#mic")?.classList.toggle("is-on", micOn);
   document.querySelector("#mic")?.setAttribute("aria-pressed", micOn ? "true" : "false");
+  unlockCallAudio();
   refreshMedia();
 });
 document.querySelector("#blur")?.addEventListener("click", () => {
@@ -3891,6 +3931,7 @@ document.querySelector("#blur")?.addEventListener("click", () => {
 document.querySelector("#call-board")?.addEventListener("click", (event) => {
   if (!(event.target instanceof Element) || event.target.closest("a")) return;
   const tile = event.target.closest(".call-tile");
+  unlockCallAudio();
   if (!tile || tile.classList.contains("is-main")) return;
   feature(tile.dataset.tile || "");
 });
@@ -3949,6 +3990,7 @@ document.querySelector(".play")?.addEventListener("click", (event) => {
   if (!(event.target instanceof Element)) return;
   if (event.target.closest("[data-salon-open]")) {
     setSalon(!document.querySelector("#table-salon")?.classList.contains("is-open"));
+    unlockCallAudio();
     return;
   }
   if (event.target.closest("[data-salon-close]")) {
