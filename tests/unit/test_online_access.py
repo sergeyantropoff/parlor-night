@@ -140,6 +140,76 @@ def test_online_state_hides_hint_and_opponent_moves() -> None:
     assert "best_move" not in black
 
 
+def test_call_roster_counts_only_people_who_sat() -> None:
+    creator = User(id=uuid.uuid4(), username="admin", role="user", full_name="Сережа")
+    pavel = uuid.uuid4()
+    fen = chess.Board().fen()
+    game = {
+        "id": uuid.uuid4(),
+        "user_id": creator.id,
+        "opponent_id": None,
+        "join_code": "qw43wgjr",
+        "game_type": "chess",
+        "variant": "standard",
+        "mode": "online",
+        "player_side": "white",
+        "status": "active",
+        "initial_position": fen,
+        "current_position": fen,
+        "result": None,
+        "result_reason": None,
+        "engine_level": 3,
+        "engine_time_ms": 1000,
+        "position_version": 4,
+        "creator_flipped": False,
+        "opponent_flipped": False,
+        "creator_name": "Сережа",
+        "creator_login": "admin",
+        "creator_avatar": "",
+        "opponent_name": None,
+        "opponent_login": None,
+        "opponent_avatar": None,
+        "audience": "closed",
+        "table_seats": [
+            {
+                "seat_key": "white",
+                "kind": "human",
+                "user_id": creator.id,
+                "username": "Сережа",
+                "login": "admin",
+                "avatar": "",
+            },
+            {
+                "seat_key": "east",
+                "kind": "human",
+                "user_id": pavel,
+                "username": "Pavel",
+                "login": "pavel",
+                "avatar": "",
+            },
+            {
+                "seat_key": "north",
+                "kind": "human",
+                "user_id": None,
+                "username": None,
+                "login": None,
+                "avatar": None,
+            },
+            {
+                "seat_key": "black",
+                "kind": "computer",
+                "user_id": None,
+                "username": None,
+                "login": None,
+                "avatar": None,
+            },
+        ],
+    }
+    roster = project(game, creator, [])["call_roster"]
+    assert [item["name"] for item in roster] == ["Сережа", "Pavel"]
+    assert {item["id"] for item in roster} == {str(creator.id), str(pavel)}
+
+
 def test_finished_checkers_uses_a_short_badge() -> None:
     user = User(id=uuid.uuid4(), username="ann", role="user")
     game = {

@@ -80,8 +80,9 @@ def _call_roster(game: dict[str, object]) -> list[dict[str, str]]:
         )
 
     for item in game.get("table_seats") or []:
-        if isinstance(item, dict) and item.get("kind") != "computer":
-            add(item.get("user_id"), item.get("username"), item.get("login"), item.get("avatar"))
+        if not isinstance(item, dict) or item.get("kind") == "computer" or not item.get("user_id"):
+            continue
+        add(item.get("user_id"), item.get("username"), item.get("login"), item.get("avatar"))
     add(game.get("user_id"), game.get("creator_name"), game.get("creator_login"), game.get("creator_avatar"))
     add(game.get("opponent_id"), game.get("opponent_name"), game.get("opponent_login"), game.get("opponent_avatar"))
     return roster
