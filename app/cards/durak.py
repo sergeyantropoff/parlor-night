@@ -312,6 +312,7 @@ def _take(state: dict[str, Any]) -> None:
         if pair.get("defense"):
             taken.append(pair["defense"])
     state["hands"][defender].extend(taken)
+    state["last_bout"] = {"kind": "take", "seat": str(defender)}
     state["table"] = []
     _refill(state, defender_last=True)
     if state.get("result"):
@@ -325,6 +326,7 @@ def _take(state: dict[str, Any]) -> None:
 
 def _bito(state: dict[str, Any]) -> None:
     _keep_table(state)
+    state["last_bout"] = {"kind": "bito", "seat": str(state.get("defender") or "")}
     state["table"] = []
     defender = state["defender"]
     _refill(state, defender_last=True)
@@ -534,6 +536,9 @@ def view(state: dict[str, Any], seat: str | None) -> dict[str, Any]:
             if isinstance(pair, dict) and pair.get("attack")
         ]
         held = bool(live)
+    bout = state.get("last_bout") if held and isinstance(state.get("last_bout"), dict) else {}
+    remembered = state.get("last_bout") if isinstance(state.get("last_bout"), dict) else {}
+    previous = remembered if str(remembered.get("kind") or "") in {"bito", "take"} else {}
     pairs = live
     return {
         "hand": hand,
@@ -549,6 +554,18 @@ def view(state: dict[str, Any], seat: str | None) -> dict[str, Any]:
         "board": [pair["attack"] for pair in pairs],
         "pairs": pairs,
         "held": held,
+        "bout": bout,
+        "previous": {
+            "kind": str(previous.get("kind") or ""),
+            "seat": str(previous.get("seat") or ""),
+            "pairs": [
+                {"attack": str(pair.get("attack") or ""), "defense": str(pair.get("defense") or "")}
+                for pair in (state.get("last_table") or [])
+                if isinstance(pair, dict) and pair.get("attack")
+            ],
+        }
+        if previous
+        else {},
         "trump": state.get("trump") or "",
         "trump_card": shown,
         "hole": False,

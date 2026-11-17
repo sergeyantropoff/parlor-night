@@ -228,6 +228,70 @@ def test_preferans_previous_deal_is_marked() -> None:
     assert view_preferans(state, "p0")["note_tone"] == "draw"
 
 
+def test_preferans_names_who_took_the_trick_and_what_was_written() -> None:
+    state = deal_preferans(["p0", "p1", "p2"], "pool-12")
+    state["phase"] = "play"
+    state["contract"] = {"level": 6, "suit": "S"}
+    state["declarer"] = "p0"
+    state["trump"] = "S"
+    state["hands"] = {"p0": [], "p1": [], "p2": ["9H"]}
+    state["trick"] = ["7H", "8H"]
+    state["trick_seats"] = ["p0", "p1"]
+    state["tricks"] = {"p0": 6, "p1": 0, "p2": 0}
+    state["to_move"] = "p2"
+    state["whist"] = {"p1": "yes", "p2": "no"}
+    state, _charges = play_preferans(state, ["play", "9H"])
+    assert state["last_trick_winner"] == "p2"
+    assert state["last_trick_seats"] == ["p0", "p1", "p2"]
+    assert state["last_write"]["p0"] == "bullet"
+    shown = view_preferans(state, "p0")
+    assert shown["writes"]["p0"] == "bullet"
+    assert shown["held"] is False
+    assert shown["previous"]["winner"] == "p2"
+    state, _charges = play_preferans(state, ["bid", "pass"])
+    assert view_preferans(state, "p0")["writes"] == {}
+    assert view_preferans(state, "p0")["previous"] == {}
+
+
+def test_preferans_keeps_the_previous_trick_while_the_next_one_starts() -> None:
+    state = deal_preferans(["p0", "p1", "p2"], "pool-12")
+    state["phase"] = "play"
+    state["contract"] = {"level": 6, "suit": "S"}
+    state["declarer"] = "p0"
+    state["trump"] = "S"
+    state["hands"] = {"p0": ["AS"], "p1": ["KS"], "p2": ["9H", "QS"]}
+    state["trick"] = ["7H", "8H"]
+    state["trick_seats"] = ["p0", "p1"]
+    state["tricks"] = {"p0": 0, "p1": 0, "p2": 0}
+    state["to_move"] = "p2"
+    state, _charges = play_preferans(state, ["play", "9H"])
+    state["trick"] = ["7S"]
+    state["trick_seats"] = ["p0"]
+    shown = view_preferans(state, "p1")
+    assert shown["held"] is False
+    assert shown["board"] == ["7S"]
+    assert shown["previous"]["winner"] == "p2"
+    assert shown["previous"]["cards"] == ["7H", "8H", "9H"]
+
+
+def test_durak_shows_who_finished_the_bout() -> None:
+    from app.cards.durak import view as view_durak
+
+    state = deal_durak(["white", "black"], "podkidnoy")
+    state["phase"] = "attack"
+    state["table"] = []
+    state["last_table"] = [{"attack": "7S", "defense": "8S"}]
+    state["last_bout"] = {"kind": "bito", "seat": "black"}
+    shown = view_durak(state, "white")
+    assert shown["held"] is True
+    assert shown["bout"] == {"kind": "bito", "seat": "black"}
+    state["table"] = [{"attack": "9C", "defense": ""}]
+    live = view_durak(state, "white")
+    assert live["bout"] == {}
+    assert live["previous"]["kind"] == "bito"
+    assert live["previous"]["pairs"] == [{"attack": "7S", "defense": "8S"}]
+
+
 def test_preferans_hand_is_sorted_by_suit() -> None:
     state = deal_preferans(["p0", "p1", "p2"], "pool-12")
     state["hands"]["p0"] = ["7H", "AS", "9C", "KH", "TS", "8D", "QC", "JD", "7S", "AH"]

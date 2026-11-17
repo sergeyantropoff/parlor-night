@@ -70,6 +70,7 @@ def _shell(seats: list[str], phase: str) -> dict[str, Any]:
         "order": seats,
         "hands": {seat: [] for seat in seats},
         "status": {seat: "open" for seat in seats},
+        "acts": {},
         "dealer": [],
         "deck": [],
         "stacks": {seat: 0 for seat in seats},
@@ -180,6 +181,8 @@ def apply(state: dict[str, Any], path: list[str]) -> tuple[dict[str, Any], list[
         else:
             nxt["to_move"] = nxt_seat
         return nxt, charges
+    nxt.setdefault("acts", {})
+    nxt["acts"][seat] = path[1]
     if path[1] == "double":
         extra = int(nxt["committed"][seat])
         nxt["stacks"][seat] = int(nxt["stacks"][seat]) - extra
@@ -505,6 +508,9 @@ def view(state: dict[str, Any], seat: str | None) -> dict[str, Any]:
         "talon": [],
         "contract": "Блэкджек",
         "shown": shown,
+        "status": {str(key): str(value) for key, value in (state.get("status") or {}).items()},
+        "acts": {str(key): str(value) for key, value in (state.get("acts") or {}).items()},
+        "outcomes": _showdown(state)[1] if done else {},
         "stacks": state.get("stacks") or {},
         "committed": state.get("committed") or {},
     }

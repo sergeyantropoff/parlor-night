@@ -245,6 +245,33 @@ def _salon_faces(
     return rows
 
 
+def _durak_marks(card: dict[str, object]) -> dict[str, str]:
+    bout = card.get("bout") if isinstance(card.get("bout"), dict) else {}
+    seat = str(bout.get("seat") or "")
+    kind = str(bout.get("kind") or "")
+    if not seat or kind not in {"bito", "take"}:
+        return {}
+    return {seat: kind}
+
+
+def _blackjack_marks(card: dict[str, object]) -> dict[str, str]:
+    if str(card.get("phase") or "") == "done":
+        outcomes = card.get("outcomes") if isinstance(card.get("outcomes"), dict) else {}
+        return {str(key): str(value) for key, value in outcomes.items() if value not in {"", "out"}}
+    status = card.get("status") if isinstance(card.get("status"), dict) else {}
+    acts = card.get("acts") if isinstance(card.get("acts"), dict) else {}
+    marks: dict[str, str] = {}
+    for key, value in status.items():
+        seat = str(key)
+        if value == "bust":
+            marks[seat] = "bust"
+        elif value == "stand":
+            marks[seat] = "double" if acts.get(key) == "double" or acts.get(seat) == "double" else "stand"
+        elif acts.get(key) == "hit" or acts.get(seat) == "hit":
+            marks[seat] = "hit"
+    return marks
+
+
 def _preferans_marks(card: dict[str, object]) -> dict[str, str]:
     marks: dict[str, str] = {}
     bidding = card.get("bidding") if isinstance(card.get("bidding"), dict) else {}
@@ -472,6 +499,10 @@ def _project_cards(
         marks = {str(key): str(value) for key, value in (card.get("acts") or {}).items()}
     elif str(game["game_type"]) == "preferans":
         marks = _preferans_marks(card)
+    elif str(game["game_type"]) == "durak":
+        marks = _durak_marks(card)
+    elif str(game["game_type"]) == "blackjack":
+        marks = _blackjack_marks(card)
     else:
         marks = (report.get("last") or {}) if report else {}
     for item in public_seats:
@@ -515,6 +546,11 @@ def _project_cards(
         else:
             summary = _parlor_summary(str(game["game_type"]), report, public_seats, named)
             line = str(summary["line"])
+    winner_hand = str(card.get("winner_hand") or "")
+    if str(game["game_type"]) == "poker":
+        winner_hand = _poker_caption(report if isinstance(report, dict) else None, public_seats, winner_hand)
+        if status == "finished" and not stopped and winner_hand:
+            line = "Раздача окончена."
     return {
         "id": _sid(game["id"]),
         "you": str(user.id),
@@ -533,7 +569,7 @@ def _project_cards(
         "legal_moves": card["actions"] if your_turn else [],
         "hand": card["hand"],
         "board": card.get("board") or [],
-        "winner_hand": card.get("winner_hand") or "",
+        "winner_hand": winner_hand,
         "pot": card["pot"],
         "phase": card["phase"],
         "stacks": card.get("stacks") or {},
@@ -549,6 +585,13 @@ def _project_cards(
         "trump_card": card.get("trump_card") or "",
         "hole": bool(card.get("hole")),
         "held": bool(card.get("held")),
+        "trick_seats": [str(item) for item in (card.get("trick_seats") or [])],
+        "trick_winner": str(card.get("trick_winner") or ""),
+        "writes": {str(key): str(value) for key, value in (card.get("writes") or {}).items()}
+        if isinstance(card.get("writes"), dict)
+        else {},
+        "bout": card.get("bout") if isinstance(card.get("bout"), dict) else {},
+        "previous": card.get("previous") if isinstance(card.get("previous"), dict) else {},
         "talon": card.get("talon") or [],
         "contract": card.get("contract") or "",
         "sheet": card.get("sheet") or None,
@@ -663,6 +706,39 @@ def _uno_summary(
         "counts": report.get("counts") or {},
         "seats": rows,
     }
+
+
+def _poker_caption(report: dict[str, object] | None, seats: list[dict[str, object]], fallback: str) -> str:
+    names = {str(item.get("key") or ""): str(item.get("name") or "") for item in seats if item.get("name")}
+    if not isinstance(report, dict):
+        return _swap_seat_titles(fallback, names)
+    reason = str(report.get("reason") or "")
+    winner = names.get(str(report.get("winner") or ""), "")
+    folder = names.get(str(report.get("folded_by") or ""), "")
+    if reason == "fold" and folder and winner:
+        return f"Последний пас — {folder}. Банк у {winner}."
+    if reason == "showdown" and winner:
+        combo = str(report.get("combination") or "").rstrip(".")
+        return f"Банк у {winner}: {combo}." if combo else f"Банк у {winner}."
+    if reason == "left" and winner:
+        return f"Банк у {winner}."
+    return _swap_seat_titles(fallback, names)
+
+
+def _swap_seat_titles(text: str, names: dict[str, str]) -> str:
+    pairs: list[tuple[str, str]] = []
+    for key, name in names.items():
+        if key.startswith("p") and key[1:].isdigit():
+            pairs.append((f"Место {int(key[1:]) + 1}", name))
+        elif key == "white":
+            pairs.extend((("Белые", name), ("белых", name)))
+        elif key == "black":
+            pairs.extend((("Чёрные", name), ("чёрных", name)))
+    pairs.sort(key=lambda item: len(item[0]), reverse=True)
+    renamed = text
+    for title, name in pairs:
+        renamed = renamed.replace(title, name)
+    return renamed
 
 
 def _hand_summary(

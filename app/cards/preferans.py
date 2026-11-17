@@ -96,6 +96,10 @@ def _shell(seats: list[str], phase: str) -> dict[str, Any]:
         "trump": "",
         "trick": [],
         "trick_seats": [],
+        "last_trick": [],
+        "last_trick_seats": [],
+        "last_trick_winner": "",
+        "last_write": {},
         "tricks": {seat: 0 for seat in seats},
         "lead": "",
         "committed": {seat: 0 for seat in seats},
@@ -319,6 +323,9 @@ def apply(state: dict[str, Any], path: list[str]) -> tuple[dict[str, Any], list[
         revising = nxt["phase"] == "discard"
         if not revising:
             nxt["last_trick"] = []
+            nxt["last_trick_seats"] = []
+            nxt["last_trick_winner"] = ""
+            nxt["last_write"] = {}
         if path[1] == "pass":
             nxt["bidding"][seat] = "passed"
         elif path[1] == "miser":
@@ -354,6 +361,8 @@ def apply(state: dict[str, Any], path: list[str]) -> tuple[dict[str, Any], list[
     winner = _trick_winner(nxt)
     nxt["tricks"][winner] = int(nxt["tricks"].get(winner, 0)) + 1
     nxt["last_trick"] = list(nxt["trick"])
+    nxt["last_trick_seats"] = list(nxt["trick_seats"])
+    nxt["last_trick_winner"] = winner
     nxt["trick"] = []
     nxt["trick_seats"] = []
     if any(nxt["hands"].values()):
@@ -490,9 +499,38 @@ def _write_whist(state: dict[str, Any], owner: str, target: str, points: int) ->
     row[target] = int(row.get(target, 0)) + points
 
 
+def _previous_trick(state: dict[str, Any]) -> dict[str, Any]:
+    cards = [str(card) for card in (state.get("last_trick") or [])]
+    winner = str(state.get("last_trick_winner") or "")
+    if len(cards) < 3 or not winner:
+        return {}
+    return {
+        "cards": cards,
+        "seats": [str(item) for item in (state.get("last_trick_seats") or [])],
+        "winner": winner,
+    }
+
+
+def _remember_deal(state: dict[str, Any], before_bullet: dict[str, int], before_mountain: dict[str, int]) -> None:
+    wrote: dict[str, str] = {}
+    for seat in state["order"]:
+        key = str(seat)
+        bullet = int(state["bullet"].get(key, 0)) > int(before_bullet.get(key, 0))
+        mountain = int(state["mountain"].get(key, 0)) > int(before_mountain.get(key, 0))
+        if bullet and mountain:
+            wrote[key] = "both"
+        elif bullet:
+            wrote[key] = "bullet"
+        elif mountain:
+            wrote[key] = "mountain"
+    state["last_write"] = wrote
+
+
 def _score(state: dict[str, Any], *, blind: bool = False) -> None:
     _ensure(state)
     seats = list(state["order"])
+    before_bullet = {str(seat): int(state["bullet"].get(seat, 0)) for seat in seats}
+    before_mountain = {str(seat): int(state["mountain"].get(seat, 0)) for seat in seats}
     contract = state.get("contract") or {"raspasy": True}
     declarer = str(state.get("declarer") or "")
     tricks = {seat: int(state["tricks"].get(seat, 0)) for seat in seats}
@@ -535,6 +573,7 @@ def _score(state: dict[str, Any], *, blind: bool = False) -> None:
             _write_mountain(state, declarer, price)
             _award_whists(state, declarer)
             state["line"] = f"{title} не взята: {taken} из {need}."
+    _remember_deal(state, before_bullet, before_mountain)
     if _closed(state):
         _finish(state)
         return
@@ -934,6 +973,12 @@ def view(state: dict[str, Any], seat: str | None) -> dict[str, Any]:
     if show_last and not live:
         board = [str(card) for card in (state.get("last_trick") or [])]
         held = bool(board)
+    order = [str(item) for item in state.get("order") or []]
+    bidding = state.get("bidding") or {}
+    fresh = phase == "bid" and not state.get("contract") and all(
+        str(bidding.get(seat) or "open") == "open" for seat in order
+    )
+    writes = state.get("last_write") if fresh or phase == "done" else {}
     return {
         "hand": hand,
         "top": state["trick"][-1] if state.get("trick") else "",
@@ -947,6 +992,10 @@ def view(state: dict[str, Any], seat: str | None) -> dict[str, Any]:
         "pot": sum(int(amount) for amount in (state.get("committed") or {}).values()),
         "board": board,
         "held": held,
+        "trick_seats": [str(item) for item in (state.get("last_trick_seats") or [])] if held else [],
+        "trick_winner": str(state.get("last_trick_winner") or "") if held else "",
+        "previous": _previous_trick(state),
+        "writes": writes if isinstance(writes, dict) else {},
         "pairs": [],
         "trump": state.get("trump") or "",
         "trump_card": "",

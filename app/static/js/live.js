@@ -40,6 +40,11 @@ if (root) {
       && (!term || (card.dataset.find || "").includes(term));
   };
 
+  const inAudience = (card) => {
+    if (audience === "mine") return card.dataset.mine === "1";
+    return audience === "all" || card.dataset.audience === audience;
+  };
+
   const bind = () => {
     const grid = root.querySelector("#floor-grid");
     root.querySelector(".pager")?.remove();
@@ -50,19 +55,22 @@ if (root) {
       ? attachPager(grid, {
         size: 6,
         label: "Страницы столов",
-        match: (card) => narrowed(card) && (audience === "all" || card.dataset.audience === audience),
+        match: (card) => narrowed(card) && inAudience(card),
       })
       : null;
   };
 
   const apply = ({ reset = false } = {}) => {
     const matched = cards.filter(narrowed);
-    const counts = { all: matched.length, open: 0, closed: 0 };
-    for (const card of matched) counts[card.dataset.audience === "closed" ? "closed" : "open"] += 1;
+    const counts = { all: matched.length, mine: 0, open: 0, closed: 0 };
+    for (const card of matched) {
+      counts[card.dataset.audience === "closed" ? "closed" : "open"] += 1;
+      if (card.dataset.mine === "1") counts.mine += 1;
+    }
     const shown = paintPage ? paintPage({ reset }) : null;
     const visible = shown
       ? shown.count
-      : matched.filter((card) => audience === "all" || card.dataset.audience === audience).length;
+      : matched.filter(inAudience).length;
     for (const button of buttons) {
       button.setAttribute("aria-pressed", button.dataset.filter === audience ? "true" : "false");
       const slot = button.querySelector("[data-count]");
@@ -143,7 +151,7 @@ if (root) {
       if (game instanceof HTMLSelectElement && typeof saved.kind === "string" && [...game.options].some((option) => option.value === saved.kind)) {
         game.value = saved.kind;
       }
-      if (saved.audience === "open" || saved.audience === "closed" || saved.audience === "all") audience = saved.audience;
+      if (saved.audience === "open" || saved.audience === "closed" || saved.audience === "mine" || saved.audience === "all") audience = saved.audience;
     }
   } catch {
     /* сохранённый фильтр необязателен */

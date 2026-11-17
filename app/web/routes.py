@@ -926,6 +926,7 @@ async def live_tables(request: Request, user: object) -> dict[str, object]:
         "tables": tables,
         "open_count": sum(1 for item in tables if item["open"]),
         "closed_count": sum(1 for item in tables if not item["open"]),
+        "mine_count": sum(1 for item in tables if item["mine"]),
     }
 
 

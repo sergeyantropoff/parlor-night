@@ -31,7 +31,7 @@ function say(text) {
   status.textContent = text;
   status.dataset.hint = text;
   const advice = document.querySelector("#table-advice");
-  if (advice) paintWinnerLine(advice, text);
+  if (advice) paintWinnerLine(advice, feltNotice(text));
   const tone = current.status === "finished" && text === current.status_line ? current.result_tone : "";
   status.classList.toggle("is-you", !tone && text.includes("Ваш ход"));
   status.classList.toggle("is-win", tone === "win");
@@ -1038,9 +1038,14 @@ function seatBadge(text, x, y, active, tone = "") {
   return node;
 }
 
+function feltNotice(text) {
+  if (current.game_type === "poker" && current.winner_hand) return current.winner_hand;
+  return text;
+}
+
 function paintWinnerLine(node, text) {
   node.replaceChildren();
-  const label = current.summary?.winner_label || "";
+  const label = current.summary?.winner_name || current.summary?.winner_label || "";
   let index = label ? text.lastIndexOf(label) : -1;
   let length = label.length;
   if (index < 0 && label.length >= 4) {
@@ -1329,7 +1334,6 @@ function paintPokerRing(box, heroCards) {
         overlap: fitOverlap(cards.length, seat.you ? 7.6 : 4.6, seat.you ? -2.6 : -1.8, seat.you ? 22 : 12),
       }));
     }
-    if (Number(seat.bet) > 0) box.append(chipBet(seat.bet, inward(x, y, 0.5)));
     const plate = pokerPlatePlace(x, y);
     const badge = playerPlate(seat, plate.x, plate.y);
     badge.classList.add(`is-${plate.side}`);
@@ -1344,18 +1348,13 @@ function paintPokerRing(box, heroCards) {
     for (const card of boardCards) row.append(makeCard(faceSrc(card), { alt: cardLabel(card) }));
     box.append(anchor(row, 50, 50, "board-row"));
   }
-  if (current.winner_hand) {
-    const made = document.createElement("div");
-    paintWinnerLine(made, current.winner_hand);
-    box.append(anchor(made, 50, 60, "hand-name"));
-  }
   const pot = document.createElement("div");
   anchor(pot, 50, 40, "pot");
   const advice = document.createElement("p");
   advice.id = "table-advice";
   advice.className = "table-advice";
   advice.setAttribute("aria-hidden", "true");
-  paintWinnerLine(advice, status?.textContent || current.status_line || "");
+  paintWinnerLine(advice, feltNotice(status?.textContent || current.status_line || ""));
   pot.append(advice, document.createTextNode(`Банк: ${current.pot || 0} фишек`));
   box.append(pot, ranksButton());
 }
@@ -1422,9 +1421,42 @@ function unoRoster(youName) {
   ];
 }
 
+function preferansStatus(seat) {
+  const mark = (current.marks || {})[seat.key] || "";
+  const word = PREFERANS_WORD[mark];
+  if (!word) return null;
+  return { word, tone: PREFERANS_TONE[mark] || "" };
+}
+
+function preferansStatusBadge(seat) {
+  const status = preferansStatus(seat);
+  if (!status) return null;
+  const node = document.createElement("div");
+  node.textContent = status.word;
+  anchor(node, 0, 0, `badge status-badge${status.tone ? ` is-${status.tone}` : ""}`);
+  return node;
+}
+
+function preferansStatusSpot(seatY, cards, plate) {
+  if (seatY > 70) return { x: Math.max(8, plate.x - 16), y: plate.y, lift: plate.lift || 0 };
+  return { x: cards.x, y: Math.min(42, cards.y + 9) };
+}
+
+function clearPassWhist(box, status, where, plateNode) {
+  if (status.textContent !== "пас на вист" || !where.lift) return;
+  const table = box.getBoundingClientRect();
+  const plate = plateNode.getBoundingClientRect();
+  const badge = status.getBoundingClientRect();
+  const overflow = badge.right + 14 - plate.left;
+  if (overflow <= 0 || table.width <= 0) return;
+  status.style.setProperty("--x", String(Math.max(6, where.x - (overflow / table.width) * 100)));
+}
+
 function unoPlate(seat, x, y) {
   const said = (current.said || []).includes(seat.key);
-  const mark = said ? "uno" : ((current.marks || {})[seat.key] || "");
+  const raw = (current.marks || {})[seat.key] || "";
+  const aside = current.game_type === "preferans" && Boolean(PREFERANS_WORD[raw]);
+  const mark = said ? "uno" : (aside ? "" : raw);
   const won = current.result === `${seat.key}_win`;
   const tone = won ? "win" : (PREFERANS_TONE[mark] || mark);
   const node = document.createElement("div");
@@ -1789,6 +1821,8 @@ function paintBlackjack(box, heroCards) {
       box.append(anchor(node, x, 36, node.className));
     });
   }
+  const ended = blackjackThrowCaption();
+  if (ended) box.append(anchor(throwCaption(ended), 50, 48, "throw-line"));
   paintTableAdvice(box, 52);
 }
 
@@ -1862,6 +1896,15 @@ function paintSalonPlayers(box, heroCards) {
     if (plate.lift) badge.style.transform = `translate(-50%, calc(-50% - ${plate.lift}px))`;
     box.append(badge);
     if (current.game_type === "preferans") {
+      const status = preferansStatusBadge(seat);
+      if (status) {
+        const where = preferansStatusSpot(spot[1], { x: place.x, y: fanY }, plate);
+        status.style.setProperty("--x", String(where.x));
+        status.style.setProperty("--y", String(where.y));
+        if (where.lift) status.style.transform = `translate(-50%, calc(-50% - ${where.lift}px))`;
+        box.append(status);
+        clearPassWhist(box, status, where, badge);
+      }
       const node = purseNode(seat.stack);
       if (node) {
         const purse = preferansPurseSpot(spot[0], spot[1], { x: place.x, y: fanY }, plate);
@@ -1871,13 +1914,78 @@ function paintSalonPlayers(box, heroCards) {
   });
 }
 
+function seatName(key) {
+  return (current.seats || []).find((seat) => seat.key === key)?.name || "";
+}
+
+function throwCaption(text) {
+  const line = document.createElement("p");
+  line.className = "throw-line";
+  line.textContent = text;
+  return line;
+}
+
+function throwStack(caption, row) {
+  const stack = document.createElement("div");
+  stack.className = "throw-stack";
+  if (caption) stack.append(throwCaption(caption));
+  stack.append(row);
+  return stack;
+}
+
+function preferansThrowCaption() {
+  if (!current.held || !current.trick_winner) return "";
+  const name = seatName(current.trick_winner);
+  return name ? `Взятку взял ${name}` : "Взятка";
+}
+
+function durakThrowCaption() {
+  const bout = current.bout || {};
+  if (!current.held || !bout.kind) return "";
+  if (bout.kind === "bito") return "Бито";
+  const name = seatName(bout.seat);
+  return name ? `${name} взял` : "Взял";
+}
+
+function blackjackThrowCaption() {
+  if (current.phase !== "done") return "";
+  const marks = current.marks || {};
+  const winners = (current.seats || []).filter((seat) => marks[seat.key] === "win" || marks[seat.key] === "blackjack");
+  if (winners.length === 1) return `Выиграл ${winners[0].name}`;
+  if (winners.length > 1) return `Выиграли ${winners.map((seat) => seat.name).join(", ")}`;
+  const seats = current.seats || [];
+  if (seats.length && seats.every((seat) => marks[seat.key] === "push")) return "Ничья с дилером";
+  return "Дилер забирает";
+}
+
+function paintPreferansThrow(box) {
+  const cards = current.board || [];
+  const owners = current.trick_seats || [];
+  const row = document.createElement("div");
+  row.className = current.held ? "table-row is-held" : "table-row";
+  cards.forEach((card, index) => {
+    const pile = document.createElement("div");
+    pile.className = "trick-card";
+    const node = makeCard(faceSrc(card), { alt: cardLabel(card), key: `table:${card}` });
+    node.classList.add("center-card");
+    if (current.held) node.classList.add("is-held");
+    pile.append(node);
+    if (current.held) {
+      const who = document.createElement("small");
+      who.textContent = seatName(owners[index]);
+      pile.append(who);
+    }
+    row.append(pile);
+  });
+  box.append(anchor(throwStack(preferansThrowCaption(), row), 50, 40, "throw-stack"));
+}
+
 function paintSalonTable(box) {
   const held = Boolean(current.held);
   const pairs = current.pairs || [];
   if (current.game_type === "durak" && pairs.length) {
     const row = document.createElement("div");
     row.className = held ? "table-row is-held" : "table-row";
-    const rowClass = row.className;
     for (const pair of pairs) {
       const pile = document.createElement("div");
       pile.className = "pair";
@@ -1889,7 +1997,11 @@ function paintSalonTable(box) {
       }
       row.append(pile);
     }
-    box.append(anchor(row, 50, 46, rowClass));
+    box.append(anchor(throwStack(durakThrowCaption(), row), 50, 46, "throw-stack"));
+    return;
+  }
+  if (current.game_type === "preferans" && (current.board || []).length) {
+    paintPreferansThrow(box);
     return;
   }
   const board = current.board || [];
@@ -1911,6 +2023,44 @@ function dealTone(note) {
   return "draw";
 }
 
+function previousLine() {
+  const prev = current.previous || {};
+  if (current.game_type === "preferans" && prev.winner) {
+    const name = seatName(prev.winner);
+    const cards = (prev.cards || []).map((card, index) => {
+      const who = seatName((prev.seats || [])[index]);
+      return who ? `${cardLabel(card)} ${who}` : cardLabel(card);
+    }).join(", ");
+    const head = name ? `Взятку взял ${name}` : "Взятка";
+    return cards ? `${head}. ${cards}` : head;
+  }
+  if (current.game_type === "durak" && prev.kind) {
+    const cards = (prev.pairs || []).map((pair) => (
+      pair.defense ? `${cardLabel(pair.attack)} / ${cardLabel(pair.defense)}` : cardLabel(pair.attack)
+    )).join(", ");
+    if (prev.kind === "bito") return cards ? `Бито. ${cards}` : "Бито";
+    const name = seatName(prev.seat);
+    const head = name ? `${name} взял` : "Взял";
+    return cards ? `${head}. ${cards}` : head;
+  }
+  return "";
+}
+
+function paintThrowBadge() {
+  document.querySelector("#throw-badge")?.remove();
+  const text = previousLine();
+  if (!text) return;
+  const head = document.querySelector(".stage-head");
+  if (!head) return;
+  const badge = document.createElement("p");
+  badge.id = "throw-badge";
+  badge.className = "deal-badge throw-badge";
+  const kicker = document.createElement("span");
+  kicker.textContent = "Прошлый ход";
+  badge.append(kicker, document.createTextNode(text));
+  head.append(badge);
+}
+
 function paintDealBadge() {
   document.querySelector("#deal-badge")?.remove();
   const sheet = current.sheet;
@@ -1928,6 +2078,7 @@ function paintDealBadge() {
 
 function paintPreferansSheet() {
   paintDealBadge();
+  paintThrowBadge();
   const old = document.querySelector("#pulya-board");
   const sheet = current.sheet;
   if (current.game_type !== "preferans" || !sheet || !Array.isArray(sheet.seats) || !sheet.seats.length) {

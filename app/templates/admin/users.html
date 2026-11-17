@@ -52,6 +52,7 @@
               </form>
             </td>
             <td class="guest-actions">
+              <div>
               {% if account.role != "admin" %}
               <form class="tip-host" data-tip="Сделать администратором" data-tip-edge method="post" action="/admin/users/{{ account.id }}/role">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
@@ -74,6 +75,7 @@
                 </button>
               </form>
               {% endif %}
+              </div>
             </td>
           </tr>
           {% endfor %}

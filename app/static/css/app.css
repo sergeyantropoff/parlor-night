@@ -653,13 +653,15 @@ legend { padding: 0 0.3rem; }
 .guest-tools > button { flex: none; }
 .guest-table form { margin: 0; }
 .guest-table td { vertical-align: middle; }
-.guest-table th:last-child { text-align: center; }
-.guest-actions {
+.guest-table th:last-child,
+.guest-table td.guest-actions { text-align: center; }
+.guest-actions > div {
   display: flex;
-  flex-wrap: wrap;
+  width: 100%;
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
+  min-height: 36px;
 }
 #guests .table-wrap { overflow: visible; }
 .guest-table .icon-act {
@@ -1692,6 +1694,7 @@ main:has(.play) { padding-bottom: 12px; }
   .stage-extra { grid-row: 3; }
   .stage-head .invite-bar { grid-row: 4; }
   .stage-head .deal-badge { grid-row: 5; justify-self: center; }
+  .stage-head .throw-badge { grid-row: 6; }
 }
 .keys { font-size: 0.8rem; }
 .seats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -1927,6 +1930,8 @@ html[data-theme="dark"] .pulya td.is-minus { color: #e0a090; }
 #summary-pulya .pulya tr:last-child th,
 #summary-pulya .pulya tr:last-child td { border-bottom: 0; }
 .stage-head .deal-badge { grid-column: 1 / -1; grid-row: 3; justify-self: center; }
+.stage-head .throw-badge { grid-row: 4; }
+.throw-badge { background: color-mix(in srgb, var(--brass) 16%, var(--panel)); color: var(--ink); }
 .deal-badge {
   display: flex;
   flex-wrap: wrap;
@@ -2018,6 +2023,11 @@ html[data-theme="dark"] .pulya td.is-minus { color: #e0a090; }
 #card-table .badge.is-call { background: #1f6f66; color: #f3fffb; border-color: #8fd0c6; }
 #card-table .badge.is-fold { background: #8d3b3b; color: #fff4f2; border-color: #e3a3a0; }
 #card-table .badge.is-check { background: #3d4a55; color: #f4efe5; border-color: #8aa0b0; }
+#card-table .status-badge {
+  z-index: 80;
+  padding: max(3px, 0.28cqw) max(8px, 0.75cqw);
+  font-size: max(12px, 1.15cqw);
+}
 #card-table .hand-name .who-win { color: #f3d98a; }
 #status .who-win { color: #9a6b12; font-weight: 750; }
 #card-table .anchor.ranks-help {
@@ -2145,6 +2155,26 @@ html[data-theme="dark"] .pulya td.is-minus { color: #e0a090; }
   width: 100%;
 }
 #card-table .table-row { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: max(0.35rem, 0.7cqw) max(0.2rem, 0.4cqw); max-width: 78%; }
+#card-table .throw-stack { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; max-width: 78%; }
+#card-table .throw-line {
+  margin: 0;
+  padding: 0.18rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(16, 24, 14, 0.78);
+  color: #f6f1e6;
+  font: 600 max(12px, 1.3cqw)/1.2 Inter, Arial, sans-serif;
+  white-space: nowrap;
+}
+#card-table .trick-card { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; }
+#card-table .trick-card small {
+  max-width: 8.4cqw;
+  overflow: hidden;
+  color: #f6f1e6;
+  font: 600 max(10px, 1cqw)/1.1 Inter, Arial, sans-serif;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px #000a;
+  white-space: nowrap;
+}
 #card-table .anchor.trump-card,
 #card-table .anchor.trump-laid,
 #card-table .anchor.stock-deck { width: 7.6cqw; }
