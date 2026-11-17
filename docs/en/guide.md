@@ -113,7 +113,7 @@ Card games ask for computers and open seats instead of a side. The creator is al
 
 ![A Preferans table](../screenshots/preferans.png)
 
-**Preferans.** Three players, bidding, whist, and tricks, from age 18. The pool is chosen at creation: 6, 10, 12, 16, or 20 points, or another number from 6 to 20. The parlor converts those points into chips at its own rates. This is not a tournament pool. A whist is answered with whist, half-whist, or pass. Under the table are the bullet, the mountain, and the whists.
+**Preferans.** Three players, bidding, whist, and tricks, from age 18. The pool is chosen at creation: 6, 10, 12, 16, or 20 points, or another number from 6 to 20. The price of a point is chosen then too: 1, 2, 5, or 10 chips. Everyone sits with a stack of 100 points at the chosen price: 100 chips at price 1, 200 at 2, 500 at 5, and 1,000 at 10. Only that stack leaves the account; the rest stays for other games. If the account has less than the stack, the game does not start: there is no play on credit. Stopping the game returns the stack. Chips stay put while the pool is open. When it closes, the score sheet turns the difference into chips, and never more than the stack. If the sheet is larger than the stack, it shows how much did not move. Nothing beyond the stack is taken from the account. This is not a tournament pool. A whist is answered with whist, half-whist, or pass. Under the table are the bullet, the mountain, the whists, and the chips.
 
 ![A multiplayer table](../images/features/multiplayer.webp)
 

@@ -681,6 +681,21 @@ function pulyaNumber(value) {
   return String(Number(value) || 0).replace("-", "−");
 }
 
+function chipWord(count) {
+  const number = Math.abs(Number(count) || 0);
+  const tail = number % 10;
+  const hundred = number % 100;
+  if (tail === 1 && hundred !== 11) return "фишка";
+  if (tail >= 2 && tail <= 4 && (hundred < 12 || hundred > 14)) return "фишки";
+  return "фишек";
+}
+
+function chipMark(value) {
+  const number = Number(value) || 0;
+  if (number > 0) return `+${number}`;
+  return pulyaNumber(number);
+}
+
 function victoryTarget(seats, total, key) {
   const mine = Number(total[key] ?? 0);
   const others = seats.filter((seat) => seat !== key).map((seat) => Number(total[seat] ?? 0));
@@ -712,6 +727,10 @@ function pulyaTable(sheet, people) {
   const whists = sheet.whists || {};
   const total = sheet.total || {};
   const totals = Object.keys(total).length > 0;
+  const stacks = sheet.stacks || {};
+  const chips = sheet.chips || {};
+  const unpaid = sheet.unpaid || {};
+  const stake = Number(sheet.stake) || 0;
   const rows = [
     { label: "Пуля", value: (key) => `${bullet[key] ?? 0} / ${pool}` },
     { label: "Гора", value: (key) => mountain[key] ?? 0 },
@@ -723,6 +742,20 @@ function pulyaTable(sheet, people) {
     });
   }
   if (totals) rows.push({ label: "Итог", kind: "total", value: (key) => pulyaNumber(total[key] ?? 0) });
+  if (Object.keys(stacks).length) {
+    rows.push({ label: "На столе", kind: "stack", value: (key) => pulyaNumber(stacks[key] ?? 0) });
+  }
+  if (sheet.closed && Object.keys(chips).length) {
+    rows.push({
+      label: "Расписка",
+      kind: "chips",
+      value: (key) => chipMark(chips[key] ?? 0),
+      tone: (key) => Number(chips[key] ?? 0),
+    });
+  }
+  if (Object.values(unpaid).some((value) => Number(value) > 0)) {
+    rows.push({ label: "Не хватило", kind: "short", value: (key) => pulyaNumber(unpaid[key] ?? 0) });
+  }
   if (totals && !sheet.closed) {
     rows.push({ label: "К победе", kind: "goal", value: (key) => victoryTarget(seats, total, key) });
   }
@@ -737,13 +770,19 @@ function pulyaTable(sheet, people) {
     for (const key of seats) {
       const cell = document.createElement("td");
       cell.textContent = String(rowInfo.value(key));
+      if (typeof rowInfo.tone === "function") {
+        const tone = rowInfo.tone(key);
+        if (tone > 0) cell.classList.add("is-plus");
+        if (tone < 0) cell.classList.add("is-minus");
+      }
       if (rowInfo.kind === "total" && leaders.length === 1 && leaders[0] === key) cell.classList.add("is-ahead");
       row.append(cell);
     }
     table.append(row);
   }
   const caption = document.createElement("caption");
-  const rule = `Пуля до ${pool}. Побеждает больший итог.`;
+  const price = stake ? ` Очко стоит ${stake} ${chipWord(stake)}.` : "";
+  const rule = `Пуля до ${pool}.${price} Побеждает больший итог.`;
   caption.textContent = sheet.closed ? `Расписка. ${rule}` : rule;
   table.prepend(caption);
   return table;
@@ -1239,6 +1278,12 @@ function purseNode(amount) {
   return node;
 }
 
+function preferansPurseSpot(seatX, seatY, cards, plate) {
+  if (seatY > 70) return { x: Math.min(88, cards.x + 34), y: cards.y + 1 };
+  if (seatX > 50) return { x: Math.max(56, cards.x - 10), y: cards.y + 1 };
+  return { x: plate.x - 4, y: Math.min(44, plate.y + 13) };
+}
+
 function placePurse(box, plate, cards, seatX, seatY, amount) {
   const node = purseNode(amount);
   if (!node) return;
@@ -1395,10 +1440,20 @@ function unoPlate(seat, x, y) {
   title.className = "plate-name";
   fillPersonName(title, { name: seat.you ? `${seat.name} · вы` : seat.name, login: seat.login });
   const count = document.createElement("span");
-  count.className = "plate-stack";
   const cards = Number(seat.count || 0);
   count.textContent = `${cards} ${cardsWord(cards)}`;
-  copy.append(title, count);
+  const stackKnown = seat.stack !== undefined && seat.stack !== null && seat.stack !== "";
+  copy.append(title);
+  if (current.game_type === "preferans" && stackKnown) {
+    count.className = "plate-count";
+    const stack = document.createElement("span");
+    stack.className = "plate-stack";
+    stack.textContent = String(seat.stack);
+    copy.append(stack);
+  } else {
+    count.className = "plate-stack";
+  }
+  copy.append(count);
   const word = won ? "победитель" : (PREFERANS_WORD[mark] || UNO_WORD[tone] || "");
   if (word) {
     const action = document.createElement("span");
@@ -1806,6 +1861,13 @@ function paintSalonPlayers(box, heroCards) {
     const badge = unoPlate(seat, plate.x, plate.y);
     if (plate.lift) badge.style.transform = `translate(-50%, calc(-50% - ${plate.lift}px))`;
     box.append(badge);
+    if (current.game_type === "preferans") {
+      const node = purseNode(seat.stack);
+      if (node) {
+        const purse = preferansPurseSpot(spot[0], spot[1], { x: place.x, y: fanY }, plate);
+        box.append(anchor(node, purse.x, purse.y, "purse"));
+      }
+    }
   });
 }
 

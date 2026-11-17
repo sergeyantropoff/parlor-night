@@ -14,7 +14,7 @@ from typing import Any
 import asyncpg
 
 import chess
-from app.cards import poker, uno
+from app.cards import poker, preferans, uno
 from app.cards.registry import ADULT_GAMES, CARD_GAMES, CHIP_GAMES, card_module
 from app.checkers.engine import LEVELS
 from app.checkers.evaluation import DEFAULT_WEIGHTS, EvalWeights
@@ -145,6 +145,17 @@ def _preferans_pool(data: dict[str, Any]) -> int:
     return size if size in allowed else 12
 
 
+def _position_stake(row: Any) -> int:
+    raw = row["current_position"]
+    try:
+        position = json.loads(raw) if isinstance(raw, str) else dict(raw or {})
+    except (json.JSONDecodeError, TypeError):
+        position = {}
+    if not isinstance(position, dict):
+        position = {}
+    return preferans.stake_of(position.get("stake"))
+
+
 _AVATAR = re.compile(r"^[0-9a-f]{32}\.(jpg|png|webp)$")
 
 
@@ -168,6 +179,13 @@ class GameService:
         self.pool = pool
         self.engines = engines
         self.settings = settings
+        self.gate = None
+
+    def _forget_purse(self, user_id: object) -> None:
+        gate = self.gate
+        if gate is None or user_id is None:
+            return
+        gate.chips.pop(str(user_id), None)
 
     async def create(self, user: User, data: dict[str, Any]) -> dict[str, Any]:
         self._validate_create(data)
@@ -177,6 +195,12 @@ class GameService:
         if data["game_type"] in {"poker", "blackjack"} and data["mode"] == "vs_computer":
             async with self.pool.acquire() as conn:
                 buy_in = await self._poker_buy_in(conn, [user.id])
+        elif data["game_type"] == "preferans" and data["mode"] in {"vs_computer", "online"}:
+            price = preferans.stake_of(data.get("stake"))
+            async with self.pool.acquire() as conn:
+                await self._preferans_buy_in(conn, [user.id], price)
+            if data["mode"] == "vs_computer":
+                buy_in = preferans.stack_for(price)
         prepared = self._prepare(data, buy_in=buy_in)
         status = prepared["status"]
         if data["mode"] == "online" and status == "active":
@@ -248,6 +272,7 @@ class GameService:
                     payer = seat_user(seated, str(seat), known or None)
                     if payer is not None:
                         await charge(conn, payer, int(amount), reason="ante", game_id=game_id)
+                        self._forget_purse(payer)
         return await self.view(user, game_id)
 
     async def join(self, user: User, code: str) -> uuid.UUID:
@@ -648,6 +673,7 @@ class GameService:
             owed = int(row["owed"])
             if owed > 0:
                 await credit(conn, row["user_id"], owed, reason="refund", game_id=game_id)
+                self._forget_purse(row["user_id"])
 
     async def rematch(self, user: User, game_id: uuid.UUID) -> dict[str, Any]:
         async with self.pool.acquire() as conn:
@@ -674,6 +700,7 @@ class GameService:
                 payload["durak_kind"] = str(row["variant"])
             if row["game_type"] == "preferans":
                 payload["pool"] = _preferans_pool({"pool": _pool_number(str(row["variant"]))})
+                payload["stake"] = _position_stake(row)
             if row["game_type"] == "go":
                 payload["board_size"] = int(str(row["variant"]))
             if row["game_type"] == "poker":
@@ -754,6 +781,7 @@ class GameService:
             payload["durak_kind"] = str(row["variant"])
         if row["game_type"] == "preferans":
             payload["pool"] = _preferans_pool({"pool": _pool_number(str(row["variant"]))})
+            payload["stake"] = _position_stake(row)
         if row["game_type"] == "go":
             payload["board_size"] = int(str(row["variant"]))
         plan = await self._saved_plan(row["id"])
@@ -1425,6 +1453,21 @@ class GameService:
             return poker.STACK
         return min(poker.STACK, max(min(purses), 0))
 
+    async def _preferans_buy_in(self, conn: asyncpg.Connection, user_ids: list[Any], stake: object) -> int:
+        price = preferans.stake_of(stake)
+        need = preferans.stack_for(price)
+        for user_id in user_ids:
+            if user_id is None:
+                continue
+            if int(await balance(conn, user_id)) < need:
+                raise AppError(
+                    409,
+                    "no_chips",
+                    f"Не хватает фишек: при цене очка {price} на стол нужно {need}. "
+                    "Остальное остаётся на счёте, в долг партия не идёт.",
+                )
+        return need
+
     def _prepare(self, data: dict[str, Any], buy_in: int | None = None) -> dict[str, Any]:
         game_type = data["game_type"]
         if data.get("pgn") and game_type != "chess":
@@ -1469,6 +1512,12 @@ class GameService:
     def _prepare_salon(self, data: dict[str, Any], buy_in: int | None) -> dict[str, Any]:
         game = str(data["game_type"])
         module = card_module(game)
+
+        def arm(table: dict[str, Any]) -> dict[str, Any]:
+            if game == "preferans":
+                table["stake"] = preferans.stake_of(data.get("stake"))
+            return table
+
         if game == "durak":
             variant = self._salon_variant(data)
         elif game == "preferans":
@@ -1484,7 +1533,7 @@ class GameService:
                 keys = ["white", "black"]
                 rows = None
             waiting_state = self._mark_dealer(game, module.waiting(keys, variant), data)
-            return self._salon_ready(module, waiting_state, rows, waiting=True)
+            return self._salon_ready(module, arm(waiting_state), rows, waiting=True)
         computers = data.get("computers")
         opens = data.get("open_seats")
         if game == "preferans":
@@ -1497,12 +1546,15 @@ class GameService:
             computers = 1 if computers is None else int(computers)
             opens = 0 if opens is None else int(opens)
         extra = computers + opens
-        purse = int(buy_in or 200)
+        if game == "preferans" and buy_in is not None:
+            purse = int(buy_in)
+        else:
+            purse = int(buy_in or 200)
         if extra == 0:
             data["player_side"] = "white"
             data["mode"] = "vs_computer"
             state = self._mark_dealer(game, module.deal(["white"], variant, {"white": purse}), data)
-            return self._salon_ready(module, state, None, waiting=False)
+            return self._salon_ready(module, arm(state), None, waiting=False)
         if extra == 1 and game != "preferans":
             keys = ["white", "black"]
             rows = None
@@ -1512,10 +1564,14 @@ class GameService:
             rows = [(key, kind, None) for key, kind in zip(keys, kinds, strict=True)]
         if opens:
             state = self._mark_dealer(game, module.waiting(keys, variant), data)
-            return self._salon_ready(module, state, rows, waiting=True)
-        purses = {key: purse for key in keys}
+            return self._salon_ready(module, arm(state), rows, waiting=True)
+        if game == "preferans" and rows:
+            bank = int(buy_in) if buy_in is not None else 0
+            purses = {key: bank for key, _kind, _owner in rows}
+        else:
+            purses = {key: purse for key in keys}
         state = self._mark_dealer(game, module.deal(keys, variant, purses), data)
-        return self._salon_ready(module, state, rows, waiting=False)
+        return self._salon_ready(module, arm(state), rows, waiting=False)
 
     def _salon_ready(
         self,
@@ -1527,10 +1583,11 @@ class GameService:
     ) -> dict[str, Any]:
         charges = []
         if not waiting:
+            bag = state.get("stacks") if state.get("kind") == "preferans" else state.get("committed")
             charges = [
                 (str(seat), int(amount))
-                for seat, amount in (state.get("committed") or {}).items()
-                if int(amount)
+                for seat, amount in (bag or {}).items()
+                if int(amount or 0)
             ]
         text = module.dumps(state)
         ready = {
@@ -1938,6 +1995,7 @@ class GameService:
             payer = seat_user(game, str(seat), seats or None)
             if payer is not None:
                 await charge(conn, payer, int(amount), reason="stake", game_id=game_id)
+                self._forget_purse(payer)
         if not applied.get("result") or game.get("result") is not None:
             return
         if str(game["game_type"]) in CHIP_GAMES:
@@ -1951,6 +2009,7 @@ class GameService:
                 winner = seat_user(game, str(seat), seats or None)
                 if winner is not None and int(amount) > 0:
                     await credit(conn, winner, int(amount), reason="pot", game_id=game_id)
+                    self._forget_purse(winner)
             return
         if await already_paid(conn, game_id, "table"):
             return
@@ -1974,6 +2033,7 @@ class GameService:
                 else:
                     continue
                 await credit(conn, player, amount, reason="table", game_id=game_id)
+                self._forget_purse(player)
             return
         for seat in ("white", "black"):
             player = seat_user(game, seat)
@@ -1986,6 +2046,7 @@ class GameService:
             else:
                 continue
             await credit(conn, player, amount, reason="table", game_id=game_id)
+            self._forget_purse(player)
 
     async def _activate_if_full(self, conn: asyncpg.Connection, row: Any, claimed: str) -> None:
         if claimed == "self":
@@ -2057,7 +2118,16 @@ class GameService:
                     other = "black" if human == "white" else "white"
                     salon_purses[human] = min(int(await balance(conn, row["user_id"])), 200)
                     salon_purses[other] = 200
+            elif row["game_type"] == "preferans":
+                payers = [item["user_id"] for item in seats if item.get("user_id")]
+                if not payers and row["user_id"]:
+                    payers = [row["user_id"]]
+                price = preferans.stake_of(state.get("stake"))
+                need = await self._preferans_buy_in(conn, payers, price)
+                salon_purses = {key: need for key in keys}
             opened = module.deal(keys, str(row["variant"]), salon_purses)
+            if row["game_type"] == "preferans":
+                opened["stake"] = preferans.stake_of(state.get("stake"))
         elif isinstance(order, list) and len(order) > 2:
             opened = (
                 poker.deal_table([str(item) for item in order], buy_in, purses)
@@ -2068,18 +2138,21 @@ class GameService:
             opened = poker.deal(buy_in, purses) if row["game_type"] == "poker" else module.deal()
         self._mark_dealer(str(row["game_type"]), opened, {"engine_level": row["engine_level"]})
         if row["game_type"] in CHIP_GAMES:
-            if opened.get("committed"):
-                for seat, amount in opened["committed"].items():
+            bag = opened.get("stacks") if row["game_type"] == "preferans" else opened.get("committed")
+            if bag:
+                for seat, amount in bag.items():
                     if not int(amount):
                         continue
                     payer = seat_user(dict(row), str(seat), seats or None)
                     if payer is not None:
                         await charge(conn, payer, int(amount), reason="ante", game_id=game_id)
-            else:
+                        self._forget_purse(payer)
+            elif row["game_type"] != "preferans":
                 for seat in ("white", "black"):
                     payer = seat_user(dict(row), seat)
                     if payer is not None:
                         await charge(conn, payer, poker.blind_for(seat), reason="ante", game_id=game_id)
+                        self._forget_purse(payer)
         await games_repo.replace_deal(conn, game_id, module.dumps(opened))
 
     async def _require_adult(self, user_id: uuid.UUID, game_type: str = "poker") -> None:

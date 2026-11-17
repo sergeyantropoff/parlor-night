@@ -18,7 +18,48 @@ if (form) {
     return form.querySelector(`input[name="${name}"]:checked`);
   }
 
-  function sync(openLesson) {
+  function grouped(value) {
+    return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  }
+
+  const stakeDialog = byId("#stake-dialog");
+  let warnedStake = "";
+
+  function preferansNeed(announce) {
+    const note = byId("#preferans-stake-need");
+    const badge = byId("#preferans-stake-badge");
+    const warn = byId("#preferans-stake-warn");
+    const chosen = checked("stake");
+    if (!note || !chosen) return "";
+    const stack = Number(chosen.dataset.stack || 0);
+    const price = Number(chosen.value || 1);
+    const have = Number(note.dataset.purse || 0);
+    const short = stack > have;
+    const shown = grouped(stack);
+    note.classList.toggle("is-short", short);
+    if (badge) {
+      badge.textContent = `Нужно ${shown} фишек`;
+      badge.classList.toggle("loss", short);
+      badge.classList.toggle("win", !short);
+    }
+    if (warn) {
+      warn.textContent = short
+        ? `При цене очка ${price} для партии нужно ${shown} фишек. На счёте ${grouped(have)}, партию не открыть.`
+        : `При цене очка ${price} для партии нужно ${shown} фишек. Если их меньше, партию не открыть.`;
+    }
+    if (announce && short && warnedStake !== chosen.value && stakeDialog instanceof HTMLDialogElement) {
+      warnedStake = chosen.value;
+      const text = byId("#stake-text");
+      if (text) {
+        text.textContent = `Не хватает фишек: при цене очка ${price} на стол нужно ${shown}. Остальное остаётся на счёте, в долг партия не идёт.`;
+      }
+      if (!stakeDialog.open) stakeDialog.showModal();
+    }
+    if (!short) warnedStake = "";
+    return short ? "" : `стек ${shown}`;
+  }
+
+  function sync(openLesson, announceStake) {
     const game = checked("game_type") || form.querySelector('input[name="game_type"]');
     const gameValue = game?.value || "chess";
     const cards = ["uno", "poker", "durak", "blackjack", "preferans"].includes(gameValue);
@@ -128,6 +169,8 @@ if (form) {
     if (durakKind) durakKind.hidden = !durak;
     const poolPanel = byId("#preferans-pool");
     if (poolPanel) poolPanel.hidden = !preferans;
+    const stakePanel = byId("#preferans-stake");
+    if (stakePanel) stakePanel.hidden = !preferans;
     const goSize = byId("#go-size");
     if (goSize) goSize.hidden = !go;
     const whiteInput = form.querySelector('input[name="player_side"][value="white"]');
@@ -171,7 +214,7 @@ if (form) {
     const parts = [game?.dataset.title];
     if (cards) {
       if (durak) parts.push(checked("durak_kind")?.dataset.title);
-      if (preferans) parts.push(checked("pool")?.dataset.title);
+      if (preferans) parts.push(checked("pool")?.dataset.title, checked("stake")?.dataset.title, preferansNeed(announceStake));
       if (computers) parts.push(`компьютеров: ${computers}`);
       if (openSeats) parts.push(`свободных мест: ${openSeats}`);
       if (computers || blackjack) parts.push(checked("engine_level")?.dataset.title);
@@ -184,6 +227,8 @@ if (form) {
     }
     const summary = byId("#setup-summary");
     if (summary) summary.textContent = parts.filter(Boolean).join(" · ");
+    const submit = form.querySelector('button[type="submit"]');
+    if (submit) submit.disabled = preferans && preferansNeed(false) === "";
 
     if (openLesson && modeValue === "lesson" && !cards) {
       advanced.hidden = false;
@@ -193,9 +238,18 @@ if (form) {
     }
   }
 
-  form.addEventListener("input", () => sync(false));
-  form.addEventListener("change", (event) => {
-    sync(event.target?.name === "mode");
+  byId("#stake-ok")?.addEventListener("click", () => {
+    if (stakeDialog instanceof HTMLDialogElement) stakeDialog.close();
   });
-  sync(false);
+  stakeDialog?.addEventListener("click", (event) => {
+    if (event.target === stakeDialog) stakeDialog.close();
+  });
+  form.addEventListener("submit", (event) => {
+    if (form.querySelector('button[type="submit"]')?.disabled) event.preventDefault();
+  });
+  form.addEventListener("input", () => sync(false, false));
+  form.addEventListener("change", (event) => {
+    sync(event.target?.name === "mode", event.target?.name === "stake");
+  });
+  sync(false, true);
 }

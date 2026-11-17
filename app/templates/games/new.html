@@ -160,6 +160,27 @@
       </div>
     </section>
 
+    <section class="panel" id="preferans-stake" {% if game != 'preferans' %}hidden="hidden"{% endif %}>
+      <h2 id="pick-stake">Цена очка</h2>
+      <p class="quiet">Столько фишек стоит одно очко расписки. На стол садится стек в {{ preferans_stack_points }} таких очков. Остальное остаётся на счёте. Остановка возвращает стек.</p>
+      {% set purse = chips or 0 %}
+      {% set opening_stack = preferans_stack_points %}
+      {% set stake_short = purse < opening_stack %}
+      <p class="stake-need{% if stake_short %} is-short{% endif %}" id="preferans-stake-need" data-points="{{ preferans_stack_points }}" data-purse="{{ purse }}">
+        <span class="badge {% if stake_short %}loss{% else %}win{% endif %}" id="preferans-stake-badge">Нужно {{ opening_stack }} фишек</span>
+        <span id="preferans-stake-warn">При цене очка 1 для партии нужно {{ opening_stack }} фишек. Если их меньше, партию не открыть.</span>
+      </p>
+      <div class="mode-grid" role="radiogroup" aria-labelledby="pick-stake">
+        {% for size, note in ((1, "Одна фишка"), (2, "Две фишки"), (5, "Пять фишек"), (10, "Десять фишек")) %}
+        <label class="mode-choice pick">
+          <input type="radio" name="stake" value="{{ size }}" data-title="очко за {{ size }}" data-stack="{{ size * preferans_stack_points }}" {% if size == 1 %}checked="checked"{% endif %} />
+          <strong>{{ size }}</strong>
+          <small>{{ note }}</small>
+        </label>
+        {% endfor %}
+      </div>
+    </section>
+
     <section class="panel" id="go-size" {% if game != 'go' %}hidden="hidden"{% endif %}>
       <h2 id="pick-size">Размер доски</h2>
       <div class="mode-grid" role="radiogroup" aria-labelledby="pick-size">
@@ -303,9 +324,18 @@
         <p class="quiet">Партия</p>
         <p id="setup-summary" aria-live="polite">{% if cards %}{{ titles[game] }} · С компьютером{% else %}{{ titles[game] }} · С компьютером · Случайная сторона · Опытный{% endif %}</p>
       </div>
-      <button type="submit"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plus"/></svg> Создать партию</button>
+      <button type="submit"{% if game == 'preferans' and (chips or 0) < preferans_stack_points %} disabled="disabled"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plus"/></svg> Создать партию</button>
     </div>
   </form>
+  {% if game == 'preferans' %}
+  <dialog id="stake-dialog" class="confirm-dialog" aria-labelledby="stake-title">
+    <h2 id="stake-title">Не хватает фишек</h2>
+    <p id="stake-text"></p>
+    <div class="confirm-actions">
+      <button type="button" id="stake-ok">Ок</button>
+    </div>
+  </dialog>
+  {% endif %}
   {% endif %}
 </section>
 {% endblock %}

@@ -11,6 +11,7 @@ from app.cards.preferans import _finish as finish_preferans
 from app.cards.preferans import apply as play_preferans
 from app.cards.preferans import deal as deal_preferans
 from app.cards.preferans import legal as legal_preferans
+from app.cards.preferans import stack_for as preferans_stack
 from app.cards.preferans import suggest as suggest_preferans
 from app.cards.preferans import view as view_preferans
 from app.games.present import _preferans_marks
@@ -325,6 +326,87 @@ def test_preferans_can_raise_the_contract_after_the_talon() -> None:
     assert len(raised["hands"]["p0"]) == 12
     assert ["bid", "6", "S"] not in [item["path"] for item in legal_preferans(raised)]
     assert suggest_preferans(raised, 1)[0] == "discard"
+
+
+def _preferans_bank(stake: int = 2, bank: int = 50) -> dict:
+    state = deal_preferans(["p0", "p1", "p2"], "pool-12", {"p0": bank, "p1": bank, "p2": bank})
+    state["stake"] = stake
+    state["bullet"] = {"p0": 0, "p1": 0, "p2": 0}
+    state["mountain"] = {"p0": 0, "p1": 0, "p2": 0}
+    state["whists"] = {
+        seat: {other: 0 for other in state["order"] if other != seat} for seat in state["order"]
+    }
+    return state
+
+
+def test_preferans_stack_follows_the_point_price() -> None:
+    assert [preferans_stack(price) for price in (1, 2, 5, 10)] == [100, 200, 500, 1000]
+    assert preferans_stack("нет") == 100
+
+
+def test_preferans_keeps_the_players_own_chips() -> None:
+    state = deal_preferans(["p0", "p1", "p2"], "pool-12", {"p0": 80})
+    assert state["stake"] == 1
+    assert state["stacks"] == {"p0": 80, "p1": 1000, "p2": 1000}
+    assert state["committed"] == {"p0": 0, "p1": 0, "p2": 0}
+    shown = view_preferans(state, "p0")
+    assert shown["stacks"] == state["stacks"]
+    assert shown["sheet"]["stake"] == 1
+    assert shown["sheet"]["stacks"] == state["stacks"]
+    before = dict(state["stacks"])
+    path = suggest_preferans(state, 1)
+    state, charges = play_preferans(state, path)
+    assert charges == []
+    assert state["stacks"] == before
+
+
+def test_preferans_sheet_settles_to_zero_and_names_a_short_stack() -> None:
+    from app.cards.preferans import _redeal
+
+    even = _preferans_bank()
+    for seat in even["order"]:
+        even["bullet"][seat] = 12
+    finish_preferans(even)
+    assert even["chips"] == {"p0": 0, "p1": 0, "p2": 0}
+    assert even["stacks"] == {"p0": 50, "p1": 50, "p2": 50}
+    assert even["payout"] == even["stacks"]
+    assert even["unpaid"] == {"p0": 0, "p1": 0, "p2": 0}
+
+    played = _preferans_bank(2, 50)
+    played["bullet"] = {"p0": 12, "p1": 12, "p2": 12}
+    played["mountain"]["p2"] = 10
+    finish_preferans(played)
+    assert played["chips"] == {"p0": 7, "p1": 7, "p2": -14}
+    assert played["stacks"] == {"p0": 57, "p1": 57, "p2": 36}
+    assert sum(played["stacks"].values()) == 150
+    assert played["unpaid"] == {"p0": 0, "p1": 0, "p2": 0}
+
+    short = _preferans_bank(2, 50)
+    short["stacks"] = {"p0": 50, "p1": 50, "p2": 5}
+    short["bullet"] = {"p0": 12, "p1": 12, "p2": 12}
+    short["mountain"]["p2"] = 10
+    finish_preferans(short)
+    assert short["stacks"] == {"p0": 53, "p1": 52, "p2": 0}
+    assert sum(short["stacks"].values()) == 105
+    assert short["unpaid"] == {"p0": 4, "p1": 5, "p2": 9}
+    assert "не хватило" in short["line"]
+    assert short["sheet"]["chips"]["p2"] == short["chips"]["p2"]
+
+    kept = _preferans_bank(5, 40)
+    before = dict(kept["stacks"])
+    _redeal(kept)
+    assert kept["stacks"] == before
+    assert kept["stake"] == 5
+
+
+def test_preferans_without_a_stake_keeps_the_old_payout() -> None:
+    state = deal_preferans(["p0", "p1", "p2"], "pool-12")
+    state.pop("stake")
+    state.pop("stacks")
+    for seat in state["order"]:
+        state["bullet"][seat] = 12
+    finish_preferans(state)
+    assert state["payout"] == {"p0": 10, "p1": 10, "p2": 10}
 
 
 def test_preferans_view_shows_pass_and_whist() -> None:

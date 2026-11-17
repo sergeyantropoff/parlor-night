@@ -55,6 +55,7 @@ async def lifespan(app: FastAPI):
     except Exception:
         logging.getLogger(__name__).warning("valkey is unavailable, counters stay in process memory")
     app.state.gate = gate
+    app.state.service.gate = gate
     app.state.site_policy = None
     app.state.site_policy_until = 0.0
     if settings.env == "local":

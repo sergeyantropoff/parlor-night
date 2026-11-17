@@ -22,6 +22,7 @@ class CreateGameBody(BaseModel):
     board_size: int | None = Field(default=None, ge=9, le=19)
     durak_kind: Literal["podkidnoy", "perevodnoy"] | None = None
     pool: int | None = Field(default=None, ge=6, le=20)
+    stake: int | None = Field(default=None, ge=1, le=10)
     mode: Literal["vs_computer", "free", "analysis", "lesson", "online"]
     player_side: Literal["white", "black"]
     engine_level: int = Field(default=3, ge=1, le=5)

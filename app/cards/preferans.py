@@ -8,12 +8,17 @@
 Партия идёт, пока у каждого в пуле не наберётся выбранное число очков. Обычная пуля — 12.
 Шестёрка стоит 2, дальше каждая ступень добавляет 2, мизер стоит 10. Лишние взятки дописывают в пулю.
 Сверх выбранного числа очки уходят в висты на обоих соперников. Невзятая игра пишется в гору.
-В конце гостиная выводит пулю, гору, висты и расписку и переводит разницу в фишки.
+Цена очка выбирается до первой сдачи. На стол садится стек в 100 таких очков:
+при цене 1 это 100 фишек, при цене 10 — 1000. Со счёта списывается только стек.
+Если фишек меньше, партия не начинается. Остановка возвращает стек.
+Стеки лежат на столе и не двигаются, пока пуля открыта.
+В конце расписка переводит разницу итогов в фишки, но не больше стека. Счёт в минус не уходит.
 """
 
 from __future__ import annotations
 
 import json
+import math
 import random
 import secrets
 from typing import Any
@@ -24,13 +29,20 @@ RANKS = "789TJQKA"
 SUIT_ORDER = ("S", "C", "D", "H", "NT")
 SUIT_TITLE = {"S": "пики", "C": "трефы", "D": "бубны", "H": "черви", "NT": "без козыря"}
 POOLS = (6, 10, 12, 16, 20)
+STAKES = (1, 2, 5, 10)
+STACK_POINTS = 100
+STACK = STACK_POINTS * 10
 ANTE = 10
 
 
 def waiting(order: list[str] | None = None, variant: str = "classic") -> dict[str, Any]:
-    del variant
     seats = list(order or ["p0", "p1", "p2"])
-    return _shell(seats, "waiting")
+    state = _shell(seats, "waiting")
+    pool = _pool_of(variant)
+    state["pool"] = pool
+    state["variant"] = f"pool-{pool}"
+    state["stake"] = 1
+    return state
 
 
 def waiting_table(seat_keys: list[str], variant: str = "classic") -> dict[str, Any]:
@@ -42,7 +54,6 @@ def deal(
     variant: str = "classic",
     purses: dict[str, int] | None = None,
 ) -> dict[str, Any]:
-    del purses
     seats = list(order or ["p0", "p1", "p2"])
     if len(seats) != 3:
         raise ValueError("В преферансе трое игроков.")
@@ -50,11 +61,13 @@ def deal(
     state = _shell(seats, "bid")
     state["pool"] = pool
     state["variant"] = f"pool-{pool}"
+    state["stake"] = 1
+    state["stacks"] = _stacks(seats, purses)
     state["seed"] = secrets.randbits(31)
     state["deals"] = 1
     state["opener"] = 0
     _lay_deal(state)
-    state["committed"] = {seat: ANTE for seat in seats}
+    state["committed"] = {seat: 0 for seat in seats}
     state["to_move"] = seats[0]
     return state
 
@@ -86,6 +99,11 @@ def _shell(seats: list[str], phase: str) -> dict[str, Any]:
         "tricks": {seat: 0 for seat in seats},
         "lead": "",
         "committed": {seat: 0 for seat in seats},
+        "stacks": {},
+        "stake": 0,
+        "chips": {},
+        "owed": {},
+        "unpaid": {},
         "payout": {},
         "result": None,
         "reason": None,
@@ -100,6 +118,42 @@ def _shell(seats: list[str], phase: str) -> dict[str, Any]:
         "whists": {seat: {other: 0 for other in seats if other != seat} for seat in seats},
         "sheet": None,
     }
+
+
+def stake_of(value: object) -> int:
+    try:
+        stake = int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return 1
+    return stake if stake in STAKES else 1
+
+
+def stack_for(value: object) -> int:
+    return stake_of(value) * STACK_POINTS
+
+
+def _stacks(seats: list[str], purses: dict[str, int] | None) -> dict[str, int]:
+    given: dict[str, int] = {}
+    for key, value in (purses or {}).items():
+        try:
+            given[str(key)] = max(0, int(value))
+        except (TypeError, ValueError):
+            continue
+    return {seat: given[seat] if seat in given else STACK for seat in seats}
+
+
+def _chip_word(count: int) -> str:
+    number = abs(int(count))
+    if number % 10 == 1 and number % 100 != 11:
+        return "фишка"
+    if number % 10 in {2, 3, 4} and number % 100 not in {12, 13, 14}:
+        return "фишки"
+    return "фишек"
+
+
+def _staked(state: dict[str, Any]) -> bool:
+    stacks = state.get("stacks")
+    return int(state.get("stake") or 0) in STAKES and isinstance(stacks, dict) and bool(stacks)
 
 
 def _pool_of(variant: str) -> int:
@@ -498,23 +552,87 @@ def _balance(state: dict[str, Any], seat: str) -> int:
     return int(state["bullet"].get(seat, 0)) - int(state["mountain"].get(seat, 0)) + own - against
 
 
+def _chip_deltas(scores: dict[str, int], stake: int) -> dict[str, int]:
+    seats = list(scores)
+    if not seats:
+        return {}
+    mean = sum(scores.values()) / len(seats)
+    raw = [(scores[seat] - mean) * stake for seat in seats]
+    base = [math.floor(value) for value in raw]
+    leftover = int(round(sum(raw) - sum(base)))
+    if leftover > 0:
+        order = sorted(range(len(seats)), key=lambda index: (raw[index] - base[index], -index), reverse=True)
+        for index in order[:leftover]:
+            base[index] += 1
+    elif leftover < 0:
+        order = sorted(range(len(seats)), key=lambda index: (base[index] - raw[index], index), reverse=True)
+        for index in order[: -leftover]:
+            base[index] -= 1
+    return {seat: base[index] for index, seat in enumerate(seats)}
+
+
+def _move_stacks(state: dict[str, Any], owed: dict[str, int]) -> None:
+    seats = [str(seat) for seat in state["order"]]
+    stacks = {seat: max(0, int((state.get("stacks") or {}).get(seat, 0))) for seat in seats}
+    moved = {seat: 0 for seat in seats}
+    unpaid = {seat: 0 for seat in seats}
+    pot = 0
+    for seat in seats:
+        amount = int(owed.get(seat, 0))
+        if amount >= 0:
+            continue
+        can = min(-amount, stacks[seat])
+        stacks[seat] -= can
+        moved[seat] = -can
+        unpaid[seat] = -amount - can
+        pot += can
+    winners = [seat for seat in seats if int(owed.get(seat, 0)) > 0]
+    due = sum(int(owed[seat]) for seat in winners)
+    if winners and due and pot:
+        shares = {seat: pot * int(owed[seat]) // due for seat in winners}
+        left = pot - sum(shares.values())
+        for seat in sorted(winners, key=lambda item: int(owed[item]), reverse=True):
+            if left <= 0:
+                break
+            shares[seat] += 1
+            left -= 1
+        for seat in winners:
+            stacks[seat] += shares[seat]
+            moved[seat] = shares[seat]
+            unpaid[seat] = int(owed[seat]) - shares[seat]
+    elif winners and due:
+        for seat in winners:
+            unpaid[seat] = int(owed[seat])
+    state["stacks"] = stacks
+    state["chips"] = moved
+    state["owed"] = {seat: int(owed.get(seat, 0)) for seat in seats}
+    state["unpaid"] = unpaid
+    state["payout"] = {seat: stacks[seat] for seat in seats}
+
+
 def _finish(state: dict[str, Any], *, reason: str = "score", line: str = "") -> None:
     seats = list(state["order"])
     scores = {seat: _balance(state, seat) for seat in seats}
     best = max(scores.values()) if scores else 0
     leaders = [seat for seat, score in scores.items() if score == best]
-    mean = sum(scores.values()) / len(scores) if scores else 0
-    payout = {seat: max(0, int(round((scores[seat] - mean) * 5))) for seat in seats}
-    if sum(payout.values()) == 0:
-        payout = {seat: ANTE for seat in seats}
-    state["payout"] = payout
+    if _staked(state):
+        _move_stacks(state, _chip_deltas(scores, int(state["stake"])))
+    else:
+        mean = sum(scores.values()) / len(scores) if scores else 0
+        payout = {seat: max(0, int(round((scores[seat] - mean) * 5))) for seat in seats}
+        if sum(payout.values()) == 0:
+            payout = {seat: ANTE for seat in seats}
+        state["payout"] = payout
     state["phase"] = "done"
     state["reason"] = reason
     state["result"] = f"{leaders[0]}_win" if len(leaders) == 1 else "draw"
     pool = int(state["pool"])
-    state["line"] = line or f"Пуля до {pool} закрыта. Расписка готова."
+    note = line or f"Пуля до {pool} закрыта. Расписка готова."
+    if _staked(state) and any(int(value) > 0 for value in (state.get("unpaid") or {}).values()):
+        note = f"{note} На стеке не хватило части фишек."
+    state["line"] = note
     state["sheet"] = _public_sheet(state, closed=True)
-    state["pot"] = sum(int(amount) for amount in (state.get("committed") or {}).values())
+    state["pot"] = sum(int(amount) for amount in (state.get("stacks") or state.get("committed") or {}).values())
 
 
 def _redeal(state: dict[str, Any]) -> None:
@@ -555,7 +673,16 @@ def _public_sheet(state: dict[str, Any], *, closed: bool) -> dict[str, Any]:
             for seat in seats
         },
         "total": {seat: _balance(state, seat) for seat in seats},
+        "stake": int(state["stake"]) if int(state.get("stake") or 0) in STAKES else 0,
+        "stacks": _named_bag(state.get("stacks"), seats) if state.get("stacks") else {},
+        "chips": _named_bag(state.get("chips"), seats) if state.get("chips") else {},
+        "unpaid": _named_bag(state.get("unpaid"), seats) if state.get("unpaid") else {},
     }
+
+
+def _named_bag(bag: object, seats: list[str]) -> dict[str, int]:
+    source = bag if isinstance(bag, dict) else {}
+    return {seat: int(source.get(seat, 0) or 0) for seat in seats}
 
 
 def _note_tone(line: str) -> str:
@@ -722,6 +849,14 @@ def _seat_note(state: dict[str, Any], seat: str) -> str:
     mountain = int((state.get("mountain") or {}).get(seat, 0))
     total = scores.get(seat, 0)
     line = f"пуля {bullet} · гора {mountain} · итог {total}"
+    if state.get("result") and isinstance(state.get("chips"), dict) and seat in state["chips"]:
+        moved = int(state["chips"].get(seat, 0) or 0)
+        short = int((state.get("unpaid") or {}).get(seat, 0) or 0)
+        if moved or short:
+            sign = f"+{moved}" if moved > 0 else str(moved)
+            line = f"{line} · {sign} {_chip_word(moved)}"
+            if short:
+                line = f"{line}, не хватило {short}"
     if not state.get("result"):
         return line
     if len(leaders) == 1 and seat == leaders[0]:
@@ -767,8 +902,12 @@ def view(state: dict[str, Any], seat: str | None) -> dict[str, Any]:
     hand = _by_suit(raw)
     title = _contract_title(state.get("contract"))
     progress = _progress(state)
+    price = ""
+    if int(state.get("stake") or 0) in STAKES:
+        stake = int(state["stake"])
+        price = f"Очко стоит {stake} {_chip_word(stake)}. "
     if phase == "waiting":
-        message = f"{progress} Ждём третьего игрока."
+        message = f"{progress} {price}Ждём третьего игрока."
     elif phase == "bid":
         trade = f"Сейчас на столе: {title}." if state.get("contract") else "Можно заказать игру или спасовать."
         message = f"{progress} Торг. {trade}"
@@ -819,7 +958,9 @@ def view(state: dict[str, Any], seat: str | None) -> dict[str, Any]:
         "note": str(state.get("line") or "") if scored else "",
         "note_tone": _note_tone(str(state.get("line") or "")) if scored and state.get("line") else "",
         "shown": shown,
-        "stacks": {},
+        "stacks": _named_bag(state.get("stacks"), [str(item) for item in state.get("order") or []])
+        if state.get("stacks")
+        else {},
         "committed": state.get("committed") or {},
         "bidding": {
             str(seat): str((state.get("bidding") or {}).get(seat) or "open")

@@ -1889,7 +1889,9 @@ html[data-theme="dark"] #card-table { --badge-bg: #2a2521; --badge-ink: #f4efe5;
 .pulya th:first-child, .pulya td:first-child { text-align: left; }
 .pulya th .pulya-goal { display: block; margin-top: 0.12rem; color: var(--brass); font-size: 0.78rem; font-weight: 750; }
 .pulya tr.is-total th, .pulya tr.is-total td, .pulya tr.is-goal th, .pulya tr.is-goal td { font-weight: 750; }
-.pulya td.is-ahead { color: var(--accent); }
+.pulya td.is-ahead, .pulya td.is-plus { color: var(--accent); }
+.pulya td.is-minus { color: #8d3b3b; }
+html[data-theme="dark"] .pulya td.is-minus { color: #e0a090; }
 .pulya-board,
 #summary-pulya {
   border: 1px solid #c4a46a;
@@ -2245,6 +2247,8 @@ html[data-theme="dark"] #card-table { --badge-bg: #2a2521; --badge-ink: #f4efe5;
 }
 #card-table .plate-name svg { width: max(14px, 1.45cqw); height: max(14px, 1.45cqw); flex: 0 0 auto; }
 #card-table .plate-stack { flex: none; font: 700 max(12px, 1.25cqw)/1.15 Inter, Arial, sans-serif; color: #e7c56a; white-space: nowrap; }
+#card-table .plate-count { font: 600 max(11px, 1.15cqw)/1.15 Inter, Arial, sans-serif; white-space: nowrap; }
+#card-table .plate.is-win .plate-count { color: #2a2118; }
 #card-table .plate-action { font: 600 max(11px, 1.15cqw)/1.15 Inter, Arial, sans-serif; white-space: nowrap; }
 #card-table .plate.is-fold { background: #8d3b3b; }
 #card-table .plate.is-raise { background: #a85a22; }
@@ -3298,6 +3302,15 @@ html[data-theme="dark"] .setup-games .choice:has(:checked) {
 .setup-bar .quiet { font-size: 0.78rem; }
 #setup-summary { font-weight: 650; }
 .setup-bar button { min-width: 11rem; }
+.stake-need {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.75rem;
+  margin: 0.15rem 0 0.9rem;
+}
+.stake-need span:last-child { color: var(--muted); line-height: 1.45; }
+.stake-need.is-short span:last-child { color: var(--danger); }
 .recent-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
 .recent-head h2 { margin-bottom: 0.35rem; }
 .recent-head .quiet { font-size: 0.82rem; white-space: nowrap; }

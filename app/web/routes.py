@@ -15,6 +15,7 @@ from app.auth.validation import password_requirements, validate_password
 from app.avatars import image_file as avatar_file
 from app.avatars import media_type as avatar_media
 from app.avatars import remove_avatar, store_avatar
+from app.cards.preferans import STACK_POINTS
 from app.cards.registry import ADULT_GAMES
 from app.catalog import GAMES
 from app.db.repositories import api_access, news, users
@@ -212,6 +213,7 @@ async def _new_game_page(
             "theme": prefs["theme"],
             "prefs": prefs,
             "board_style": prefs["board_style"],
+            "preferans_stack_points": STACK_POINTS,
             **birth,
         },
         status=status,
@@ -258,6 +260,7 @@ async def create_game(request: Request) -> Response:
         "moves": [line.strip() for line in moves.splitlines() if line.strip()] or None,
         "durak_kind": str(form.get("durak_kind") or "podkidnoy"),
         "pool": _int(form.get("pool"), 12),
+        "stake": _int(form.get("stake"), 1),
         "board_size": _int(form.get("board_size"), 19),
     }
     try:
