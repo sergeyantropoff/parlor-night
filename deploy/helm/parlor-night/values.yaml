@@ -1,0 +1,63 @@
+image:
+  repository: hub.antropoff.ru/parlor-night/parlor-night
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+existingSecret: ""
+
+web:
+  replicas: 1
+  env: production
+  cookieSecure: true
+  trustProxy: true
+  forwardedAllowIps: "*"
+  trustedHosts: "localhost,127.0.0.1"
+  sessionTtlHours: 336
+  logLevel: INFO
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: "1.5"
+      memory: 1Gi
+
+news:
+  storage: 1Gi
+  storageClass: nfs-master01
+
+postgres:
+  image: postgres:16-alpine
+  storage: 5Gi
+  storageClass: nfs-master01
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+valkey:
+  image: valkey/valkey:8-alpine
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+ingress:
+  enabled: true
+  className: nginx
+  host: pn.antropoff.ru
+  clusterIssuer: letsencrypt-prod
+  proxyBodySize: 12m
+  annotations: {}
+  tls: true

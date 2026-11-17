@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Кабинет — Parlor Night{% endblock %}
+{% block topbar_lead %}
+<div class="topbar-lead">
+  <h1 data-greeting="{{ user.display_name }}">{{ greeting }}</h1>
+</div>
+{% endblock %}
+{% block content %}
+<section class="page">
+  <script src="/static/js/greeting.js?v={{ asset_version }}"></script>
+  <p class="lede">{% if dashboard.continue_game %}За столом есть незавершённая партия{% else %}Устройтесь поудобнее — вас ждёт новая партия{% endif %}</p>
+  <div class="action-row{% if not dashboard.continue_game %} two{% endif %}">
+    {% if dashboard.continue_game %}
+    <a class="action primary" href="/games/{{ dashboard.continue_game.id }}">
+      <span class="glyph" aria-hidden="true"><img class="theme-light game-mark" src="/static/images/games/game-{{ dashboard.continue_game.game_type }}-light.png?v={{ asset_version }}" alt="" /><img class="theme-dark game-mark" src="/static/images/games/game-{{ dashboard.continue_game.game_type }}-dark.png?v={{ asset_version }}" alt="" /></span>
+      <span>
+        <strong>Продолжить</strong>
+        <small>{{ type_label[dashboard.continue_game.game_type] }} · {% if dashboard.continue_game.status == "waiting" %}ждём игрока{% else %}партия идёт{% endif %}</small>
+      </span>
+      <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
+    </a>
+    {% endif %}
+    <a class="action{% if not dashboard.continue_game %} primary{% endif %}" href="/games/new">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plus"/></svg>
+      <strong>Новая партия</strong>
+    </a>
+    <a class="action" href="/join">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-code"/></svg>
+      <strong>Играть по коду</strong>
+    </a>
+  </div>
+  <section class="panel" id="recent">
+    <div class="recent-head">
+      <h2>Последние партии</h2>
+      {% if dashboard.pages > 1 %}<p class="quiet">{{ dashboard.shown }}</p>{% endif %}
+    </div>
+    {% if dashboard.recent %}
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr><th>Игра</th><th>Режим</th><th>Результат</th><th>Время</th><th>Приглашение</th></tr>
+        </thead>
+        <tbody>
+          {% for game in dashboard.recent %}
+          {% set uid = user.id|string %}
+          {% set creator = game.user_id|string == uid %}
+          {% set opp = game.opponent_id and game.opponent_id|string == uid %}
+          <tr>
+            <td>
+              <a href="/games/{{ game.id }}">
+                <span class="glyph" aria-hidden="true"><img class="theme-light game-mark" src="/static/images/games/game-{{ game.game_type }}-light.png?v={{ asset_version }}" alt="" /><img class="theme-dark game-mark" src="/static/images/games/game-{{ game.game_type }}-dark.png?v={{ asset_version }}" alt="" /></span>
+                {{ type_label[game.game_type] }}
+              </a>
+            </td>
+            <td>{{ mode_label[game.mode] }}</td>
+            <td>
+              {% if game.status == "waiting" %}
+              <span class="badge wait">Ожидает игрока</span>
+              {% elif game.status == "finished" and not game.result %}
+              <span class="badge wait">Остановлена</span>
+              {% elif not game.result %}
+              <span class="badge live">Идёт</span>
+              {% elif game.you_mark == "win" %}
+              <span class="badge win">Победа</span>
+              {% elif game.you_mark == "loss" %}
+              <span class="badge loss">Поражение</span>
+              {% elif game.you_mark == "draw" or game.result == "draw" %}
+              <span class="badge draw">Ничья</span>
+              {% elif creator or opp %}
+              {% set side = game.player_side if creator else ("black" if game.player_side == "white" else "white") %}
+              {% if (game.result == "white_win" and side == "white") or (game.result == "black_win" and side == "black") %}
+              <span class="badge win">Победа</span>
+              {% else %}
+              <span class="badge loss">Поражение</span>
+              {% endif %}
+              {% else %}
+              <span class="badge draw">{{ result_label[game.result] }}</span>
+              {% endif %}
+            </td>
+            <td>{{ game.updated_at|when }}</td>
+            <td>
+              {% if game.mode == "vs_computer" %}
+              {% elif game.join_code %}
+              <span class="invite-chip">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-code"/></svg>
+                <strong>{{ game.join_code }}</strong>
+                <button type="button" data-copy="{{ game.join_code }}">Копировать</button>
+              </span>
+              {% elif game.mode == "online" and creator and game.opponent_name %}
+              <span class="invite-note">С {{ player_link(game.opponent_name, game.opponent_login, '', false, false, true) }}</span>
+              {% elif game.mode == "online" and opp %}
+              <span class="invite-note">От {{ player_link(game.creator_name, game.creator_login, '', false, false, true) }}</span>
+              {% elif game.mode == "online" %}
+              <span class="invite-note">Наблюдение</span>
+              {% else %}
+              <span class="invite-note">{{ mode_label[game.mode] }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if dashboard.pages > 1 %}
+    <nav class="pager" aria-label="Страницы партий">
+      {% if dashboard.page > 1 %}
+      <a class="pager-step" href="/?page={{ dashboard.page - 1 }}#recent" rel="prev">Назад</a>
+      {% else %}
+      <span class="pager-step is-off">Назад</span>
+      {% endif %}
+      <ol>
+        {% for number in dashboard.page_links %}
+        {% if number is none %}
+        <li class="pager-gap" aria-hidden="true">…</li>
+        {% elif number == dashboard.page %}
+        <li><span aria-current="page">{{ number }}</span></li>
+        {% else %}
+        <li><a href="/?page={{ number }}#recent">{{ number }}</a></li>
+        {% endif %}
+        {% endfor %}
+      </ol>
+      {% if dashboard.page < dashboard.pages %}
+      <a class="pager-step" href="/?page={{ dashboard.page + 1 }}#recent" rel="next">Дальше</a>
+      {% else %}
+      <span class="pager-step is-off">Дальше</span>
+      {% endif %}
+    </nav>
+    {% endif %}
+    {% else %}
+    <p class="quiet">Пока нет партий. Создайте первую.</p>
+    {% endif %}
+  </section>
+  <section class="panel share-card">
+    <div class="share-head">
+      <span class="share-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#i-coins"/></svg></span>
+      <div>
+        <h2>Ваша ссылка</h2>
+        {% if site.registration_mode == "closed" %}
+        <p>Сейчас регистрация закрыта. Когда её откроют, по этой ссылке будет видно, кто пригласил друга.</p>
+        {% elif site.registration_mode == "referral" %}
+        <p>Сейчас зарегистрироваться можно только по такой ссылке. Гостиная запомнит, что пригласили вы, и начислит {{ site.referral_chips }} фишек.</p>
+        {% else %}
+        <p>Если друг откроет ссылку до регистрации, в статистике будет видно, что пригласили вы. Вам начислят {{ site.referral_chips }} фишек.</p>
+        {% endif %}
+      </div>
+    </div>
+    <div class="share-row">
+      <p class="share-link">{{ referral_link }}</p>
+      <button type="button" class="button" data-copy="{{ referral_link }}">Скопировать</button>
+    </div>
+  </section>
+  <p class="center-note">Фишки начисляются за партии. Покер, блэкджек и преферанс — только на игровые фишки, с 18 лет</p>
+</section>
+{% endblock %}

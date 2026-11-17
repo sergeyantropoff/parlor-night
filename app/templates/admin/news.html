@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Новости — Parlor Night{% endblock %}
+{% block topbar_lead %}
+<div class="topbar-lead"><h1>Новости</h1></div>
+{% endblock %}
+{% block content %}
+{% set kinds = {"update": "Обновление", "event": "Событие", "announce": "Анонс"} %}
+{% set covers = {
+  "light-theme": "news-light-theme.png",
+  "uno-evening": "news-uno-evening.png",
+  "welcome": "news-welcome.png",
+  "card-games": "news-card-games.png",
+  "go": "news-go.png",
+  "beta": "news-beta.jpg",
+} %}
+{% set months = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"] %}
+<section class="card wide">
+  <div class="hello">
+    <div>
+      <p class="lede">Анонсы, вечера и обновления главной страницы.</p>
+    </div>
+    <a class="button" href="/admin/news/new">Новая новость</a>
+  </div>
+  {% if message %}<p class="banner ok" role="status">{{ message }}</p>{% endif %}
+  {% if posts %}
+  <div class="admin-news">
+    {% for post in posts %}
+    <article class="news-admin">
+      {% set shot = post.cover|cover_kind %}
+      {% if shot == "upload" %}
+      <div class="admin-cover">
+        <img src="/news-images/{{ post.cover }}" alt="" />
+        <span class="kind">{{ kinds[post.kind] }}</span>
+      </div>
+      {% elif shot == "preset" %}
+      <div class="admin-cover">
+        <img class="theme-light" src="/static/parlor/light/{{ covers[post.cover] }}?v={{ asset_version }}" alt="" />
+        <img class="theme-dark" src="/static/parlor/dark/{{ covers[post.cover] }}?v={{ asset_version }}" alt="" />
+        <span class="kind">{{ kinds[post.kind] }}</span>
+      </div>
+      {% endif %}
+      <div class="pad">
+        <p class="news-meta">
+          {% if not post.cover or post.cover|cover_kind == "" %}<span class="kind">{{ kinds[post.kind] }}</span>{% endif %}
+          <span class="news-date below"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg> {{ post.published_on.day }} {{ months[post.published_on.month - 1] }}</span>
+        </p>
+        <h3>{{ post.title }}</h3>
+        <p>{{ post.summary }}</p>
+        <div class="row">
+          <a class="button secondary" href="/admin/news/{{ post.id }}">Изменить</a>
+          <form method="post" action="/admin/news/{{ post.id }}/delete">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button type="submit" class="secondary">Убрать</button>
+          </form>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% set pager_always = true %}
+  {% include "_pager.html" %}
+  {% else %}
+  <p class="quiet">Пока нет новостей.</p>
+  {% endif %}
+</section>
+{% endblock %}

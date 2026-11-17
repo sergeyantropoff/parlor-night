@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Регистрация — Parlor Night{% endblock %}
+{% block content %}
+<section class="login">
+  <div class="login-brand">
+    <img class="mark theme-light" src="/static/images/logo-mark-for-light.png?v={{ asset_version }}" alt="" />
+    <img class="mark theme-dark" src="/static/images/logo-mark-for-dark.png?v={{ asset_version }}" alt="" />
+    <h1>Parlor Night</h1>
+    <p>Гостиная настольных игр</p>
+  </div>
+  <form class="login-card" method="post" action="/register">
+    <input type="hidden" name="csrf_token" value="{{ login_csrf }}" />
+    {% if error %}<p class="banner" role="alert">{{ error }}</p>{% endif %}
+    <label>Логин
+      <input name="username" autocomplete="username" required="required" minlength="{{ site.username_min }}" maxlength="{{ site.username_max }}" />
+    </label>
+    <label>Пароль
+      <span class="password">
+        <input id="password" name="password" type="password" autocomplete="new-password" required="required" minlength="{{ site.password_min }}" />
+        <button type="button" id="peek" class="tip-host" data-tip="Показать пароль" data-tip-edge aria-label="Показать пароль" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"/></svg>
+        </button>
+      </span>
+    </label>
+    <p class="fine">Логин {{ site.username_min }}–{{ site.username_max }} символов. Пароль от {{ site.password_min }}{% if site.password_needs_letter %}, с буквой{% endif %}{% if site.password_needs_digit %} и цифрой{% endif %}.</p>
+    <fieldset class="birth">
+      <legend>Дата рождения <span class="need" aria-hidden="true">*</span></legend>
+      <div class="born-grid">
+        <label>День
+          <select name="born_day" id="born-day" required="required">
+            <option value="">—</option>
+            {% for day in range(1, 32) %}
+            <option value="{{ day }}">{{ day }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Месяц
+          <select name="born_month" id="born-month" required="required">
+            <option value="">—</option>
+            {% for name in ("январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь") %}
+            <option value="{{ loop.index }}">{{ name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Год
+          <select name="born_year" id="born-year" required="required">
+            <option value="">—</option>
+            {% for year in range(year_now, 1899, -1) %}
+            <option value="{{ year }}">{{ year }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <p id="age-status" class="fine">Укажите дату рождения.</p>
+    </fieldset>
+    <fieldset class="robot">
+      <legend>Проверка от ботов <span class="need" aria-hidden="true">*</span></legend>
+      <label class="robot-row">
+        <input type="checkbox" id="robot" required="required" />
+        <span>Я не робот</span>
+      </label>
+      <input type="hidden" name="captcha" id="captcha-payload" value="" />
+      <p id="robot-note" class="fine" hidden="hidden"></p>
+    </fieldset>
+    <button type="submit">Создать учётную запись</button>
+    <p class="fine"><a href="/login">Уже есть учётная запись? Войти</a></p>
+  </form>
+  <p class="fine"><a href="/">На главную</a></p>
+</section>
+<dialog id="welcome-dialog" class="confirm-dialog welcome-dialog" {% if welcome %}data-open="1"{% endif %} aria-labelledby="welcome-title">
+  <h2 id="welcome-title">Регистрация прошла успешно</h2>
+  <p>Учётная запись создана. Фамилия, имя и отчество необязательны: за столом будет видно то, что вы заполните.</p>
+  <form method="post" action="/register/welcome">
+    <input type="hidden" name="csrf_token" value="{{ login_csrf }}" />
+    {% if name_error %}<p class="banner" role="alert">{{ name_error }}</p>{% endif %}
+    <label>Фамилия <input name="family" value="{{ family }}" autocomplete="family-name" /></label>
+    <label>Имя <input name="given" value="{{ given }}" autocomplete="given-name" /></label>
+    <label>Отчество <input name="patronymic" value="{{ patronymic }}" autocomplete="additional-name" /></label>
+    <div class="confirm-actions">
+      <button type="submit">Войти в гостиную</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/js/login.js?v={{ asset_version }}"></script>
+{% endblock %}

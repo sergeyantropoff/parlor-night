@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Новости гостиной — Parlor Night{% endblock %}
+{% block content %}
+{% set covers = {
+  "light-theme": "news-light-theme.png",
+  "uno-evening": "news-uno-evening.png",
+  "welcome": "news-welcome.png",
+  "card-games": "news-card-games.png",
+  "go": "news-go.png",
+  "beta": "news-beta.jpg",
+} %}
+{% set months = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"] %}
+{% set kinds = {"update": "Обновление", "event": "Событие", "announce": "Анонс"} %}
+{% if not user %}{% include "public/_mast.html" %}{% endif %}
+<section class="landing band news-index">
+  <div class="title-row"><h2>Новости гостиной</h2><i></i></div>
+  <p class="lede">Вечера, обновления и короткие новости гостиной.</p>
+  {% if posts %}
+  <div class="news-grid">
+    {% for post in posts %}
+    <article>
+      <a class="stretch" href="/news/{{ post.id }}">{{ post.title }}</a>
+      <div class="shot">
+        {% set shot = post.cover|cover_kind %}
+        {% if shot == "upload" %}
+        <img src="/news-images/{{ post.cover }}" width="1672" height="941" alt="" />
+        {% elif shot == "preset" %}
+        <img class="theme-light" src="/static/parlor/light/{{ covers[post.cover] }}?v={{ asset_version }}" width="1672" height="941" alt="" />
+        <img class="theme-dark" src="/static/parlor/dark/{{ covers[post.cover] }}?v={{ asset_version }}" width="1672" height="941" alt="" />
+        {% endif %}
+        <span class="kind">{{ kinds[post.kind] }}</span>
+        <p class="news-date on-cover"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg> {{ post.published_on.day }} {{ months[post.published_on.month - 1] }} {{ post.published_on.year }}</p>
+      </div>
+      <p class="news-date below"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg> {{ post.published_on.day }} {{ months[post.published_on.month - 1] }} {{ post.published_on.year }}</p>
+      <h3>{{ post.title }}</h3>
+      <p>{{ post.summary }}</p>
+      <a class="news-read" href="/news/{{ post.id }}">{{ "Подробнее" if post.kind == "event" else "Читать" }}</a>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="quiet">Скоро здесь появятся вечера, обновления и акции.</p>
+  {% endif %}
+</section>
+{% if not user %}{% include "public/_foot.html" %}{% endif %}
+{% endblock %}

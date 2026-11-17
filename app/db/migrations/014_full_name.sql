@@ -1,0 +1,3 @@
+ALTER TABLE users
+    ADD COLUMN full_name TEXT,
+    ADD COLUMN ask_name BOOLEAN NOT NULL DEFAULT FALSE;

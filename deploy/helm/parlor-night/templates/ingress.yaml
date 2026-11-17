@@ -1,0 +1,38 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "parlor.fullname" . }}
+  labels:
+    {{- include "parlor.labels" . | nindent 4 }}
+  annotations:
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuer | default "letsencrypt-prod" | quote }}
+    nginx.ingress.kubernetes.io/proxy-intercept-errors: "false"
+    nginx.ingress.kubernetes.io/configuration-snippet: "proxy_intercept_errors off;"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: {{ .Values.ingress.proxyBodySize | default "12m" | quote }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className | quote }}
+  {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    - hosts:
+        - {{ required "Задайте ingress.host" .Values.ingress.host | quote }}
+      secretName: {{ include "parlor.fullname" . }}-tls
+  {{- end }}
+  rules:
+    - host: {{ required "Задайте ingress.host" .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "parlor.fullname" . }}
+                port:
+                  name: http
+{{- end }}

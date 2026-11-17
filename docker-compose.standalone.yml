@@ -1,0 +1,63 @@
+name: parlor-night-standalone
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      TZ: Europe/Moscow
+      POSTGRES_USER: ${POSTGRES_USER:-boardmentor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-boardmentor}
+      POSTGRES_DB: ${POSTGRES_DB:-boardmentor}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-54330}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-boardmentor} -d ${POSTGRES_DB:-boardmentor}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    command: ["valkey-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "127.0.0.1:${VALKEY_PORT:-6380}:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  web:
+    image: ${PARLOR_IMAGE:-hub.antropoff.ru/parlor-night/parlor-night:latest}
+    pull_policy: always
+    env_file:
+      - deploy/standalone.env
+    environment:
+      TZ: Europe/Moscow
+      DATABASE_URL: postgresql://${POSTGRES_USER:-boardmentor}:${POSTGRES_PASSWORD:-boardmentor}@db:5432/${POSTGRES_DB:-boardmentor}
+      CHESS_ENGINE_PATH: /usr/games/stockfish
+      VALKEY_URL: redis://valkey:6379/0
+      NEWS_IMAGE_DIR: /var/lib/parlor/news
+      AVATAR_DIR: /var/lib/parlor/news/avatars
+    volumes:
+      - news-images:/var/lib/parlor/news
+    depends_on:
+      db:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8011}:8000"
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 20s
+    mem_limit: 1g
+    cpus: 1.50
+
+volumes:
+  pgdata:
+  news-images:

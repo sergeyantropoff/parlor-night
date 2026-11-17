@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% block title %}Parlor Night — гостиная настольных игр{% endblock %}
+{% block content %}
+{% set covers = {
+  "light-theme": "news-light-theme.png",
+  "uno-evening": "news-uno-evening.png",
+  "welcome": "news-welcome.png",
+  "card-games": "news-card-games.png",
+  "go": "news-go.png",
+  "beta": "news-beta.jpg",
+} %}
+{% set months = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"] %}
+<header class="mast">
+  <div class="mast-inner">
+    <a class="brand" href="/">
+      <img class="mark theme-light" src="/static/images/logo-mark-for-light.png?v={{ asset_version }}" width="982" height="1002" alt="" />
+      <img class="mark theme-dark" src="/static/images/logo-mark-for-dark.png?v={{ asset_version }}" width="1003" height="1024" alt="" />
+      <span class="brand-title">Parlor Night</span>
+      <span class="brand-rule">гостиная</span>
+    </a>
+    <nav aria-label="Страница">
+      <a href="#features">Возможности</a>
+      <a href="#games">Игры</a>
+      <a href="#news">Новости</a>
+      <a href="#about">О проекте</a>
+    </nav>
+    <div class="mast-actions">
+      <div class="theme-switch" role="group" aria-label="Тема">
+        <button type="button" class="tip-host" data-theme-value="light" data-tip="Светлая" data-tip-below aria-pressed="false" aria-label="Светлая"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sun"/></svg></button>
+        <button type="button" class="tip-host" data-theme-value="dark" data-tip="Тёмная" data-tip-below data-tip-edge aria-pressed="false" aria-label="Тёмная"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-moon"/></svg></button>
+      </div>
+      {% if can_register %}<a class="button" href="/register">Регистрация</a>{% endif %}
+      <a class="button{% if can_register %} secondary{% endif %}" href="/login">Войти</a>
+    </div>
+  </div>
+</header>
+<section class="hero-wrap">
+  <div class="landing hero">
+    <div class="hero-copy">
+      <p class="kicker">Закрытая гостиная настольных игр <i></i></p>
+      <h1>Хороший вечер начинается с партии</h1>
+      <p>Играйте с друзьями в шахматы, русские шашки, го, Уно, покер, дурака, блэкджек и преферанс. Общайтесь в чате или включайте видеосвязь — как вам удобнее.</p>
+      <div class="hero-actions">
+        {% if can_register %}
+        <a class="button" href="/register">Регистрация</a>
+        <a class="button secondary" href="/login">Войти в гостиную</a>
+        {% else %}
+        <a class="button" href="/login">Войти в гостиную</a>
+        {% endif %}
+        <a class="text-link" href="#about">Узнать о проекте ↓</a>
+      </div>
+      <p class="quiet">
+        {% if site and site.registration_mode == "open" %}
+        Можно <a href="/register">создать учётную запись</a>. Если вас пригласили, откройте ссылку друга до регистрации — тогда будет видно, кто пригласил.
+        {% elif site and site.registration_mode == "referral" and can_register %}
+        Вас пригласили. <a href="/register">Создайте учётную запись</a> — гостиная запомнит, кто прислал ссылку.
+        {% elif site and site.registration_mode == "referral" %}
+        Регистрация открыта по ссылке друга. Откройте приглашение, затем создайте учётную запись.
+        {% else %}
+        Доступ по приглашению. Учётную запись создаёт администратор.
+        {% endif %}
+      </p>
+    </div>
+    <figure class="hero-art">
+      <img class="theme-light" src="/static/parlor/light/hero-parlor.png?v={{ asset_version }}" width="819" height="545" alt="Стол гостиной: шахматы, карты, Уно, камни го, фишки и бланк партии" />
+      <img class="theme-dark" src="/static/parlor/dark/hero-parlor.png?v={{ asset_version }}" width="819" height="545" alt="" />
+      <figcaption>
+        <svg class="laurel only-light" viewBox="0 0 28 16" aria-hidden="true"><path d="M3 13c2.2-1 4-3.2 4.6-6.2 1.2 2.2 2 4.2 1.2 6.2M11 13.2c2.4-1.4 4.6-4 6-7.2.8 2.8.6 5-1.2 7.2M18.2 12.4c1.6-2.2 4-4.6 6.6-6-.6 2.8-2.2 5-4.8 6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <i></i>Восемь игр. Одна гостиная<i></i>
+        <svg class="laurel only-light flip" viewBox="0 0 28 16" aria-hidden="true"><path d="M3 13c2.2-1 4-3.2 4.6-6.2 1.2 2.2 2 4.2 1.2 6.2M11 13.2c2.4-1.4 4.6-4 6-7.2.8 2.8.6 5-1.2 7.2M18.2 12.4c1.6-2.2 4-4.6 6.6-6-.6 2.8-2.2 5-4.8 6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      </figcaption>
+    </figure>
+  </div>
+</section>
+<ul class="landing stat-row">
+  <li><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-dice"/></svg><span>8 игр</span></li>
+  <li><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chat"/></svg><span>Чаты и беседы</span></li>
+  <li><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-video"/></svg><span>Созвон до 6 игроков</span></li>
+  <li class="stat-safe">
+    <svg class="only-light" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shield"/></svg>
+    <svg class="only-dark" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-coins"/></svg>
+    <span>Без денежных ставок</span>
+  </li>
+</ul>
+<section class="landing band" id="games">
+  <div class="title-row"><h2>Выберите игру на вечер</h2><i></i></div>
+  <p class="lede only-light">Восемь классических игр в одной гостиной. Соберите партию, пригласите друзей и играйте в привычном, уютном формате.</p>
+  <p class="lede only-dark">В гостиной собраны любимые настольные игры — для спокойных партий, дружеских турниров и вечерних разговоров.</p>
+  <div class="game-cards">
+    <article>
+      <div class="shot">
+        <img class="theme-light" src="/static/parlor/light/game-chess.png?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
+        <img class="theme-dark" src="/static/parlor/dark/game-chess.png?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
+      </div>
+      <div class="shot-body">
+        <div><h3>Шахматы</h3><p>Партии вдвоём и разбор со Stockfish.</p></div>
+        <a class="round tip-host" href="/login" data-tip="Шахматы" data-tip-edge aria-label="Войти, чтобы играть в шахматы"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+      </div>
+    </article>
+    <article>
+      <div class="shot">
+        <img class="theme-light" src="/static/parlor/light/game-checkers.png?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
+        <img class="theme-dark" src="/static/parlor/dark/game-checkers.png?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
+      </div>
+      <div class="shot-body">
+        <div><h3>Русские шашки</h3><p>Классические правила и собственный движок.</p></div>
+        <a class="round tip-host" href="/login" data-tip="Русские шашки" data-tip-edge aria-label="Войти, чтобы играть в шашки"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+      </div>
+    </article>
+    <article>
+      <div class="shot">
+        <img class="theme-light" src="/static/parlor/light/game-go.png?v={{ asset_version }}" width="1440" height="1080" alt="" loading="lazy" />
+        <img class="theme-dark" src="/static/parlor/dark/game-go.png?v={{ asset_version }}" width="1440" height="1080" alt="" loading="lazy" />
+      </div>
+      <div class="shot-body">
+        <div><h3>Го</h3><p>С человеком или с компьютером.</p></div>
+        <a class="round tip-host" href="/login" data-tip="Го" data-tip-edge aria-label="Войти, чтобы играть в го"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+      </div>
+    </article>
+    <article>
+      <div class="shot">
+        <img class="theme-light" src="/static/parlor/light/game-uno.png?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
+        <img class="theme-dark" src="/static/parlor/dark/game-uno.png?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
+      </div>
+      <div class="shot-body">
+        <div><h3>Уно</h3><p>Многопользовательские партии с друзьями.</p></div>
+        <a class="round tip-host" href="/login" data-tip="Уно" data-tip-edge aria-label="Войти, чтобы играть в Уно"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+      </div>
+    </article>
+    <article>
+      <div class="shot">
+        <img class="theme-light" src="/static/parlor/light/game-poker.png?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
+        <img class="theme-dark" src="/static/parlor/dark/game-poker.png?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
+        <span class="age">18+</span>
+      </div>
+      <div class="shot-body">
+        <div><h3>Покер</h3><p>Техасский холдем на игровые фишки.</p></div>
+        <a class="round tip-host" href="/login" data-tip="Покер" data-tip-edge aria-label="Войти, чтобы играть в покер"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+      </div>
+    </article>
+    <article>
+      <div class="shot">
+        <img class="theme-light" src="/static/parlor/light/game-durak.png?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
+        <img class="theme-dark" src="/static/parlor/dark/game-durak.png?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
+      </div>
+      <div class="shot-body">
+        <div><h3>Дурак</h3><p>Подкидной или переводной — вид выбирают в начале.</p></div>
+        <a class="round tip-host" href="/login" data-tip="Дурак" data-tip-edge aria-label="Войти, чтобы играть в дурака"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+      </div>
+    </article>
+    <article>
+      <div class="shot">
+        <img class="theme-light" src="/static/parlor/light/game-blackjack.png?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
+        <img class="theme-dark" src="/static/parlor/dark/game-blackjack.png?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
+        <span class="age">18+</span>
+      </div>
+      <div class="shot-body">
+        <div><h3>Блэкджек</h3><p>Против дилера, на игровые фишки.</p></div>
+        <a class="round tip-host" href="/login" data-tip="Блэкджек" data-tip-edge aria-label="Войти, чтобы играть в блэкджек"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+      </div>
+    </article>
+    <article>
+      <div class="shot">
+        <img class="theme-light" src="/static/parlor/light/game-preferans.png?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
+        <img class="theme-dark" src="/static/parlor/dark/game-preferans.png?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
+        <span class="age">18+</span>
+      </div>
+      <div class="shot-body">
+        <div><h3>Преферанс</h3><p>Торг и взятки на троих, на игровые фишки.</p></div>
+        <a class="round tip-host" href="/login" data-tip="Преферанс" data-tip-edge aria-label="Войти, чтобы играть в преферанс"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+      </div>
+    </article>
+  </div>
+  <p class="mid-note"><i></i><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-coins"/></svg> Фишки начисляются за победу и ничью. Денег в игре нет. <i></i></p>
+</section>
+<section class="landing band" id="features">
+  <div class="title-row"><h2>Больше, чем просто партия</h2><i></i></div>
+  <div class="feature-grid">
+    <article>
+      <h3><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chat"/></svg> Личные беседы</h3>
+      <p>Пишите друзьям и обсуждайте игру в чате стола.</p>
+      <div class="mini-chat only-light" aria-hidden="true">
+        <p><span class="avatar">АК</span><span>Ну и финал! Реванш? 🙂</span><time>21:04</time></p>
+        <p><span class="avatar">ММ</span><span>Давай. Коня в этот раз не отдам.</span><time>21:05</time></p>
+        <p><span class="avatar">АК</span><span>Идёт. Чай уже ставлю.</span><time>21:06</time></p>
+      </div>
+      <div class="mini-chat only-dark" aria-hidden="true">
+        <p><span class="avatar">АК</span><span>Хорошая партия!</span><time>21:14</time></p>
+        <p class="mine"><span>Реванш? Чай стынет.</span><time>21:15</time></p>
+        <p><span class="avatar">ДВ</span><span>Давайте ещё одну, я раздаю.</span><time>21:15</time></p>
+      </div>
+    </article>
+    <article>
+      <h3><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-video"/></svg> Видеосвязь за столом</h3>
+      <p>Камера и микрофон у игроков за столом, до шести человек. Наблюдатели только смотрят партию и не передают звук и видео.</p>
+      <div class="mini-call" aria-hidden="true">
+        {% for name in ["1", "2", "3", "4", "5", "6"] %}
+        <span><img src="/static/parlor/call/{{ name }}.jpg?v={{ asset_version }}" width="1024" height="682" alt="" /><i></i></span>
+        {% endfor %}
+      </div>
+    </article>
+    <article>
+      <h3><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-user"/></svg> Приглашайте своих</h3>
+      <p>Соберите своих за один стол. Создайте партию и передайте код в беседу или лично: кто его откроет, сядет рядом. Друзей можно найти в гостиной и позвать по имени.</p>
+      <p class="sample-code" aria-hidden="true">
+        <svg class="only-light" viewBox="0 0 24 24"><use href="#i-code"/></svg>
+        <strong>PN7K2</strong>
+        <svg viewBox="0 0 24 24"><use href="#i-copy"/></svg>
+      </p>
+    </article>
+  </div>
+  <p class="mid-note"><i></i><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-video"/></svg> Видео передаётся напрямую между браузерами. <i></i></p>
+</section>
+<section class="landing band" id="news">
+  <div class="title-row">
+    <h2>Новости гостиной</h2>
+    <i></i>
+    <a href="/news">Все новости →</a>
+  </div>
+  {% if posts %}
+  <div class="news-grid">
+    {% for post in posts %}
+    <article>
+      <div class="shot">
+        {% set shot = post.cover|cover_kind %}
+        {% if shot == "upload" %}
+        <img src="/news-images/{{ post.cover }}" width="1672" height="941" alt="" loading="lazy" />
+        {% elif shot == "preset" %}
+        <img class="theme-light" src="/static/parlor/light/{{ covers[post.cover] }}?v={{ asset_version }}" width="1672" height="941" alt="" loading="lazy" />
+        <img class="theme-dark" src="/static/parlor/dark/{{ covers[post.cover] }}?v={{ asset_version }}" width="1672" height="941" alt="" loading="lazy" />
+        {% endif %}
+        <span class="kind">{{ {"update": "Обновление", "event": "Событие", "announce": "Анонс"}[post.kind] }}</span>
+        <p class="news-date on-cover"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg> {{ post.published_on.day }} {{ months[post.published_on.month - 1] }} {{ post.published_on.year }}</p>
+      </div>
+      <p class="news-date below"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg> {{ post.published_on.day }} {{ months[post.published_on.month - 1] }} {{ post.published_on.year }}</p>
+      <h3>{{ post.title }}</h3>
+      <p>{{ post.summary }}</p>
+      <a class="news-read" href="/news/{{ post.id }}">{{ "Подробнее" if post.kind == "event" else "Читать" }}</a>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="quiet">Скоро здесь появятся вечера, обновления и акции.</p>
+  {% endif %}
+</section>
+<section class="landing band" id="about">
+  <div class="join-grid">
+    <article>
+      <div class="title-row"><h2>Место для своих</h2><i></i></div>
+      <p class="about-copy">Parlor Night создана для спокойных вечеров с друзьями. Здесь можно сыграть знакомую партию, поговорить и просто побыть вместе — даже если вы в разных городах.</p>
+      <p class="about-copy">Ставок на деньги нет. Фишки остаются внутри гостиной: их получают за партии и за друга, который пришёл по вашей ссылке. Дом открывают своим, поэтому вечер не превращается в шумное место.</p>
+      <img class="still theme-light" src="/static/parlor/light/footer-still-life.png?v={{ asset_version }}" width="1774" height="887" alt="" />
+      <img class="still theme-dark" src="/static/parlor/dark/footer-still-life.png?v={{ asset_version }}" width="1774" height="887" alt="" />
+    </article>
+    <article>
+      <h3>Как попасть в гостиную</h3>
+      <ol class="steps">
+        <li><span>1</span>{% if can_register %}Зарегистрируйтесь или войдите.{% elif site and site.registration_mode == "referral" %}Откройте ссылку друга и зарегистрируйтесь.{% else %}Получите учётную запись у администратора.{% endif %}</li>
+        <li><span>2</span>Войдите в свой кабинет.</li>
+        <li><span>3</span>Выберите игру или присоединитесь по коду.</li>
+      </ol>
+      {% if can_register %}<a class="button" href="/register">Регистрация</a>{% endif %}
+      <a class="button{% if can_register %} secondary{% endif %}" href="/login">Войти в гостиную</a>
+    </article>
+  </div>
+</section>
+{% include "public/_foot.html" %}
+{% endblock %}

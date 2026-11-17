@@ -1,0 +1,159 @@
+{% macro theme_switch() %}
+<div class="theme-switch" role="group" aria-label="Тема">
+  <button type="button" class="tip-host" data-theme-value="light" data-tip="Светлая" data-tip-below aria-label="Светлая" aria-pressed="false">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sun"/></svg>
+  </button>
+  <button type="button" class="tip-host" data-theme-value="dark" data-tip="Тёмная" data-tip-below data-tip-edge aria-label="Тёмная" aria-pressed="false">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-moon"/></svg>
+  </button>
+</div>
+{% endmacro %}
+{% macro nav_link(href, label, icon, prefix=false, count=0) -%}
+{% set on = path.startswith(href) if prefix else path == href -%}
+<a href="{{ href }}"{% if on %} class="is-on" aria-current="page"{% endif %}>
+  <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-{{ icon }}"/></svg>
+  <span>{{ label }}</span>
+  {% if count %}<span class="nav-count">{{ count if count < 100 else "99+" }}</span>{% endif %}
+</a>
+{%- endmacro %}
+<!DOCTYPE html>
+<html lang="ru" data-theme="{{ theme }}" data-signed-in="{% if user %}1{% else %}0{% endif %}">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="csrf-token" content="{{ csrf_token }}" />
+  <title>{% block title %}Parlor Night{% endblock %}</title>
+  <link rel="icon" href="/static/images/logo-mark-for-light.png" type="image/png" media="(prefers-color-scheme: light)" />
+  <link rel="icon" href="/static/images/logo-mark-for-dark.png" type="image/png" media="(prefers-color-scheme: dark)" />
+  <link rel="stylesheet" href="/static/css/app.css?v={{ asset_version }}" />
+  {% block extra_head %}{% endblock %}
+  <script src="/static/js/tz-init.js?v={{ asset_version }}"></script>
+  <script src="/static/js/theme-init.js?v={{ asset_version }}"></script>
+</head>
+<body class="{% if user and not preview %}shell{% elif public_page or preview %}public{% else %}auth{% endif %}" data-board="{{ board_style|default('classic') }}">
+  <a class="skip" href="#content">К содержанию</a>
+  {% if site and site.maintenance and not user and path in ["/", "/login", "/register"] %}
+  <p class="maintenance-banner" role="status">Сайт находится в режиме технического обслуживания. Вход невозможен.</p>
+  {% endif %}
+  <svg class="sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-lobby" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.7-3 2.8-4.5 5.5-4.5s4.8 1.5 5.5 4.5"/><circle cx="17" cy="9" r="2.2"/><path d="M16 14.7c1.8.3 3.2 1.4 3.8 3.8"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 19.5c1.1-3.4 3.4-5 7-5s5.9 1.6 7 5"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6.5h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H9l-4 3.2V7.5a1 1 0 0 1 1-1z"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 12h.01M11 12h6"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3.5V7M16 3.5V7M4 10h16"/></symbol>
+    <symbol id="i-news" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h9l3 3v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M15 4v4h4M8 12h8M8 16h6"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M5.8 5.8l1.4 1.4M16.8 16.8l1.4 1.4M18.2 5.8l-1.4 1.4M7.2 16.8l-1.4 1.4"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19h14"/><path d="M8 19V9"/><path d="M12 19V5"/><path d="M16 19V12"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 7V5h9v14h-9v-2"/><path d="M4 12h10M11 8l4 4-4 4"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3.5A7.5 7.5 0 1 0 20.5 14 6.2 6.2 0 0 1 16 3.5z"/></symbol>
+    <symbol id="i-coins" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="7" rx="7" ry="3"/><path d="M5 7v4.5c0 1.7 3.1 3 7 3s7-1.3 7-3V7"/><path d="M5 12v4.5c0 1.7 3.1 3 7 3s7-1.3 7-3V12"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 11v5M12 8h.01"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6.5 6.5 12 6.5 21.5 12 21.5 12 17.5 17.5 12 17.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.4"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h13M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8H4v4"/><path d="M4.5 12a7.5 7.5 0 1 0 2-5.2L4 8"/></symbol>
+    <symbol id="i-flip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8h8a3.5 3.5 0 0 1 0 7H8"/><path d="m10 5-3 3 3 3M14 19l3-3-3-3"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10"/><path d="m8 10 4 4 4-4M5 19h14"/></symbol>
+    <symbol id="i-dice" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="12" height="10" rx="2"/><path d="m15 10.5 6-3v9l-6-3z"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 19 6.5v6c0 4.2-3 6.8-7 8-4-1.2-7-3.8-7-8v-6z"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="11" height="12" rx="2"/><path d="M6 15H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v1"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L19 7"/></symbol>
+    <symbol id="i-screen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12h16M12 4v16"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5.5A2.5 2.5 0 0 1 7.5 3H19v16H7.5A2.5 2.5 0 0 0 5 21.5z"/><path d="M5 5.5V21.5"/></symbol>
+    <symbol id="i-again" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.2-5.5"/><path d="M20 4.5V9h-4.5"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16"/><path d="M6 5h11l-2 3.5 2 3.5H6"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.4 10.9c.4.4.7 1 .8 1.6h5.2c.1-.6.4-1.2.8-1.6A6 6 0 0 0 12 3z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-dots" viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/></symbol>
+    <symbol id="i-user-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-2.6 2.8-4 5.5-4s4.9 1.4 5.5 4M18 8v6M15 11h6"/></symbol>
+    <symbol id="i-add" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6.5v11l9-5.5z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10"/></symbol>
+  </svg>
+  {% if user and not preview %}
+  <div class="app">
+    <aside class="sidebar">
+      <a class="brand" href="/">
+        <img class="mark mark-on-dark" src="/static/images/logo-mark-for-dark.png?v={{ asset_version }}" alt="" />
+        <img class="mark mark-on-light" src="/static/images/logo-mark-for-light.png?v={{ asset_version }}" alt="" />
+        <span class="brand-title">Parlor Night</span>
+        <span class="brand-rule">гостиная</span>
+      </a>
+      <div class="side-scroll">
+        <nav class="nav" aria-label="Разделы">
+          {{ nav_link('/games/new', 'Новая партия', 'plus') }}
+          {{ nav_link('/', 'Кабинет', 'home') }}
+          {{ nav_link('/lobby', 'Гостиная', 'lobby') }}
+          {{ nav_link('/live', 'Идёт игра', 'eye', false, nav_live) }}
+          {{ nav_link('/join', 'Сесть за стол', 'code') }}
+          {{ nav_link('/friends', 'Друзья', 'user', false, nav_requests) }}
+          {{ nav_link('/chats', 'Беседы', 'chat', true, nav_chats) }}
+          {{ nav_link('/settings', 'Настройки', 'gear') }}
+        </nav>
+        {% if user.is_admin %}
+        <p class="side-label">Администратор</p>
+        <nav class="nav" aria-label="Администратор">
+          {{ nav_link('/admin/overview', 'Обзор', 'chart') }}
+          {{ nav_link('/admin/users', 'Гости', 'lobby') }}
+          {{ nav_link('/admin/site', 'Сайт', 'gear') }}
+          {{ nav_link('/admin/news', 'Новости', 'news', true) }}
+        </nav>
+        {% endif %}
+      </div>
+      <form class="logout" method="post" action="/logout">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <button type="submit">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-logout"/></svg>
+          <span>Выйти</span>
+        </button>
+      </form>
+    </aside>
+    <div class="workspace">
+      <header class="topbar">
+        {% block topbar_lead %}{% endblock %}
+        {{ player_link(user.display_name, user.username, user.avatar, false, false, true) }}
+        {% if chips is not none %}
+        <a class="chips-pill" href="/chips" title="История фишек">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-coins"/></svg>
+          {{ chips|grouped }} фишек
+        </a>
+        {% endif %}
+        <span class="top-gap" aria-hidden="true"></span>
+        {{ theme_switch() }}
+      </header>
+      <div class="toast-stack" id="toasts" aria-live="polite" aria-relevant="additions"></div>
+  {% elif not public_page and not preview %}
+  <div class="auth-switch">{{ theme_switch() }}</div>
+  {% endif %}
+  <main id="content">
+    {% if site and site.notice %}<p class="info-banner" role="status">{{ site.notice }}</p>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  {% if user and not preview %}
+    </div>
+  </div>
+  {% endif %}
+  <dialog id="age-dialog" class="confirm-dialog" {% if age_block %}data-open="1"{% endif %} aria-labelledby="age-title">
+    <h2 id="age-title">Игра с 18 лет</h2>
+    <p id="age-text">{{ age_block }}</p>
+    <div class="confirm-actions">
+      <a class="button secondary" href="/settings">Настройки</a>
+      <button type="button" id="age-close">Понятно</button>
+    </div>
+  </dialog>
+  {% if user and not preview %}
+  <script type="module" src="/static/js/notices.js?v={{ asset_version }}"></script>
+  {% endif %}
+  <script type="module" src="/static/js/age.js?v={{ asset_version }}"></script>
+  <script type="module" src="/static/js/theme.js?v={{ asset_version }}"></script>
+  <script type="module" src="/static/js/copy.js?v={{ asset_version }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

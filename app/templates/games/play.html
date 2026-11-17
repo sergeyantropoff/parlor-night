@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+{% block title %}{{ "Анализ" if analysis else "Партия" }} — Parlor Night{% endblock %}
+{% block topbar_lead %}
+<div class="topbar-lead">
+  <h1 title="{{ type_label[state.game_type] }} · {{ mode_label[state.mode] }}">{{ type_label[state.game_type] }} · {{ mode_label[state.mode] }}</h1>
+</div>
+{% endblock %}
+{% block content %}
+{% macro invite_strip(label) %}
+<p class="invite-bar" id="invite"{% if not state.join_code %} hidden="hidden"{% endif %}>
+  <span class="invite-code">{{ label }} <strong id="join-code">{{ state.join_code or "" }}</strong></span>
+  <span class="invite-actions">
+    <span class="invite-tool">
+      <button type="button" id="copy-code" aria-label="Скопировать код"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-copy"/></svg></button>
+      <span class="tip" role="tooltip">Скопировать код</span>
+    </span>
+    <span class="invite-tool">
+      <button type="button" id="invite-player" aria-label="Пригласить игрока"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-user-plus"/></svg></button>
+      <span class="tip" role="tooltip">Пригласить игрока</span>
+    </span>
+    <span class="invite-tool">
+      <button type="button" id="invite-close" aria-label="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg></button>
+      <span class="tip" role="tooltip">Закрыть</span>
+    </span>
+  </span>
+</p>
+{% endmacro %}
+<section class="play play-{{ state.game_type }}"{% if analysis %} data-analysis="1"{% endif %}>
+  <div class="stage">
+    <div class="stage-head">
+      <div class="stage-lead">
+        {% if state.mode in ["online", "vs_computer"] or state.watching %}
+        <div class="stage-marks">
+          {% if state.mode in ["online", "vs_computer"] %}
+          <p class="audience-badge {% if state.audience == 'open' %}is-open{% else %}is-closed{% endif %}">{% if state.audience == "open" %}Стол открыт: смотреть может каждый.{% else %}Стол закрыт для наблюдателей.{% endif %}</p>
+          {% endif %}
+          {% if state.watching %}
+          <p class="audience-badge is-watch"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"/></svg>Вы наблюдаете за столом и не делаете ходов.</p>
+          {% endif %}
+        </div>
+        {% endif %}
+        {% if state.can_sit %}
+        <div class="stage-extra">
+          <form class="sit-open" method="post" action="/live/{{ state.id }}/sit">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button type="submit">Сесть за стол</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+      <div class="stage-status">
+        <div class="status-row">
+          <p id="status" class="status-pill{% if state.result_tone %} is-{{ state.result_tone }}{% elif 'Ваш ход' in state.status_line %} is-you{% endif %}" role="status" data-hint="{{ state.status_line }}">{{ state.status_line }}</p>
+          <button type="button" id="watchers" class="watcher-badge tip-host" data-tip="Наблюдатели" data-tip-edge{% if state.audience != "open" or state.mode not in ["online", "vs_computer"] %} hidden{% endif %}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"/></svg>
+            <span id="watcher-count">{{ state.watchers|length }}</span>
+            <span class="sr">Наблюдатели</span>
+          </button>
+        </div>
+        {% if state.table != "cards" %}{{ invite_strip("Код приглашения") }}{% endif %}
+      </div>
+    </div>
+    {% if state.table == "cards" %}{{ invite_strip("Код стола") }}{% endif %}
+    <div class="table-stage">
+      <div class="tool-col{% if state.watching and state.table != 'board' %} is-quiet{% endif %}" role="toolbar" aria-label="За столом">
+        <span class="icon-tool"{% if state.watching or state.game_type == "go" %} hidden="hidden"{% endif %}>
+          <button type="button" id="undo" aria-label="Отменить"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-undo"/></svg></button>
+          <span class="tip" role="tooltip">Отменить</span>
+        </span>
+        <span class="icon-tool"{% if state.game_type == "go" %} hidden="hidden"{% endif %}>
+          <button type="button" id="flip" aria-label="Повернуть"{% if state.table == "cards" %} hidden{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-flip"/></svg></button>
+          <span class="tip" role="tooltip">Повернуть</span>
+        </span>
+        <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
+          <button type="button" id="save" aria-label="Сохранить"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-save"/></svg></button>
+          <span class="tip" role="tooltip">Сохранить</span>
+        </span>
+        <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
+          <button type="button" id="open-notes" data-drawer-open="notes" aria-label="Ходы" aria-expanded="false" aria-controls="table-notes"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-book"/></svg></button>
+          <span class="tip" role="tooltip">Ходы</span>
+        </span>
+        {% if state.in_call %}
+        <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
+          <button type="button" id="open-call" data-drawer-open="call" aria-label="Видео" aria-expanded="false" aria-controls="table-call"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-video"/></svg></button>
+          <span class="tip" role="tooltip">Видео</span>
+        </span>
+        {% endif %}
+        {% if state.mode != "vs_computer" %}
+        <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
+          <button type="button" id="open-chat" data-drawer-open="chat" aria-label="Чат стола" aria-expanded="false" aria-controls="table-chat"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chat"/></svg></button>
+          <span class="tip" role="tooltip">Чат стола</span>
+        </span>
+        {% endif %}
+        {% if not analysis and state.game_type != "go" %}
+        <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
+          <button type="button" id="continue" aria-label="К позиции"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></button>
+          <span class="tip" role="tooltip">К позиции</span>
+        </span>
+        {% endif %}
+        {% if state.mode not in ["online", "vs_computer"] %}
+        <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
+          <button type="button" id="engine-move" aria-label="Ход компьютера"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-dice"/></svg></button>
+          <span class="tip" role="tooltip">Ход компьютера</span>
+        </span>
+        {% endif %}
+      </div>
+      <div class="table-core">
+    <div id="card-table" data-you="{{ user.display_name }}"{% if chips is not none %} data-purse="{{ chips }}"{% endif %}{% if state.table != "cards" %} hidden="hidden"{% endif %}></div>
+    <p id="far-seat" class="seat-line" hidden></p>
+    <div class="board-frame"{% if state.table == "cards" or state.table == "go" %} hidden="hidden"{% endif %}>
+      <div id="ranks" class="coords ranks"></div>
+      <div id="board" class="board" role="grid" tabindex="0" aria-label="Игровая доска"></div>
+      <div class="corner"></div>
+      <div id="files" class="coords files"></div>
+    </div>
+    <div id="go-scene" class="go-scene"{% if state.table != "go" %} hidden="hidden"{% endif %}>
+      <p id="go-meta" class="go-meta"></p>
+      <div id="go-far" class="go-player"></div>
+      <div class="go-felt">
+        <div id="go-board" class="go-board" role="grid" tabindex="0" aria-label="Доска го"></div>
+      </div>
+      <div id="go-near" class="go-player"></div>
+      <p id="go-note" class="quiet" role="status"></p>
+      <p id="go-link" class="quiet" role="status"></p>
+      <p id="go-error" class="banner" role="alert" hidden="hidden"></p>
+      <div id="go-actions" class="go-actions"></div>
+      <section id="go-score" class="go-score" hidden="hidden"></section>
+    </div>
+    <p id="near-seat" class="seat-line"></p>
+    {% if user.is_admin %}
+    <button type="button" id="hint" class="hint-btn tip-host" data-tip="Подсказка" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bulb"/></svg><span class="sr">Подсказка</span></button>
+    {% endif %}
+    <div id="rematch-offer" class="rematch-offer" hidden>
+        <span id="rematch-text"></span>
+        <span class="rematch-actions">
+          <button type="button" id="rematch-decline" class="dock-btn is-play">Не сейчас</button>
+          <button type="button" id="rematch-accept" class="dock-btn is-play is-primary"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-again"/></svg>Реванш!</button>
+        </span>
+    </div>
+    <p class="quiet keys"{% if state.table == "cards" or state.table == "go" %} hidden="hidden"{% endif %}>Касание или перетаскивание: фигура, затем поле. С клавиатуры — стрелки и Enter, Escape снимает выбор.</p>
+      </div>
+      <div class="tool-col is-end{% if state.watching %} is-quiet{% endif %}" role="toolbar" aria-label="Дальше">
+        {% if not analysis and state.can_stop and not state.watching %}
+        <span class="icon-tool">
+          <button type="button" id="stop-game" class="is-quiet" aria-label="Остановить"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-stop"/></svg></button>
+          <span class="tip" role="tooltip">Остановить</span>
+        </span>
+        {% endif %}
+        {% if not analysis and not state.watching and state.status == "active" and state.game_type != "go" %}
+        <span class="icon-tool">
+          <button type="button" id="end-game" class="is-danger" aria-label="{% if state.table == 'cards' %}Выйти{% else %}Сдаться{% endif %}"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-flag"/></svg></button>
+          <span class="tip" role="tooltip">{% if state.table == "cards" %}Выйти{% else %}Сдаться{% endif %}</span>
+        </span>
+        {% endif %}
+        {% if analysis %}
+        <span class="icon-tool">
+          <a href="/games/new" aria-label="Новая партия"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-add"/></svg></a>
+          <span class="tip" role="tooltip">Новая партия</span>
+        </span>
+        <span class="icon-tool">
+          <a href="/games/{{ state.id }}" aria-label="К партии"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+          <span class="tip" role="tooltip">К партии</span>
+        </span>
+        {% else %}
+        {% if state.game_type != "go" and not state.watching %}
+        <span class="icon-tool">
+          <a href="/games/{{ state.id }}/analysis" aria-label="Анализ"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chart"/></svg></a>
+          <span class="tip" role="tooltip">Анализ</span>
+        </span>
+        {% endif %}
+        <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
+          <a id="new-game" href="/games/new" aria-label="Новая партия"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-add"/></svg></a>
+          <span class="tip" role="tooltip">Новая партия</span>
+        </span>
+        <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
+          <button type="button" id="rematch" aria-label="Реванш!" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-again"/></svg></button>
+          <span class="tip" role="tooltip">Реванш!</span>
+        </span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <dialog id="watcher-dialog" class="confirm-dialog watcher-dialog" aria-labelledby="watcher-title">
+  <h2 id="watcher-title">Наблюдают</h2>
+  <p id="watcher-empty" class="quiet" hidden>Пока никто не смотрит.</p>
+  <ul id="watcher-list" class="watcher-list"></ul>
+  <div class="confirm-actions">
+    <button type="button" id="watcher-close" class="secondary">Закрыть</button>
+  </div>
+</dialog>
+<dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title">
+    <h2 id="confirm-title"></h2>
+    <p id="confirm-text"></p>
+    <div class="confirm-actions">
+      <button type="button" id="confirm-cancel" class="secondary">Отмена</button>
+      <button type="button" id="confirm-ok"></button>
+    </div>
+  </dialog>
+  <div id="notes-backdrop" class="notes-backdrop"></div>
+  <aside id="table-notes" class="side-panel" data-drawer="notes" aria-hidden="true">
+    <div class="notes-head">
+      <h2>Ходы и разбор</h2>
+      <button type="button" class="secondary" data-drawer-close>Закрыть</button>
+    </div>
+    <section>
+      <h2>Ходы</h2>
+      <ol id="history"></ol>
+    </section>
+    <section>
+      <h2>Разбор</h2>
+      <div id="lines"></div>
+      <p class="download"><a href="/api/v1/games/{{ state.id }}/export"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-save"/></svg> {% if state.game_type == "go" %}Сохранить SGF{% else %}Скачать запись{% endif %}</a></p>
+    </section>
+  </aside>
+  {% if state.mode != "vs_computer" %}
+  <aside id="table-chat" class="side-panel" data-drawer="chat" aria-hidden="true">
+    <div class="notes-head">
+      <h2>Чат стола</h2>
+      <button type="button" class="secondary" data-drawer-close>Закрыть</button>
+    </div>
+    <section class="table-chat">
+      <ol id="chat-log"></ol>
+      <form id="chat-form" class="chat-form">
+        <label class="sr" for="chat-body">Сообщение</label>
+        <input id="chat-body" maxlength="1000" autocomplete="off" placeholder="Сообщение..." />
+        <button type="submit" class="tip-host" data-tip="Отправить" data-tip-edge aria-label="Отправить"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-send"/></svg></button>
+      </form>
+    </section>
+  </aside>
+  {% endif %}
+  {% if state.in_call %}
+  <aside id="table-call" class="side-panel" data-drawer="call" aria-hidden="true">
+    <div class="notes-head">
+      <h2>Видео</h2>
+      <button type="button" class="secondary" data-drawer-close>Закрыть</button>
+    </div>
+    <div id="call-board" class="call-board">
+      <div id="call-tiles" class="call-tiles">
+        <article class="call-tile" data-tile="self">
+          <div class="tile-frame">
+            <p class="tile-wait">Камера выключена</p>
+            <video id="self-video" autoplay="autoplay" muted="muted" playsinline="playsinline"></video>
+            <button type="button" class="tile-pin" data-pin="self">Главное</button>
+          </div>
+          <p class="tile-name"><a class="person-link" href="/players/{{ user.username }}" target="_blank" rel="noopener">{{ user.display_name }} · вы</a></p>
+        </article>
+      </div>
+    </div>
+    <div class="seat-actions">
+      <button type="button" id="cam" class="secondary">Камера</button>
+      <button type="button" id="mic" class="secondary">Микрофон</button>
+      <button type="button" id="blur" class="secondary">Блюр фона</button>
+    </div>
+    <p id="call-status" class="quiet">Камера и микрофон только у игроков за столом, до шести человек. Нажмите «Главное», чтобы увеличить выбранного игрока. Наблюдатели звук и видео не передают.</p>
+  </aside>
+  {% endif %}
+</section>
+{% if state.game_type == "poker" %}
+<dialog id="poker-ranks" class="ranks-dialog">
+  <form method="dialog">
+    <h2>Комбинации</h2>
+    <p>Старшая бьёт младшую. Лучшие пять карт из двух своих и пяти на столе.</p>
+    <ol>
+      <li><strong>Роял-флеш</strong> — туз, король, дама, валет и десятка одной масти</li>
+      <li><strong>Стрит-флеш</strong> — пять карт подряд одной масти</li>
+      <li><strong>Каре</strong> — четыре карты одного достоинства</li>
+      <li><strong>Фулл-хаус</strong> — три одного достоинства и пара</li>
+      <li><strong>Флеш</strong> — пять карт одной масти</li>
+      <li><strong>Стрит</strong> — пять карт подряд разных мастей</li>
+      <li><strong>Сет</strong> — три карты одного достоинства</li>
+      <li><strong>Две пары</strong></li>
+      <li><strong>Пара</strong> — две карты одного достоинства</li>
+      <li><strong>Старшая карта</strong> — ни одной пары</li>
+    </ol>
+    <button type="button" class="secondary" data-close>Закрыть</button>
+  </form>
+</dialog>
+{% endif %}
+<dialog id="poker-summary" class="summary-dialog" aria-labelledby="summary-title">
+  <p id="summary-kicker" class="summary-kicker"></p>
+  <h2 id="summary-title"></h2>
+  <p id="summary-line"></p>
+  <div id="summary-board" class="summary-board"></div>
+  <div id="summary-stats" class="summary-stats"></div>
+  <ul id="summary-seats"></ul>
+  <div class="summary-actions">
+    <button type="button" id="summary-finish" class="secondary">Остановить</button>
+    <button type="button" id="summary-again">Играть ещё раз</button>
+  </div>
+</dialog>
+<dialog id="invite-dialog" class="social-dialog" aria-labelledby="invite-title">
+  <form id="invite-form">
+    <h2 id="invite-title">Пригласить игрока</h2>
+    <p class="quiet">Начните вводить логин. Приглашение уйдёт в личную беседу.</p>
+    <label>Логин
+      <input id="invite-query" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="invite-results" />
+    </label>
+    <ul id="invite-results" class="invite-results" role="listbox" hidden></ul>
+    <p id="invite-empty" class="quiet" hidden>Никого с таким логином нет.</p>
+    <div class="dialog-actions">
+      <button type="button" class="secondary" id="invite-cancel">Отмена</button>
+      <button type="submit" id="invite-send" disabled>Отправить</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="promotion">
+  <form method="dialog">
+    <p>Выберите фигуру</p>
+    <button type="button" class="promo" data-piece="q"><img alt="" src="/static/images/pieces/chess-w-q.png" />Ферзь</button>
+    <button type="button" class="promo" data-piece="r"><img alt="" src="/static/images/pieces/chess-w-r.png" />Ладья</button>
+    <button type="button" class="promo" data-piece="b"><img alt="" src="/static/images/pieces/chess-w-b.png" />Слон</button>
+    <button type="button" class="promo" data-piece="n"><img alt="" src="/static/images/pieces/chess-w-n.png" />Конь</button>
+    <button type="button" id="promotion-cancel" class="secondary">Отмена</button>
+  </form>
+</dialog>
+<script type="application/json" id="game-state">{{ state_json | safe }}</script>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/js/game.js?v={{ asset_version }}"></script>
+{% endblock %}

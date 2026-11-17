@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Фишки — Parlor Night{% endblock %}
+{% block topbar_lead %}
+<div class="topbar-lead"><h1>Фишки</h1></div>
+{% endblock %}
+{% block content %}
+<section class="page">
+  <p class="lede">Партии, начисления и гости, зарегистрированные по вашей ссылке.</p>
+  <section class="panel" id="chip-history">
+    {% if events %}
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr><th>За что</th><th>Фишки</th><th>Когда</th></tr>
+        </thead>
+        <tbody>
+          {% for event in events %}
+          <tr>
+            <td>
+              {% if event.kind == "game" %}
+              {% if event.game_id %}
+              <a href="/games/{{ event.game_id }}">
+                {% if event.game_type %}
+                <span class="glyph" aria-hidden="true"><img class="theme-light game-mark" src="/static/images/games/game-{{ event.game_type }}-light.png?v={{ asset_version }}" alt="" /><img class="theme-dark game-mark" src="/static/images/games/game-{{ event.game_type }}-dark.png?v={{ asset_version }}" alt="" /></span>
+                {{ type_label[event.game_type] }}
+                {% else %}Партия{% endif %}
+              </a>
+              {% elif event.game_type %}
+              {{ type_label[event.game_type] }}
+              {% else %}
+              Партия
+              {% endif %}
+              · {{ event.note }}
+              {% elif event.username %}
+              {{ player_link(event.person_name, event.username, event.avatar, false, false, true) }}
+              · {{ event.note }}
+              {% else %}
+              {{ event.note }}
+              {% endif %}
+            </td>
+            <td>{% if event.amount is not none %}<span class="chip-plus">+{{ event.amount|grouped }}</span>{% else %}<span class="quiet">—</span>{% endif %}</td>
+            <td>{{ event.at|dt }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if pages > 1 %}
+    <div class="chip-pager">
+    <nav class="pager" aria-label="Страницы начислений">
+      {% if page > 1 %}
+      <a class="pager-step" href="/chips?page={{ page - 1 }}#chip-history" rel="prev">Назад</a>
+      {% else %}
+      <span class="pager-step is-off">Назад</span>
+      {% endif %}
+      <ol>
+        {% for number in page_links %}
+        {% if number is none %}
+        <li class="pager-gap" aria-hidden="true">…</li>
+        {% elif number == page %}
+        <li><span aria-current="page">{{ number }}</span></li>
+        {% else %}
+        <li><a href="/chips?page={{ number }}#chip-history">{{ number }}</a></li>
+        {% endif %}
+        {% endfor %}
+      </ol>
+      {% if page < pages %}
+      <a class="pager-step" href="/chips?page={{ page + 1 }}#chip-history" rel="next">Дальше</a>
+      {% else %}
+      <span class="pager-step is-off">Дальше</span>
+      {% endif %}
+    </nav>
+    <p class="quiet">{{ shown }}</p>
+    </div>
+    {% endif %}
+    {% else %}
+    <p>Пока здесь пусто. Фишки приходят за партию, начислением и за гостя, который зарегистрировался по вашей ссылке.</p>
+    {% endif %}
+  </section>
+</section>
+{% endblock %}

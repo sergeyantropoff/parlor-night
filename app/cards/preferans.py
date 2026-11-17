@@ -1,0 +1,810 @@
+"""Преферанс на троих. Банк — игровые фишки, не деньги.
+
+Колода в 32 карты, по десять на руки и две в прикуп.
+Торг идёт от шести в пиках до десяти без козыря. Мизер дороже семёрки без козыря и дешевле восьмёрки.
+Распасы — если все пасуют. Кто взял игру, забирает прикуп и сбрасывает две карты.
+Соперники вистуют или пасуют.
+
+Партия идёт, пока у каждого в пуле не наберётся выбранное число очков. Обычная пуля — 12.
+Шестёрка стоит 2, дальше каждая ступень добавляет 2, мизер стоит 10. Лишние взятки дописывают в пулю.
+Сверх выбранного числа очки уходят в висты на обоих соперников. Невзятая игра пишется в гору.
+В конце гостиная выводит пулю, гору, висты и расписку и переводит разницу в фишки.
+"""
+
+from __future__ import annotations
+
+import json
+import random
+import secrets
+from typing import Any
+
+from app.cards.deck import SUITS, label, rank_value
+
+RANKS = "789TJQKA"
+SUIT_ORDER = ("S", "C", "D", "H", "NT")
+SUIT_TITLE = {"S": "пики", "C": "трефы", "D": "бубны", "H": "черви", "NT": "без козыря"}
+POOLS = (6, 10, 12, 16, 20)
+ANTE = 10
+
+
+def waiting(order: list[str] | None = None, variant: str = "classic") -> dict[str, Any]:
+    del variant
+    seats = list(order or ["p0", "p1", "p2"])
+    return _shell(seats, "waiting")
+
+
+def waiting_table(seat_keys: list[str], variant: str = "classic") -> dict[str, Any]:
+    return waiting(seat_keys, variant)
+
+
+def deal(
+    order: list[str] | None = None,
+    variant: str = "classic",
+    purses: dict[str, int] | None = None,
+) -> dict[str, Any]:
+    del purses
+    seats = list(order or ["p0", "p1", "p2"])
+    if len(seats) != 3:
+        raise ValueError("В преферансе трое игроков.")
+    pool = _pool_of(variant)
+    state = _shell(seats, "bid")
+    state["pool"] = pool
+    state["variant"] = f"pool-{pool}"
+    state["seed"] = secrets.randbits(31)
+    state["deals"] = 1
+    state["opener"] = 0
+    _lay_deal(state)
+    state["committed"] = {seat: ANTE for seat in seats}
+    state["to_move"] = seats[0]
+    return state
+
+
+def deal_table(
+    seat_keys: list[str],
+    variant: str = "classic",
+    purses: dict[str, int] | None = None,
+) -> dict[str, Any]:
+    return deal(seat_keys, variant, purses)
+
+
+def _shell(seats: list[str], phase: str) -> dict[str, Any]:
+    return {
+        "kind": "preferans",
+        "variant": "classic",
+        "phase": phase,
+        "to_move": seats[0],
+        "order": seats,
+        "hands": {seat: [] for seat in seats},
+        "talon": [],
+        "bidding": {seat: "open" for seat in seats},
+        "contract": None,
+        "declarer": "",
+        "whist": {},
+        "trump": "",
+        "trick": [],
+        "trick_seats": [],
+        "tricks": {seat: 0 for seat in seats},
+        "lead": "",
+        "committed": {seat: 0 for seat in seats},
+        "payout": {},
+        "result": None,
+        "reason": None,
+        "line": "",
+        "played": [],
+        "pool": 12,
+        "seed": 1,
+        "deals": 0,
+        "opener": 0,
+        "bullet": {seat: 0 for seat in seats},
+        "mountain": {seat: 0 for seat in seats},
+        "whists": {seat: {other: 0 for other in seats if other != seat} for seat in seats},
+        "sheet": None,
+    }
+
+
+def _pool_of(variant: str) -> int:
+    text = str(variant or "")
+    if text.startswith("pool-"):
+        try:
+            size = int(text.split("-", 1)[1])
+        except ValueError:
+            size = 12
+        if size in POOLS:
+            return size
+    return 12
+
+
+def _shuffled(seed: int) -> list[str]:
+    cards = [rank + suit for rank in RANKS for suit in SUITS]
+    random.Random(seed).shuffle(cards)
+    return cards
+
+
+def _lay_deal(state: dict[str, Any]) -> None:
+    deck = _shuffled(int(state["seed"]) + int(state["deals"]))
+    seats = list(state["order"])
+    state["hands"] = {seat: [deck.pop() for _ in range(10)] for seat in seats}
+    state["talon"] = [deck.pop(), deck.pop()]
+
+
+def _ensure(state: dict[str, Any]) -> None:
+    seats = list(state.get("order") or [])
+    state["pool"] = int(state.get("pool") or _pool_of(str(state.get("variant") or "")))
+    state.setdefault("seed", 1)
+    state.setdefault("deals", 1)
+    state.setdefault("opener", 0)
+    bullet = state.setdefault("bullet", {})
+    mountain = state.setdefault("mountain", {})
+    whists = state.setdefault("whists", {})
+    for seat in seats:
+        bullet.setdefault(seat, 0)
+        mountain.setdefault(seat, 0)
+        row = whists.setdefault(seat, {})
+        for other in seats:
+            if other != seat:
+                row.setdefault(other, 0)
+
+
+def dumps(state: dict[str, Any]) -> str:
+    return json.dumps(state, ensure_ascii=False, separators=(",", ":"))
+
+
+def loads(text: str) -> dict[str, Any]:
+    state = json.loads(text)
+    if not isinstance(state, dict) or state.get("kind") != "preferans":
+        raise ValueError("Это не стол преферанса.")
+    return state
+
+
+def _value(card: str) -> int:
+    return rank_value(card, RANKS)
+
+
+def _contract_rank(contract: dict[str, Any] | None) -> float:
+    if not contract:
+        return -1
+    if contract.get("miser"):
+        return 7 * 5 + 4 + 0.5
+    return int(contract["level"]) * 5 + SUIT_ORDER.index(str(contract["suit"]))
+
+
+def _contract_title(contract: dict[str, Any] | None) -> str:
+    if not contract:
+        return "Распасы"
+    if contract.get("miser"):
+        return "Мизер"
+    if contract.get("raspasy"):
+        return "Распасы"
+    return f"{contract['level']} {SUIT_TITLE[str(contract['suit'])]}"
+
+
+def _next(state: dict[str, Any], seat: str) -> str:
+    order = list(state["order"])
+    return order[(order.index(seat) + 1) % len(order)]
+
+
+def legal(state: dict[str, Any]) -> list[dict[str, Any]]:
+    if state.get("result"):
+        return []
+    phase = state.get("phase")
+    seat = state.get("to_move")
+    actions: list[dict[str, Any]] = []
+    if phase == "bid":
+        current = _contract_rank(state.get("contract"))
+        actions.append({"path": ["bid", "pass"], "notation": "Пас", "promotion": None})
+        if current < 7 * 5 + 4 + 0.5:
+            actions.append({"path": ["bid", "miser"], "notation": "Мизер", "promotion": None})
+        for level in range(6, 11):
+            for suit in SUIT_ORDER:
+                rank = level * 5 + SUIT_ORDER.index(suit)
+                if rank > current:
+                    actions.append(
+                        {
+                            "path": ["bid", str(level), suit],
+                            "notation": f"{level} {SUIT_TITLE[suit]}",
+                            "promotion": None,
+                        }
+                    )
+        return actions
+    if phase == "discard":
+        hand = list(state["hands"][seat])
+        seen: set[tuple[str, str]] = set()
+        for left in range(len(hand)):
+            for right in range(left + 1, len(hand)):
+                pair = tuple(sorted((hand[left], hand[right])))
+                if pair in seen:
+                    continue
+                seen.add(pair)
+                actions.append(
+                    {
+                        "path": ["discard", pair[0], pair[1]],
+                        "notation": f"Сброс {label(pair[0])} и {label(pair[1])}",
+                        "promotion": None,
+                    }
+                )
+        return actions
+    if phase == "whist":
+        actions.append({"path": ["whist", "yes"], "notation": "Вист", "promotion": None})
+        actions.append({"path": ["whist", "half"], "notation": "Полвиста", "promotion": None})
+        actions.append({"path": ["whist", "no"], "notation": "Пас на вист", "promotion": None})
+        return actions
+    if phase == "play":
+        hand = list(state["hands"][seat])
+        for card in _playable(state, seat):
+            actions.append({"path": ["play", card], "notation": label(card), "promotion": None})
+        del hand
+        return actions
+    return []
+
+
+def _playable(state: dict[str, Any], seat: str) -> list[str]:
+    hand = list(state["hands"][seat])
+    trick = list(state.get("trick") or [])
+    if not trick:
+        return list(dict.fromkeys(hand))
+    led = trick[0][1]
+    same = [card for card in hand if card[1] == led]
+    return list(dict.fromkeys(same or hand))
+
+
+def apply(state: dict[str, Any], path: list[str]) -> tuple[dict[str, Any], list[tuple[str, int]]]:
+    nxt = json.loads(dumps(state))
+    _ensure(nxt)
+    allowed = [list(item["path"]) for item in legal(nxt)]
+    if list(path) not in allowed:
+        raise ValueError("Такой ход в преферансе не принимается.")
+    seat = nxt["to_move"]
+    if path[0] == "bid":
+        nxt["last_trick"] = []
+        if path[1] == "pass":
+            nxt["bidding"][seat] = "passed"
+        elif path[1] == "miser":
+            nxt["contract"] = {"miser": True}
+            nxt["bidding"][seat] = "bid"
+        else:
+            nxt["contract"] = {"level": int(path[1]), "suit": path[2]}
+            nxt["bidding"][seat] = "bid"
+        _after_bid(nxt)
+        return nxt, []
+    if path[0] == "discard":
+        for card in path[1:]:
+            nxt["hands"][seat].remove(card)
+        nxt["talon"] = []
+        _after_discard(nxt)
+        return nxt, []
+    if path[0] == "whist":
+        nxt["whist"][seat] = path[1] if path[1] in {"yes", "half", "no"} else "no"
+        _after_whist(nxt)
+        return nxt, []
+    card = path[1]
+    nxt["hands"][seat].remove(card)
+    nxt["trick"].append(card)
+    nxt["trick_seats"].append(seat)
+    nxt["played"].append(card)
+    if len(nxt["trick"]) < 3:
+        nxt["to_move"] = _next(nxt, seat)
+        return nxt, []
+    winner = _trick_winner(nxt)
+    nxt["tricks"][winner] = int(nxt["tricks"].get(winner, 0)) + 1
+    nxt["last_trick"] = list(nxt["trick"])
+    nxt["trick"] = []
+    nxt["trick_seats"] = []
+    if any(nxt["hands"].values()):
+        nxt["to_move"] = winner
+        nxt["lead"] = winner
+        return nxt, []
+    _score(nxt)
+    return nxt, []
+
+
+def _after_bid(state: dict[str, Any]) -> None:
+    order = list(state["order"])
+    if state.get("contract") is None:
+        if all(state["bidding"][seat] == "passed" for seat in order):
+            state["contract"] = {"raspasy": True}
+            state["declarer"] = ""
+            state["trump"] = ""
+            state["phase"] = "play"
+            state["to_move"] = order[0]
+            state["lead"] = order[0]
+        else:
+            state["to_move"] = _next_open_bidder(state, state["to_move"])
+        return
+    still = [seat for seat in order if state["bidding"][seat] != "passed"]
+    if len(still) == 1:
+        _start_declarer(state, still[0])
+        return
+    state["to_move"] = _next_open_bidder(state, state["to_move"])
+
+
+def _next_open_bidder(state: dict[str, Any], seat: str) -> str:
+    nxt = seat
+    for _ in state["order"]:
+        nxt = _next(state, nxt)
+        if state["bidding"][nxt] != "passed":
+            return nxt
+    return seat
+
+
+def _start_declarer(state: dict[str, Any], seat: str) -> None:
+    state["declarer"] = seat
+    contract = state["contract"]
+    if contract.get("miser"):
+        state["trump"] = ""
+        state["phase"] = "whist"
+        state["to_move"] = _next(state, seat)
+        return
+    state["trump"] = "" if contract["suit"] == "NT" else contract["suit"]
+    state["hands"][seat].extend(state["talon"])
+    state["phase"] = "discard"
+    state["to_move"] = seat
+
+
+def _after_discard(state: dict[str, Any]) -> None:
+    state["phase"] = "whist"
+    state["to_move"] = _next(state, state["declarer"])
+
+
+def _after_whist(state: dict[str, Any]) -> None:
+    defenders = [seat for seat in state["order"] if seat != state["declarer"]]
+    pending = [seat for seat in defenders if seat not in state["whist"]]
+    if pending:
+        state["to_move"] = pending[0]
+        return
+    if any(_whist_mode(value) in {"yes", "half"} for value in state["whist"].values()):
+        state["phase"] = "play"
+        state["to_move"] = state["declarer"] or state["order"][0]
+        state["lead"] = state["to_move"]
+        return
+    _score(state, blind=True)
+
+
+def _trick_winner(state: dict[str, Any]) -> str:
+    cards = list(state["trick"])
+    seats = list(state["trick_seats"])
+    trump = str(state.get("trump") or "")
+    led = cards[0][1]
+    best = 0
+    for index, card in enumerate(cards):
+        if _outranks(card, cards[best], led, trump):
+            best = index
+    return seats[best]
+
+
+def _outranks(card: str, other: str, led: str, trump: str) -> bool:
+    if trump:
+        if card[1] == trump and other[1] != trump:
+            return True
+        if card[1] != trump and other[1] == trump:
+            return False
+        if card[1] == trump and other[1] == trump:
+            return _value(card) > _value(other)
+    if card[1] == led and other[1] != led:
+        return True
+    if card[1] != led and other[1] == led:
+        return False
+    if card[1] == other[1]:
+        return _value(card) > _value(other)
+    return False
+
+
+def _cost(contract: dict[str, Any]) -> int:
+    if contract.get("miser"):
+        return 10
+    if contract.get("raspasy"):
+        return 0
+    return max(0, (int(contract["level"]) - 5) * 2)
+
+
+def _write_bullet(state: dict[str, Any], seat: str, points: int) -> None:
+    if points <= 0:
+        return
+    pool = int(state["pool"])
+    room = max(0, pool - int(state["bullet"].get(seat, 0)))
+    into = min(points, room)
+    state["bullet"][seat] = int(state["bullet"].get(seat, 0)) + into
+    spill = points - into
+    if spill <= 0:
+        return
+    for other in state["order"]:
+        if other != seat:
+            _write_whist(state, seat, str(other), spill)
+
+
+def _write_mountain(state: dict[str, Any], seat: str, points: int) -> None:
+    if points > 0:
+        state["mountain"][seat] = int(state["mountain"].get(seat, 0)) + points
+
+
+def _write_whist(state: dict[str, Any], owner: str, target: str, points: int) -> None:
+    if points <= 0 or owner == target:
+        return
+    row = state["whists"].setdefault(owner, {})
+    row[target] = int(row.get(target, 0)) + points
+
+
+def _score(state: dict[str, Any], *, blind: bool = False) -> None:
+    _ensure(state)
+    seats = list(state["order"])
+    contract = state.get("contract") or {"raspasy": True}
+    declarer = str(state.get("declarer") or "")
+    tricks = {seat: int(state["tricks"].get(seat, 0)) for seat in seats}
+    title = _contract_title(contract)
+    if contract.get("raspasy") or not declarer:
+        for seat, count in tricks.items():
+            _write_mountain(state, seat, count)
+        fewest = min(tricks.values()) if tricks else 0
+        winners = [seat for seat, count in tricks.items() if count == fewest]
+        if len(winners) == 1:
+            _write_bullet(state, winners[0], 2)
+        state["line"] = "Распасы записаны в гору."
+    elif contract.get("miser"):
+        made = blind or tricks.get(declarer, 0) == 0
+        if made:
+            _write_bullet(state, declarer, 10)
+            state["line"] = "Оба спасовали. Мизер записан без розыгрыша." if blind else "Мизер взят: 10 в пулю."
+        else:
+            _write_mountain(state, declarer, 10)
+            for seat in seats:
+                if seat == declarer:
+                    continue
+                points = max(2, 2 * tricks.get(declarer, 0))
+                if _whist_mode((state.get("whist") or {}).get(seat)) == "half":
+                    points = _whist_points("half", points)
+                _write_whist(state, seat, declarer, points)
+            state["line"] = "Мизер не взят: 10 в гору."
+    else:
+        need = int(contract["level"])
+        taken = need if blind else tricks.get(declarer, 0)
+        price = _cost(contract)
+        if taken >= need:
+            _write_bullet(state, declarer, price + (taken - need))
+            _award_whists(state, declarer)
+            if blind:
+                state["line"] = f"Оба спасовали на вист. {title} записана без розыгрыша."
+            else:
+                state["line"] = f"{title} взята: {taken} из {need}."
+        else:
+            _write_mountain(state, declarer, price)
+            _award_whists(state, declarer)
+            state["line"] = f"{title} не взята: {taken} из {need}."
+    if _closed(state):
+        _finish(state)
+        return
+    _redeal(state)
+
+
+def _closed(state: dict[str, Any]) -> bool:
+    pool = int(state["pool"])
+    return all(int(state["bullet"].get(seat, 0)) >= pool for seat in state["order"])
+
+
+def _balance(state: dict[str, Any], seat: str) -> int:
+    own = sum(int(points) for points in (state["whists"].get(seat) or {}).values())
+    against = sum(int((state["whists"].get(other) or {}).get(seat, 0)) for other in state["order"] if other != seat)
+    return int(state["bullet"].get(seat, 0)) - int(state["mountain"].get(seat, 0)) + own - against
+
+
+def _finish(state: dict[str, Any], *, reason: str = "score", line: str = "") -> None:
+    seats = list(state["order"])
+    scores = {seat: _balance(state, seat) for seat in seats}
+    best = max(scores.values()) if scores else 0
+    leaders = [seat for seat, score in scores.items() if score == best]
+    mean = sum(scores.values()) / len(scores) if scores else 0
+    payout = {seat: max(0, int(round((scores[seat] - mean) * 5))) for seat in seats}
+    if sum(payout.values()) == 0:
+        payout = {seat: ANTE for seat in seats}
+    state["payout"] = payout
+    state["phase"] = "done"
+    state["reason"] = reason
+    state["result"] = f"{leaders[0]}_win" if len(leaders) == 1 else "draw"
+    pool = int(state["pool"])
+    state["line"] = line or f"Пуля до {pool} закрыта. Расписка готова."
+    state["sheet"] = _public_sheet(state, closed=True)
+    state["pot"] = sum(int(amount) for amount in (state.get("committed") or {}).values())
+
+
+def _redeal(state: dict[str, Any]) -> None:
+    seats = list(state["order"])
+    note = str(state.get("line") or "")
+    state["deals"] = int(state.get("deals") or 1) + 1
+    state["opener"] = (int(state.get("opener") or 0) + 1) % len(seats)
+    state["bidding"] = {seat: "open" for seat in seats}
+    state["contract"] = None
+    state["declarer"] = ""
+    state["whist"] = {}
+    state["trump"] = ""
+    state["trick"] = []
+    state["trick_seats"] = []
+    state["tricks"] = {seat: 0 for seat in seats}
+    state["played"] = []
+    state["lead"] = ""
+    state["committed"] = {seat: 0 for seat in seats}
+    state["payout"] = {}
+    state["result"] = None
+    state["reason"] = None
+    state["phase"] = "bid"
+    state["to_move"] = seats[int(state["opener"])]
+    state["line"] = note
+    _lay_deal(state)
+
+
+def _public_sheet(state: dict[str, Any], *, closed: bool) -> dict[str, Any]:
+    seats = list(state["order"])
+    return {
+        "pool": int(state["pool"]),
+        "closed": closed,
+        "seats": seats,
+        "bullet": {seat: int(state["bullet"].get(seat, 0)) for seat in seats},
+        "mountain": {seat: int(state["mountain"].get(seat, 0)) for seat in seats},
+        "whists": {
+            seat: {other: int((state["whists"].get(seat) or {}).get(other, 0)) for other in seats if other != seat}
+            for seat in seats
+        },
+        "total": {seat: _balance(state, seat) for seat in seats},
+    }
+
+
+def _note_tone(line: str) -> str:
+    text = line.casefold()
+    if "не взят" in text:
+        return "miss"
+    if "взят" in text or "без розыгрыша" in text:
+        return "made"
+    return "draw"
+
+
+def _progress(state: dict[str, Any]) -> str:
+    pool = int(state.get("pool") or 12)
+    parts = [f"{int((state.get('bullet') or {}).get(seat, 0))}/{pool}" for seat in state.get("order") or []]
+    return f"Пуля {' · '.join(parts)}."
+
+
+def _whist_mode(value: object) -> str:
+    if value is True or value == "yes":
+        return "yes"
+    if value == "half":
+        return "half"
+    return "no"
+
+
+def _whist_points(mode: str, taken: int) -> int:
+    if mode == "half":
+        return (int(taken) + 1) // 2
+    return int(taken)
+
+
+def _award_whists(state: dict[str, Any], declarer: str) -> None:
+    for seat, raw in (state.get("whist") or {}).items():
+        mode = _whist_mode(raw)
+        if str(seat) == declarer or mode == "no":
+            continue
+        _write_whist(state, str(seat), declarer, _whist_points(mode, int(state["tricks"].get(seat, 0))))
+
+
+def _whist_tricks(hand: list[str], trump: str) -> int:
+    suits: dict[str, list[int]] = {}
+    for card in hand:
+        suits.setdefault(card[1], []).append(_value(card))
+    tricks = 0
+    for suit, ranks in suits.items():
+        ranks.sort(reverse=True)
+        if trump and suit == trump:
+            honors = sum(1 for rank in ranks if rank >= 5)
+            tricks += honors + max(0, len(ranks) - 2)
+            continue
+        if ranks[0] == 7:
+            tricks += 1
+        if 6 in ranks and len(ranks) >= 2:
+            tricks += 1
+    return tricks
+
+
+def _suggest_whist(state: dict[str, Any], seat: str, level: int) -> list[str]:
+    contract = state.get("contract") or {}
+    hand = list(state["hands"].get(seat) or [])
+    if contract.get("miser"):
+        highs = sum(1 for card in hand if _value(card) >= 5)
+        if highs >= 2 or level >= 3:
+            return ["whist", "yes"]
+        return ["whist", "half"] if highs == 1 else ["whist", "no"]
+    trump = str(state.get("trump") or "")
+    tricks = _whist_tricks(hand, trump)
+    if tricks >= 2:
+        return ["whist", "yes"]
+    if tricks == 1:
+        return ["whist", "half"]
+    return ["whist", "no"]
+
+
+def suggest(state: dict[str, Any], level: int = 3) -> list[str] | None:
+    actions = legal(state)
+    if not actions:
+        return None
+    phase = state["phase"]
+    seat = state["to_move"]
+    if phase == "bid":
+        return _suggest_bid(state, seat, actions, level)
+    if phase == "discard":
+        return _suggest_discard(state, seat, actions)
+    if phase == "whist":
+        return _suggest_whist(state, str(seat), level)
+    playable = _playable(state, seat)
+    trump = str(state.get("trump") or "")
+    if not state.get("trick"):
+        plain = [card for card in playable if card[1] != trump]
+        pool = plain or playable
+        pool.sort(key=_value)
+        return ["play", pool[0]]
+    led = state["trick"][0][1]
+    winning = [card for card in playable if _outranks(card, state["trick"][-1], led, trump)]
+    pool = winning or playable
+    pool.sort(key=_value)
+    return ["play", pool[0 if not winning else -1]]
+
+
+def _suggest_bid(state: dict[str, Any], seat: str, actions: list[dict[str, Any]], level: int) -> list[str]:
+    hand = state["hands"][seat]
+    best_suit = max(SUIT_ORDER[:-1], key=lambda suit: sum(1 for card in hand if card[1] == suit))
+    length = sum(1 for card in hand if card[1] == best_suit)
+    highs = sum(1 for card in hand if card[1] == best_suit and _value(card) >= 8)
+    target = 0
+    if length >= 5 or (length >= 4 and highs >= 2):
+        target = min(8, 5 + length // 2 + (1 if level >= 4 else 0))
+    elif length >= 4 and level >= 2:
+        target = 6
+    if target < 6:
+        if level >= 5 and sum(1 for card in hand if _value(card) >= 9) >= 4:
+            return ["bid", "miser"]
+        return ["bid", "pass"]
+    wanted = ["bid", str(target), best_suit]
+    if list(wanted) in [list(item["path"]) for item in actions]:
+        return wanted
+    higher = [item for item in actions if item["path"][0] == "bid" and item["path"][1] not in {"pass", "miser"}]
+    if not higher:
+        return ["bid", "pass"]
+    higher.sort(key=lambda item: _contract_rank({"level": int(item["path"][1]), "suit": item["path"][2]}))
+    return list(higher[0]["path"])
+
+
+def _suggest_discard(state: dict[str, Any], seat: str, actions: list[dict[str, Any]]) -> list[str]:
+    trump = str(state.get("trump") or "")
+    hand = list(state["hands"][seat])
+    ranked = sorted(hand, key=lambda card: (_value(card) + (30 if card[1] == trump else 0)))
+    drop = tuple(sorted(ranked[:2]))
+    for item in actions:
+        if tuple(sorted(item["path"][1:])) == drop:
+            return list(item["path"])
+    return list(actions[0]["path"])
+
+
+def leave(state: dict[str, Any], seat: str) -> dict[str, Any]:
+    nxt = json.loads(dumps(state))
+    _ensure(nxt)
+    if nxt.get("result"):
+        return nxt
+    _write_mountain(nxt, seat, int(nxt["pool"]))
+    _finish(nxt, reason="left", line="Вышел из-за стола. Пуля расписана.")
+    return nxt
+
+
+def replay(initial: str, payloads: list[dict[str, Any]]) -> dict[str, Any]:
+    state = loads(initial)
+    for payload in payloads:
+        if payload.get("leave"):
+            state = leave(state, str(payload.get("seat") or state.get("to_move") or "p0"))
+            continue
+        path = payload.get("path") or []
+        state, _charges = apply(state, [str(item) for item in path])
+    return state
+
+
+def _seat_note(state: dict[str, Any], seat: str) -> str:
+    order = [str(item) for item in state.get("order") or []]
+    scores = {item: _balance(state, item) for item in order}
+    best = max(scores.values()) if scores else 0
+    leaders = [item for item, score in scores.items() if score == best]
+    bullet = int((state.get("bullet") or {}).get(seat, 0))
+    mountain = int((state.get("mountain") or {}).get(seat, 0))
+    total = scores.get(seat, 0)
+    line = f"пуля {bullet} · гора {mountain} · итог {total}"
+    if not state.get("result"):
+        return line
+    if len(leaders) == 1 and seat == leaders[0]:
+        word = "выиграл"
+    elif seat in leaders:
+        word = "ничья"
+    else:
+        word = "проиграл"
+    return f"{word} · {line}"
+
+
+def chronicle(initial: str, payloads: list[dict[str, Any]], final: dict[str, Any] | None = None) -> dict[str, Any]:
+    state = final if isinstance(final, dict) else replay(initial, payloads)
+    _ensure(state)
+    result = str(state.get("result") or "")
+    winner = result[:-4] if result.endswith("_win") else ""
+    return {
+        "done": bool(result),
+        "winner": winner,
+        "loser": "",
+        "line": str(state.get("line") or ""),
+        "reason": str(state.get("reason") or ""),
+        "board": list(state.get("talon") or []),
+        "pot": sum(int(amount) for amount in (state.get("committed") or {}).values()),
+        "counts": {"play": len(payloads), "tricks": sum(int(item) for item in (state.get("tricks") or {}).values())},
+        "hands": {seat: list(cards) for seat, cards in (state.get("hands") or {}).items()} if result else {},
+        "notes": {seat: _seat_note(state, str(seat)) for seat in state.get("order") or []},
+        "payout": state.get("payout") or {},
+        "sheet": state.get("sheet") or _public_sheet(state, closed=bool(result)),
+        "last": {},
+    }
+
+
+def _by_suit(cards: list[str]) -> list[str]:
+    order = {suit: index for index, suit in enumerate(("S", "C", "D", "H"))}
+    return sorted(cards, key=lambda card: (order.get(card[1], 9), -_value(card)))
+
+
+def view(state: dict[str, Any], seat: str | None) -> dict[str, Any]:
+    _ensure(state)
+    phase = state.get("phase")
+    raw = list(state.get("hands", {}).get(seat, [])) if seat and phase not in {"waiting", "done"} else []
+    hand = _by_suit(raw)
+    title = _contract_title(state.get("contract"))
+    progress = _progress(state)
+    if phase == "waiting":
+        message = f"{progress} Ждём третьего игрока."
+    elif phase == "bid":
+        trade = f"Сейчас на столе: {title}." if state.get("contract") else "Можно заказать игру или спасовать."
+        message = f"{progress} Торг. {trade}"
+    elif phase == "discard":
+        message = f"{progress} Возьмите прикуп и сбросьте две карты."
+    elif phase == "whist":
+        message = f"{progress} {title}. Вист, полвиста или пас."
+    elif phase == "play":
+        message = f"{progress} {title}. Ход во взятку."
+    else:
+        message = str(state.get("line") or "Пуля закрыта.")
+    roster = [
+        {"key": key, "count": len(state.get("hands", {}).get(key, [])), "folded": False}
+        for key in state.get("order") or []
+    ]
+    shown = {}
+    if phase == "done":
+        shown = {key: list(cards) for key, cards in state.get("hands", {}).items()}
+    scored = int(state.get("deals") or 1) > 1 or phase == "done"
+    live = list(state.get("trick") or [])
+    held = False
+    board = live
+    show_last = phase == "play" or (phase == "bid" and not state.get("contract") and not scored)
+    if show_last and not live:
+        board = [str(card) for card in (state.get("last_trick") or [])]
+        held = bool(board)
+    return {
+        "hand": hand,
+        "top": state["trick"][-1] if state.get("trick") else "",
+        "color": state.get("trump") or None,
+        "phase": phase,
+        "roster": roster,
+        "opponent_count": sum(item["count"] for item in roster if item["key"] != seat),
+        "deck": 0,
+        "actions": legal(state) if seat and state.get("to_move") == seat and not state.get("result") else [],
+        "message": message,
+        "pot": sum(int(amount) for amount in (state.get("committed") or {}).values()),
+        "board": board,
+        "held": held,
+        "pairs": [],
+        "trump": state.get("trump") or "",
+        "trump_card": "",
+        "hole": False,
+        "talon": [],
+        "contract": title if phase != "done" else f"Пуля до {int(state['pool'])}",
+        "sheet": state.get("sheet") or _public_sheet(state, closed=phase == "done"),
+        "scored": scored,
+        "note": str(state.get("line") or "") if scored else "",
+        "note_tone": _note_tone(str(state.get("line") or "")) if scored and state.get("line") else "",
+        "shown": shown,
+        "stacks": {},
+        "committed": state.get("committed") or {},
+    }

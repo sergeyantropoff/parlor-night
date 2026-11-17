@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Как к вам обращаться — Parlor Night{% endblock %}
+{% block content %}
+<section class="login">
+  <div class="login-brand">
+    <img class="mark theme-light" src="/static/images/logo-mark-for-light.png?v={{ asset_version }}" alt="" />
+    <img class="mark theme-dark" src="/static/images/logo-mark-for-dark.png?v={{ asset_version }}" alt="" />
+    <h1>Как к вам обращаться</h1>
+    <p>За столом видно то, что вы заполните: фамилию, имя, отчество или любое сочетание. Пустая форма оставляет логин.</p>
+  </div>
+  <form class="login-card" method="post" action="/name">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    {% if error %}<p class="banner" role="alert">{{ error }}</p>{% endif %}
+    <label>Фамилия <input name="family" value="{{ family }}" autocomplete="family-name" /></label>
+    <label>Имя <input name="given" value="{{ given }}" autocomplete="given-name" /></label>
+    <label>Отчество <input name="patronymic" value="{{ patronymic }}" autocomplete="additional-name" /></label>
+    <p class="fine">Логин для входа останется прежним.</p>
+    <button type="submit">Сохранить</button>
+  </form>
+  <form method="post" action="/logout">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <p class="fine"><button type="submit" class="text-link">Выйти</button></p>
+  </form>
+</section>
+{% endblock %}

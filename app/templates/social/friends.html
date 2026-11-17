@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}Друзья — Parlor Night{% endblock %}
+{% block topbar_lead %}
+<div class="topbar-lead"><h1>Друзья</h1></div>
+{% endblock %}
+{% block content %}
+<section class="social friends-page" data-social {% if error %}data-open="add-friend"{% endif %}>
+  <header class="social-head">
+    <div>
+      <p class="lede">Хорошая компания для следующей партии</p>
+    </div>
+    <span class="tip-host" data-tip="Добавить друга" data-tip-edge>
+      <button type="button" class="button" data-dialog="add-friend">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-add"/></svg>
+        Добавить друга
+      </button>
+    </span>
+  </header>
+  {% if error %}<p class="banner" role="alert">{{ error }}</p>{% endif %}
+
+  <div class="social-layout">
+    <section class="directory" aria-label="Список друзей">
+      <div class="directory-tools">
+        <div class="filters" role="group" aria-label="Кого показать">
+          <span class="tip-host" data-tip="Все друзья" data-tip-start>
+            <button type="button" data-friend-filter="all" aria-pressed="true">Все {{ counts.all }}</button>
+          </span>
+          <span class="tip-host" data-tip="Друзья в сети">
+            <button type="button" data-friend-filter="online" aria-pressed="false">В сети {{ counts.online }}</button>
+          </span>
+          <span class="tip-host" data-tip="Входящие заявки">
+            <button type="button" data-friend-filter="requests" aria-pressed="false">Заявки {{ counts.requests }}</button>
+          </span>
+        </div>
+        <label class="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
+          <input id="friend-search" type="search" placeholder="Поиск по имени или логину" autocomplete="off" />
+        </label>
+      </div>
+      <div class="directory-head" aria-hidden="true">
+        <span>Игрок</span>
+        <span>Сейчас</span>
+        <span>Действия</span>
+      </div>
+      <div class="directory-body">
+        {% for friend in friends %}
+        <article
+          class="person-row{% if friend.live %} is-live{% endif %}"
+          data-friend
+          data-bucket="{{ friend.relation }}"
+          data-live="{{ 1 if friend.live else 0 }}"
+          data-name="{{ friend.name|lower }} {{ friend.username|lower }}"
+          {% if friend.relation == "incoming" %}hidden{% endif %}
+        >
+          <div class="who">
+            {{ player_link(friend.name, friend.username, friend.avatar, false, true) }}
+          </div>
+          <div class="now">
+            <span class="presence{% if not friend.live %} is-idle{% endif %}">
+              <span class="dot{% if not friend.live %} is-idle{% endif %}"></span>
+              {{ friend.label }}
+            </span>
+            {% if friend.detail %}<span class="quiet">{{ friend.detail }}</span>{% endif %}
+            {% if friend.game %}<span class="game-pill">{{ friend.game }}</span>{% endif %}
+          </div>
+          <div class="row-actions">
+            {% if friend.relation == "accepted" %}
+            <span class="tip-host" data-tip="Написать">
+              <a class="icon-act" href="/chats/{{ friend.username }}" aria-label="Написать">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chat"/></svg>
+              </a>
+            </span>
+            <details class="call-menu tip-host" data-tip="Позвать">
+              <summary aria-label="Позвать">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-user-plus"/></svg>
+              </summary>
+              <form method="post" action="/friends/{{ friend.id }}/challenge">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                <label>Игра
+                  <select name="game_type">
+                    {% for key, spec in games.items() %}
+                    {% if not site or site.allows(key) %}
+                    <option value="{{ key }}">{{ spec.title }}</option>
+                    {% endif %}
+                    {% endfor %}
+                  </select>
+                </label>
+                <span class="tip-host" data-tip="Позвать за стол" data-tip-below>
+                  <button type="submit">Позвать за стол</button>
+                </span>
+              </form>
+            </details>
+            <form class="tip-host" data-tip="Удалить из друзей" data-tip-edge method="post" action="/friends/{{ friend.id }}/decline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+              <button type="submit" class="icon-act is-danger" aria-label="Удалить из друзей">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg>
+              </button>
+            </form>
+            {% elif friend.relation == "outgoing" %}
+            <form class="tip-host" data-tip="Отменить запрос" data-tip-edge method="post" action="/friends/{{ friend.id }}/decline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+              <button type="submit" class="secondary">Отменить запрос</button>
+            </form>
+            {% else %}
+            <form class="tip-host" data-tip="Принять" method="post" action="/friends/{{ friend.id }}/accept">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+              <button type="submit" class="icon-yes" aria-label="Принять">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg>
+              </button>
+            </form>
+            <form class="tip-host" data-tip="Отклонить" data-tip-edge method="post" action="/friends/{{ friend.id }}/decline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+              <button type="submit" class="icon-no" aria-label="Отклонить">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg>
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </article>
+        {% endfor %}
+        <p class="directory-empty" id="friend-empty" {% if friends %}hidden{% endif %}>Пока никого нет. Добавьте игрока по логину.</p>
+      </div>
+      <footer class="directory-foot">
+        <span id="friend-shown">Показано {{ counts.all }} из {{ counts.all }}</span>
+        <span class="pager">
+          <span class="tip-host" data-tip="Предыдущая страница" data-tip-edge>
+            <button type="button" id="friend-prev" class="secondary" aria-label="Предыдущая страница" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
+            </button>
+          </span>
+          <span class="tip-host" data-tip="Следующая страница" data-tip-edge>
+            <button type="button" id="friend-next" class="secondary" aria-label="Следующая страница" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
+            </button>
+          </span>
+        </span>
+      </footer>
+    </section>
+
+    <aside class="social-side">
+      <section class="side-card">
+        <h2>Заявки в друзья {% if counts.requests %}<span class="count-badge">{{ counts.requests }}</span>{% endif %}</h2>
+        {% if incoming %}
+        <ul class="request-list" id="request-list">
+          {% for friend in incoming %}
+          <li data-page-row="1">
+            <span>
+              {{ player_link(friend.name, friend.username, friend.avatar, false, true) }}
+              <span class="quiet">{{ friend.asked }}</span>
+            </span>
+            <form class="tip-host" data-tip="Принять {{ friend.name }}" method="post" action="/friends/{{ friend.id }}/accept">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+              <button type="submit" class="icon-yes" aria-label="Принять {{ friend.name }}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg>
+              </button>
+            </form>
+            <form class="tip-host" data-tip="Отклонить {{ friend.name }}" data-tip-edge method="post" action="/friends/{{ friend.id }}/decline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+              <button type="submit" class="icon-no" aria-label="Отклонить {{ friend.name }}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg>
+              </button>
+            </form>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="quiet">Новых заявок нет.</p>
+        {% endif %}
+      </section>
+      <section class="side-card evening">
+        <img class="theme-light" src="/static/images/pieces/chess-b-k.png?v={{ asset_version }}" alt="" />
+        <img class="theme-dark" src="/static/images/pieces/chess-w-k.png?v={{ asset_version }}" alt="" />
+        <div>
+          <h2>Вечер в гостиной</h2>
+          {% if counts.online %}
+          <p>{{ online_phrase }}. Самое время собрать стол.</p>
+          {% else %}
+          <p>Сейчас друзей в сети нет. Стол можно открыть и для компьютера.</p>
+          {% endif %}
+          <span class="tip-host" data-tip="Открыть гостиную">
+            <a href="/lobby">Перейти в гостиную <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-send"/></svg></a>
+          </span>
+        </div>
+      </section>
+    </aside>
+  </div>
+  <p class="fine lock-note">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shield"/></svg>
+    Ваш список друзей виден только вам
+  </p>
+
+  <dialog id="add-friend" class="social-dialog">
+    <form method="post" action="/friends">
+      <h2>Добавить друга</h2>
+      <p class="quiet">Нужен логин игрока, который уже есть в гостиной.</p>
+      <label>Логин
+        <input name="username" required="required" autocomplete="off" />
+      </label>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <div class="dialog-actions">
+        <span class="tip-host" data-tip="Отправить запрос">
+          <button type="submit">Отправить запрос</button>
+        </span>
+        <span class="tip-host" data-tip="Закрыть окно" data-tip-edge>
+          <button type="button" class="secondary" data-close>Отмена</button>
+        </span>
+      </div>
+    </form>
+  </dialog>
+</section>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/js/social.js?v={{ asset_version }}"></script>
+{% endblock %}

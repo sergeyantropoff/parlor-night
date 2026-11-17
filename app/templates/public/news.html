@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ post.title }} — Parlor Night{% endblock %}
+{% block content %}
+{% set covers = {
+  "light-theme": "news-light-theme.png",
+  "uno-evening": "news-uno-evening.png",
+  "welcome": "news-welcome.png",
+  "card-games": "news-card-games.png",
+  "go": "news-go.png",
+  "beta": "news-beta.jpg",
+} %}
+{% set months = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"] %}
+{% set kinds = {"update": "Обновление", "event": "Событие", "announce": "Анонс"} %}
+{% if preview %}
+<p class="preview-ribbon">Предпросмотр. Так новость выглядит на сайте.</p>
+{% endif %}
+{% if not user or preview %}{% include "public/_mast.html" %}{% endif %}
+<article class="landing article-page">
+  <p class="back"><a class="text-link" href="/news">← Все новости</a></p>
+  <div class="paper">
+    {% set shot = post.cover|cover_kind %}
+    {% if shot == "upload" %}
+    <div class="shot article-cover">
+      <img src="/news-images/{{ post.cover }}" width="1672" height="941" alt="" />
+      <span class="kind">{{ kinds[post.kind] }}</span>
+    </div>
+    {% elif shot == "preset" %}
+    <div class="shot article-cover">
+      <img class="theme-light" src="/static/parlor/light/{{ covers[post.cover] }}?v={{ asset_version }}" width="1672" height="941" alt="" />
+      <img class="theme-dark" src="/static/parlor/dark/{{ covers[post.cover] }}?v={{ asset_version }}" width="1672" height="941" alt="" />
+      <span class="kind">{{ kinds[post.kind] }}</span>
+    </div>
+    {% endif %}
+    <div class="paper-body">
+      <p class="news-meta">
+        {% if not post.cover or post.cover|cover_kind == "" %}<span class="kind">{{ kinds[post.kind] }}</span>{% endif %}
+        <span class="news-date below"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg> {{ post.published_on.day }} {{ months[post.published_on.month - 1] }} {{ post.published_on.year }}</span>
+      </p>
+      <h1>{{ post.title }}</h1>
+      {% if post.summary.strip() and post.body.strip() != post.summary.strip() %}
+      <p class="lede">{{ post.summary }}</p>
+      {% endif %}
+      <div class="story">{{ post.body|story }}</div>
+    </div>
+  </div>
+</article>
+{% if not user or preview %}{% include "public/_foot.html" %}{% endif %}
+{% endblock %}

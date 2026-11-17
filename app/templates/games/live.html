@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Идёт игра — Parlor Night{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/ongoing.css?v={{ asset_version }}" />
+{% endblock %}
+{% block topbar_lead %}{% endblock %}
+{% block content %}
+{% macro og_icon(name, extra='') -%}
+<svg class="og-icon {{ extra }}" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="/static/parlor-ongoing/icons/sprite.svg?v={{ asset_version }}#{{ name }}" /></svg>
+{%- endmacro %}
+<section class="og-page" id="live" data-room="live">
+  <header class="og-heading">
+    <div>
+      <p class="og-crumb"><a href="/lobby">Гостиная</a> / Идёт игра</p>
+      <h1>Идёт игра</h1>
+      <p class="og-muted">Выберите стол и присоединитесь к вечеру</p>
+    </div>
+    <p class="og-update" id="live-link" data-state="live">
+      <span class="og-update-dot" aria-hidden="true"></span>
+      <span id="live-link-text">Обновляется автоматически</span>
+    </p>
+  </header>
+  {% if error %}
+  <p class="banner" role="alert">{{ error }} <a href="/live">Повторить</a></p>
+  {% endif %}
+  <div class="og-notice">
+    {{ og_icon('eye') }}
+    <div>
+      <strong>Открытые столы можно смотреть без камеры и микрофона.</strong>
+      <p>Закрытые видны в списке, вход — только по приглашению.</p>
+    </div>
+  </div>
+
+  <div class="og-filters">
+    <label class="og-field">
+      <span class="og-sr">Найти стол или игрока</span>
+      {{ og_icon('search', 'og-field-icon') }}
+      <input id="table-search" class="og-filter-control" type="search" placeholder="Найти стол или игрока" autocomplete="off" />
+    </label>
+    <label class="og-field">
+      <span class="og-sr">Игра</span>
+      <select id="table-game" class="og-filter-control">
+        <option value="all">Все игры</option>
+        {% for key, spec in type_label.items() %}
+        <option value="{{ key }}">{{ spec }}{% if key in ["poker", "blackjack", "preferans"] %} 18+{% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <a class="og-button og-button-primary" href="/games/new">{{ og_icon('plus') }} Новая партия</a>
+  </div>
+
+  <div id="live-board">
+  {% if tables %}
+  <div class="og-tabs" role="group" aria-label="Какие столы показать">
+    <button type="button" class="og-tab" data-filter="all" aria-pressed="true">Все <span data-count="all">{{ tables|length }}</span></button>
+    <button type="button" class="og-tab" data-filter="open" aria-pressed="false">Открытые <span data-count="open">{{ open_count }}</span></button>
+    <button type="button" class="og-tab" data-filter="closed" aria-pressed="false">Закрытые <span data-count="closed">{{ closed_count }}</span></button>
+    <p class="og-total" aria-live="polite"><span id="live-total">{{ tables|length }}</span> <span id="live-total-word">{% if tables|length % 10 == 1 and tables|length % 100 != 11 %}стол{% elif tables|length % 10 >= 2 and tables|length % 10 <= 4 and tables|length % 100 not in [12, 13, 14] %}стола{% else %}столов{% endif %}</span></p>
+  </div>
+  <div class="og-grid" id="floor-grid">
+    {% for table in tables %}
+    {% set art = table.game_type in ["poker", "go", "checkers", "uno"] %}
+    <article
+      data-page-row="1"
+      class="og-card"
+      data-audience="{% if table.open %}open{% else %}closed{% endif %}"
+      data-game="{{ table.game_type }}"
+      data-find="{{ type_label[table.game_type]|lower }} {{ table.players|lower }} {{ table.mode_label|lower }}"
+    >
+      <header class="og-card-head">
+        {% if art %}
+        {{ og_icon('game-' ~ table.game_type, 'og-game-icon') }}
+        {% else %}
+        <span class="og-mark">
+          <img class="theme-light" src="/static/images/games/game-{{ table.game_type }}-light.png?v={{ asset_version }}" alt="" />
+          <img class="theme-dark" src="/static/images/games/game-{{ table.game_type }}-dark.png?v={{ asset_version }}" alt="" />
+        </span>
+        {% endif %}
+        <span>
+          <h2>{{ type_label[table.game_type] }}{% if table.game_type in ["poker", "blackjack", "preferans"] %} <span class="og-age">18+</span>{% endif %}</h2>
+          <span class="og-muted">{{ table.mode_label }}</span>
+        </span>
+        {% if table.open %}
+        <span class="og-card-status">{{ og_icon('eye') }} Открытый</span>
+        {% else %}
+        <span class="og-card-status">{{ og_icon('lock') }} Закрытый</span>
+        {% endif %}
+      </header>
+      <div class="og-card-body">
+        {% if art %}
+        <picture>
+          <source type="image/webp"
+            srcset="/static/parlor-ongoing/images/ongoing-{{ table.game_type }}-480.webp?v={{ asset_version }} 480w, /static/parlor-ongoing/images/ongoing-{{ table.game_type }}.webp?v={{ asset_version }} 1536w"
+            sizes="(max-width: 600px) 112px, (max-width: 1199px) 140px, 172px" />
+          <img class="og-thumb" src="/static/parlor-ongoing/images/ongoing-{{ table.game_type }}.png?v={{ asset_version }}" width="1536" height="1024" alt="" {% if loop.index > 2 %}loading="lazy"{% endif %} decoding="async" />
+        </picture>
+        {% else %}
+        <span class="og-thumb-frame">
+          <img class="og-thumb theme-light" src="/static/images/games/game-{{ table.game_type }}-light.png?v={{ asset_version }}" alt="" {% if loop.index > 2 %}loading="lazy"{% endif %} decoding="async" />
+          <img class="og-thumb theme-dark" src="/static/images/games/game-{{ table.game_type }}-dark.png?v={{ asset_version }}" alt="" {% if loop.index > 2 %}loading="lazy"{% endif %} decoding="async" />
+        </span>
+        {% endif %}
+        <div class="og-people">
+          {% if table.initial %}<span class="og-avatar" aria-hidden="true">{{ table.initial }}</span>{% endif %}
+          <div>
+            <p class="og-player">{% if table.cpu_label %}{{ table.creator }} · <span class="cpu-tag"><img src="/static/images/computer-avatar.jpg?v={{ asset_version }}" alt="" />{{ table.cpu_label }}</span>{% else %}{{ table.players }}{% endif %}</p>
+            {% if table.meta %}<p class="og-meta">{{ table.meta }}</p>{% endif %}
+            {% if table.chips %}
+            <p class="og-chips">{{ og_icon('chips') }} Только игровые фишки</p>
+            {% endif %}
+            {% if table.mine %}<span class="og-yours">Ваш стол</span>{% endif %}
+          </div>
+        </div>
+      </div>
+      <footer class="og-card-footer">
+        {% if table.open %}
+        <span class="og-watch">{{ og_icon('eye') }} {{ table.watch_label }}</span>
+        {% else %}
+        <span class="og-watch">{{ og_icon('lock') }} Только по приглашению</span>
+        {% endif %}
+        <span class="og-card-actions">
+          {% if table.poker_blocked %}
+          <button type="button" class="og-button" data-age="{{ table.age_block }}">С 18 лет</button>
+          {% elif table.mine %}
+          <a class="og-button og-button-primary" href="/games/{{ table.id }}">Вернуться</a>
+          {% else %}
+            {% if table.can_watch %}
+            <form method="post" action="/live/{{ table.id }}/watch">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+              <button type="submit" class="og-button">{{ og_icon('eye') }} Смотреть</button>
+            </form>
+            {% endif %}
+            {% if table.can_sit %}
+            <form method="post" action="/live/{{ table.id }}/sit">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+              <button type="submit" class="og-button og-button-primary">Сесть</button>
+            </form>
+            {% endif %}
+            {% if not table.open %}
+            <span class="og-muted">Закрытый стол</span>
+            {% endif %}
+          {% endif %}
+        </span>
+      </footer>
+    </article>
+    {% endfor %}
+  </div>
+  <div id="live-none" class="og-empty" hidden>
+    <p>Столы не найдены</p>
+    <button type="button" class="og-button" id="live-reset">Сбросить фильтры</button>
+  </div>
+  <p class="og-foot">{{ og_icon('info') }} Ходы за открытым столом появляются автоматически.</p>
+  {% else %}
+  <div class="og-empty">
+    <p>Сейчас нет активных столов</p>
+    <div class="og-empty-actions">
+      <a class="og-button og-button-primary" href="/games/new">Новая партия</a>
+      <a class="og-button" href="/lobby">В гостиную</a>
+    </div>
+  </div>
+  {% endif %}
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/js/live.js?v={{ asset_version }}"></script>
+{% endblock %}

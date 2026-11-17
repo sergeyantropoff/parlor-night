@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "parlor.fullname" . }}-news
+  labels:
+    {{- include "parlor.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.news.storage }}
+  {{- if .Values.news.storageClass }}
+  storageClassName: {{ .Values.news.storageClass | quote }}
+  {{- end }}

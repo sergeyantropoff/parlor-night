@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}{{ player.full_name or player.username }} — Parlor Night{% endblock %}
+{% block topbar_lead %}
+<div class="topbar-lead">
+  <h1 title="{{ player.full_name or player.username }}">{{ player.full_name or player.username }}</h1>
+</div>
+{% endblock %}
+{% block content %}
+<section class="page profile">
+  <div class="profile-head">
+  <header class="profile-hero">
+    {% if player.avatar %}
+    <img class="profile-photo" src="/avatars/{{ player.avatar }}" alt="" />
+    {% else %}
+    <span class="profile-photo tone-{{ (player.full_name or player.username)|tone }}">{{ (player.full_name or player.username)[:1]|upper }}</span>
+    {% endif %}
+    <div>
+      {% if player.full_name %}<p class="handle">@{{ player.username }}</p>{% else %}<p class="quiet">Имя не указано</p>{% endif %}
+      <p class="presence{% if not online %} is-idle{% endif %}">
+        <span class="dot{% if not online %} is-idle{% endif %}"></span>
+        {% if online %}В сети{% else %}Был {{ player.last_seen|when or "давно" }}{% endif %}
+      </p>
+      <p class="quiet">В гостиной с {{ player.created_at|dt }}</p>
+      {% if friend_state == "none" %}
+      <form class="profile-friend" method="post" action="/players/{{ player.username }}/friend">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        {% if friend_error %}<p class="banner" role="alert">{{ friend_error }}</p>{% endif %}
+        <button type="submit" class="friend-add">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-user-plus"/></svg>
+          Добавить в друзья
+        </button>
+      </form>
+      {% elif friend_state == "outgoing" %}
+      <p class="profile-friend-note">Заявка отправлена</p>
+      {% elif friend_state == "incoming" %}
+      <p class="profile-friend-note">Этот игрок уже отправил вам заявку</p>
+      {% elif friend_state == "accepted" %}
+      <div class="profile-friends">
+        <span class="badge win">В друзьях</span>
+        <form class="tip-host" data-tip="Удалить из друзей" method="post" action="/players/{{ player.username }}/unfriend">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <button type="submit" class="icon-act is-danger" aria-label="Удалить из друзей">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg>
+          </button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </header>
+  {% if user.is_admin %}
+  <aside class="panel profile-grant">
+    <h2>Начислить фишки</h2>
+    {% if chip_error %}<p class="banner" role="alert">{{ chip_error }}</p>{% endif %}
+    {% if chips_added %}<p class="banner ok" role="status">Фишки начислены.</p>{% endif %}
+    <p class="quiet">Сейчас {{ player_chips|grouped }} фишек.</p>
+    <form method="post" action="/players/{{ player.username }}/chips">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <label>Сколько добавить
+        <input name="amount" type="number" min="1" max="100000" inputmode="numeric" required="required" />
+      </label>
+      <button type="submit">Начислить</button>
+    </form>
+  </aside>
+  {% endif %}
+  </div>
+
+  <div class="profile-numbers">
+    <article><strong>{{ stats.played }}</strong><span>Партий</span></article>
+    <article><strong>{{ stats.wins }}</strong><span>Побед</span></article>
+    <article><strong>{{ stats.losses }}</strong><span>Поражений</span></article>
+    <article><strong>{{ stats.draws }}</strong><span>Ничьих</span></article>
+  </div>
+
+  <div class="profile-grid">
+    <section class="panel">
+      <h2>Исходы</h2>
+      <div class="profile-donut-wrap">
+        <svg class="profile-donut" viewBox="0 0 120 120" role="img" aria-label="Доля побед, поражений и ничьих">
+          <g transform="rotate(-90 60 60)">
+            <circle cx="60" cy="60" r="42" class="donut-track" />
+            {% if stats.played %}
+            <circle cx="60" cy="60" r="42" class="seg-win" stroke-dasharray="{{ stats.donut.win }} {{ stats.donut.circle }}" />
+            <circle cx="60" cy="60" r="42" class="seg-loss" stroke-dasharray="{{ stats.donut.loss }} {{ stats.donut.circle }}" stroke-dashoffset="{{ -stats.donut.win }}" />
+            <circle cx="60" cy="60" r="42" class="seg-draw" stroke-dasharray="{{ stats.donut.draw }} {{ stats.donut.circle }}" stroke-dashoffset="{{ -(stats.donut.win + stats.donut.loss) }}" />
+            {% endif %}
+          </g>
+          <text x="60" y="58" text-anchor="middle" class="donut-rate">{{ stats.rate }}%</text>
+          <text x="60" y="74" text-anchor="middle" class="donut-caption">побед</text>
+        </svg>
+        <ul class="donut-legend">
+          <li><i class="swatch-win"></i> Победы · {{ stats.wins }}</li>
+          <li><i class="swatch-loss"></i> Поражения · {{ stats.losses }}</li>
+          <li><i class="swatch-draw"></i> Ничьи · {{ stats.draws }}</li>
+        </ul>
+      </div>
+      {% if not stats.played %}<p class="quiet">Завершённых партий пока нет.</p>{% endif %}
+    </section>
+
+    <section class="panel">
+      <h2>По играм</h2>
+      <ul class="game-bars">
+        {% for game in stats.games %}
+        <li>
+          <span>{{ game.title }}</span>
+          <svg viewBox="0 0 100 8" class="bar-svg" aria-hidden="true">
+            <rect x="0" y="0" width="100" height="8" rx="4" class="bar-track" />
+            {% if game.width %}<rect x="0" y="0" width="{{ game.width }}" height="8" rx="4" class="bar-fill" />{% endif %}
+          </svg>
+          <strong>{{ game.wins }}/{{ game.played }}</strong>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+
+  <section class="panel" id="stats">
+    <h2>Статистика</h2>
+    <div class="table-wrap">
+      <table class="data stat-table">
+        <thead>
+          <tr>
+            <th>Игра</th>
+            <th>Партий</th>
+            <th>Активных</th>
+            <th>Побед</th>
+            <th>Поражений</th>
+            <th>Ничьих</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for key, title in (("chess", "Шахматы"), ("checkers", "Русские шашки"), ("go", "Го"), ("uno", "Уно"), ("poker", "Покер"), ("durak", "Дурак"), ("blackjack", "Блэкджек"), ("preferans", "Преферанс")) %}
+          {% set item = breakdown[key] %}
+          <tr>
+            <td>
+              <span class="stat-game">
+                <span class="glyph" aria-hidden="true"><img class="theme-light game-mark" src="/static/images/games/game-{{ key }}-light.png?v={{ asset_version }}" alt="" /><img class="theme-dark game-mark" src="/static/images/games/game-{{ key }}-dark.png?v={{ asset_version }}" alt="" /></span>
+                {{ title }}
+                {% if key in ["poker", "blackjack", "preferans"] %}<span class="adult">18+</span>{% endif %}
+              </span>
+            </td>
+            <td>{{ item.total }}</td>
+            <td>{{ item.active }}</td>
+            <td>{{ item.wins }}</td>
+            <td>{{ item.losses }}</td>
+            <td>{{ item.draws }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Последние три месяца</h2>
+    <p class="quiet">Сколько партий завершилось и сколько из них выиграно.</p>
+    <svg class="week-line" viewBox="0 0 640 148" preserveAspectRatio="none" role="img" aria-label="Партии за три месяца">
+      <polyline points="{{ stats.line.played }}" class="line-played" />
+      <polyline points="{{ stats.line.wins }}" class="line-wins" />
+      {% for dot in stats.line.dots %}
+      <circle cx="{{ dot.x }}" cy="{{ dot.y }}" r="3.2" class="line-dot">
+        <title>{{ dot.label }}: {{ dot.played }} партий, {{ dot.wins }} побед</title>
+      </circle>
+      {% endfor %}
+    </svg>
+    <ol class="week-labels">
+      {% for dot in stats.line.dots %}
+      <li>{{ dot.label }}</li>
+      {% endfor %}
+    </ol>
+    <p class="week-key"><i class="swatch-played"></i> Партии <i class="swatch-win"></i> Победы</p>
+  </section>
+</section>
+{% endblock %}

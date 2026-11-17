@@ -1,0 +1,25 @@
+{% if pager_pages > 1 or pager_always %}
+<nav class="pager" aria-label="{{ pager_label }}">
+  {% if pager_page > 1 %}
+  <a class="pager-step" href="{{ pager_href.replace('__PAGE__', (pager_page - 1)|string) }}" rel="prev">Назад</a>
+  {% else %}
+  <span class="pager-step is-off">Назад</span>
+  {% endif %}
+  <ol>
+    {% for number in pager_links %}
+    {% if number is none %}
+    <li class="pager-gap" aria-hidden="true">…</li>
+    {% elif number == pager_page %}
+    <li><span aria-current="page">{{ number }}</span></li>
+    {% else %}
+    <li><a href="{{ pager_href.replace('__PAGE__', number|string) }}">{{ number }}</a></li>
+    {% endif %}
+    {% endfor %}
+  </ol>
+  {% if pager_page < pager_pages %}
+  <a class="pager-step" href="{{ pager_href.replace('__PAGE__', (pager_page + 1)|string) }}" rel="next">Дальше</a>
+  {% else %}
+  <span class="pager-step is-off">Дальше</span>
+  {% endif %}
+</nav>
+{% endif %}

@@ -1,0 +1,5 @@
+ALTER TABLE seekers
+    ADD COLUMN seats SMALLINT NOT NULL DEFAULT 2;
+
+ALTER TABLE seekers
+    ADD CONSTRAINT seekers_seats_range CHECK (seats BETWEEN 2 AND 6);

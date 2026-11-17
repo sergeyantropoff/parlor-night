@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}{% if thread %}{{ thread.name }} — {% endif %}Беседы — Parlor Night{% endblock %}
+{% block topbar_lead %}
+<div class="topbar-lead"><h1>Беседы</h1></div>
+{% endblock %}
+{% block content %}
+<section class="social" data-social {% if error %}data-open="new-chat"{% endif %}>
+  <header class="social-head">
+    <div>
+      <p class="lede">Разговоры, которые продолжаются после партии</p>
+    </div>
+    <button type="button" class="secondary" data-dialog="new-chat">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-send"/></svg>
+      Новая беседа
+    </button>
+  </header>
+  {% if error %}<p class="banner" role="alert">{{ error }}</p>{% endif %}
+
+  <div class="talk">
+    <aside class="inbox" aria-label="Список бесед">
+      <label class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
+        <input id="chat-search" type="search" placeholder="Поиск беседы" autocomplete="off" />
+      </label>
+      {% if inbox %}
+      <ul id="inbox-list">
+        {% for row in inbox %}
+        <li class="inbox-row{% if thread and thread.username == row.username %} is-on{% endif %}{% if row.unread %} is-unread{% endif %}" data-page-row="1" data-peer="{{ row.username }}" data-chat="{{ row.name|lower }} {{ row.username|lower }} {{ row.body|lower }}">
+          {{ player_link(row.name, row.username, row.avatar) }}
+          <a class="inbox-link" href="/chats/{{ row.username }}">
+            <span class="inbox-copy"><span>{{ row.body }}</span></span>
+            <span class="inbox-meta">
+              {% if row.unread %}
+              <span class="inbox-count" title="Новых сообщений: {{ row.unread }}">{{ row.unread if row.unread < 100 else "99+" }}</span>
+              {% endif %}
+              {% if row.live %}<span class="dot" title="В сети"></span>{% endif %}
+              <time>{{ row.when }}</time>
+            </span>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="quiet inbox-empty">Переписки пока нет. Начните беседу по логину.</p>
+      {% endif %}
+    </aside>
+
+    <section class="talk-pane" aria-label="Переписка">
+      {% if thread %}
+      <header class="talk-head">
+        {{ player_link(thread.name, thread.username, thread.avatar, false, true) }}
+        <span>
+          <span class="presence{% if not thread.live %} is-idle{% endif %}">
+            <span class="dot{% if not thread.live %} is-idle{% endif %}"></span>
+            {{ thread.label }}
+          </span>
+        </span>
+        {% if thread.friendship_id %}
+        <details class="call-menu">
+          <summary>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-user-plus"/></svg>
+            Пригласить в игру
+          </summary>
+          <form method="post" action="/friends/{{ thread.friendship_id }}/challenge">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <label>Игра
+              <select name="game_type">
+                {% for key, spec in games.items() %}
+                {% if not site or site.allows(key) %}
+                <option value="{{ key }}">{{ spec.title }}</option>
+                {% endif %}
+                {% endfor %}
+              </select>
+            </label>
+            <button type="submit">Позвать за стол</button>
+          </form>
+        </details>
+        {% endif %}
+      </header>
+      <div class="transcript" id="transcript">
+        {% if thread.messages %}
+        {% for message in thread.messages %}
+        <div class="transcript-block" data-page-row="1">
+        {% if message.show_day %}<p class="day-mark">{{ message.day_label }}</p>{% endif %}
+        <div class="bubble-row{% if message.mine %} mine{% endif %}">
+          {% if message.code %}
+          <article class="invite-card">
+            {% if message.game_key %}
+            <img class="theme-light" src="/static/images/games/game-{{ message.game_key }}-light.png?v={{ asset_version }}" alt="" />
+            <img class="theme-dark" src="/static/images/games/game-{{ message.game_key }}-dark.png?v={{ asset_version }}" alt="" />
+            {% else %}
+            <img class="theme-light" src="/static/images/pieces/chess-b-k.png?v={{ asset_version }}" alt="" />
+            <img class="theme-dark" src="/static/images/pieces/chess-w-k.png?v={{ asset_version }}" alt="" />
+            {% endif %}
+            <div>
+              <strong>Приглашение в партию</strong>
+              <p>{% if message.game_title %}{{ message.game_title }} · {% endif %}Код стола: {{ message.code }}</p>
+              <form method="post" action="/join">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                <input type="hidden" name="code" value="{{ message.code }}" />
+                <button type="submit">Сесть за стол <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-send"/></svg></button>
+              </form>
+            </div>
+          </article>
+          {% else %}
+          <p class="bubble">{{ message.body }} <time>{{ message.clock }}</time></p>
+          {% endif %}
+        </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="quiet transcript-empty">Напишите первое сообщение.</p>
+        {% endif %}
+      </div>
+      <form class="composer" method="post" action="/chats/{{ thread.username }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <label class="sr" for="chat-body">Сообщение</label>
+        <textarea id="chat-body" name="body" rows="1" maxlength="1000" required="required" placeholder="Написать сообщение..."></textarea>
+        <button type="submit" class="send tip-host" data-tip="Отправить" data-tip-edge aria-label="Отправить">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-send"/></svg>
+        </button>
+        <p class="hint">Enter — отправить · Shift + Enter — новая строка</p>
+      </form>
+      {% else %}
+      <div class="talk-empty">
+        <h2>Выберите беседу</h2>
+        <p class="quiet">Или начните новую по логину игрока.</p>
+      </div>
+      {% endif %}
+    </section>
+  </div>
+  <p class="fine lock-note">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shield"/></svg>
+    Личные беседы
+  </p>
+</section>
+
+<dialog id="new-chat" class="social-dialog">
+  <form method="post" action="/chats/open">
+    <h2>Новая беседа</h2>
+    <p class="quiet">Откроется переписка с игроком по логину.</p>
+    <label>Логин
+      <input name="username" required="required" autocomplete="off" />
+    </label>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <div class="dialog-actions">
+      <button type="submit">Открыть</button>
+      <button type="button" class="secondary" data-close>Отмена</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/js/social.js?v={{ asset_version }}"></script>
+{% endblock %}

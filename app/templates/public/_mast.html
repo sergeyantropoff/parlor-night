@@ -1,0 +1,23 @@
+<header class="mast">
+  <div class="mast-inner">
+    <a class="brand" href="/">
+      <img class="mark theme-light" src="/static/images/logo-mark-for-light.png?v={{ asset_version }}" width="982" height="1002" alt="" />
+      <img class="mark theme-dark" src="/static/images/logo-mark-for-dark.png?v={{ asset_version }}" width="1003" height="1024" alt="" />
+      <span class="brand-title">Parlor Night</span>
+      <span class="brand-rule">гостиная</span>
+    </a>
+    <nav aria-label="Страница">
+      <a href="/#features">Возможности</a>
+      <a href="/#games">Игры</a>
+      <a href="/news"{% if path.startswith("/news") %} aria-current="page"{% endif %}>Новости</a>
+      <a href="/#about">О проекте</a>
+    </nav>
+    <div class="mast-actions">
+      <div class="theme-switch" role="group" aria-label="Тема">
+        <button type="button" class="tip-host" data-theme-value="light" data-tip="Светлая" data-tip-below aria-pressed="false" aria-label="Светлая"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sun"/></svg></button>
+        <button type="button" class="tip-host" data-theme-value="dark" data-tip="Тёмная" data-tip-below data-tip-edge aria-pressed="false" aria-label="Тёмная"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-moon"/></svg></button>
+      </div>
+      <a class="button" href="/login">Войти</a>
+    </div>
+  </div>
+</header>

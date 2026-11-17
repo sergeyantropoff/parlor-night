@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% macro invite_icon(name) -%}
+<svg class="invite-icon" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="/static/parlor-invite/icons/sprite.svg#{{ name }}"/></svg>
+{%- endmacro %}
+{% block title %}Сесть за стол — Parlor Night{% endblock %}
+{% block topbar_lead %}
+<div class="topbar-lead"><h1>Сесть за стол</h1></div>
+{% endblock %}
+{% block content %}
+<section class="join-page">
+  <header class="join-head">
+    <p class="lede">Присоединитесь к друзьям по коду приглашения</p>
+  </header>
+  <div class="join-split">
+    <form class="join-card" id="join-form" method="post" action="/join">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <div class="join-wait">
+        <span class="join-mark" aria-hidden="true">{{ invite_icon('ticket') }}</span>
+        <div>
+          <h2>Вас уже ждут</h2>
+          <p>Попросите код у того, кто создал партию.</p>
+        </div>
+      </div>
+      <label class="join-field">
+        Код приглашения
+        <span class="join-code">
+          <input name="code" value="{{ code }}" placeholder="PN7K2" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="characters" minlength="8" maxlength="8" required="required" aria-describedby="join-hint{% if error %} join-error{% endif %}" />
+          <button type="button" id="join-paste">
+            {{ invite_icon('clipboard') }}
+            Вставить
+          </button>
+        </span>
+      </label>
+      <p class="join-hint" id="join-hint">Введите код из приглашения</p>
+      {% if error %}<p class="join-error" id="join-error" role="alert" aria-live="polite">{{ error }}</p>{% endif %}
+      <fieldset class="join-modes">
+        <legend>Как присоединиться</legend>
+        <label class="join-mode">
+          <input type="radio" name="way" value="play" checked="checked" />
+          <span class="join-mark" aria-hidden="true">{{ invite_icon('armchair') }}</span>
+          <span>
+            <strong>Играть</strong>
+            <small>Занять свободное место за столом</small>
+          </span>
+          <span class="join-radio" aria-hidden="true"></span>
+        </label>
+        <label class="join-mode">
+          <input type="radio" name="way" value="watch" />
+          <span class="join-mark" aria-hidden="true">{{ invite_icon('eye') }}</span>
+          <span>
+            <strong>Наблюдать</strong>
+            <small>Смотреть открытую партию без участия</small>
+          </span>
+          <span class="join-radio" aria-hidden="true"></span>
+        </label>
+      </fieldset>
+      <button type="submit" id="join-go">
+        <span id="join-go-label">Сесть за стол</span>
+        {{ invite_icon('arrow-right') }}
+      </button>
+      <p class="join-lock">
+        {{ invite_icon('lock') }}
+        В закрытый стол можно войти только игроком
+      </p>
+    </form>
+    <aside class="join-card join-aside">
+      <picture>
+        <source srcset="/static/parlor-invite/images/invite-still-life.webp?v={{ asset_version }}" type="image/webp" />
+        <img class="invite-illustration" src="/static/parlor-invite/images/invite-still-life.png?v={{ asset_version }}" width="1536" height="1024" alt="" decoding="async" />
+      </picture>
+      <div class="join-aside-copy">
+        <h2>Вечер начинается с приглашения</h2>
+        <ul class="join-notes">
+          <li>
+            <span class="join-mark" aria-hidden="true">{{ invite_icon('users') }}</span>
+            <span>
+              <strong>Играйте вместе</strong>
+              <small>Камера и микрофон — по желанию.</small>
+            </span>
+          </li>
+          <li>
+            <span class="join-mark" aria-hidden="true">{{ invite_icon('eye') }}</span>
+            <span>
+              <strong>Наблюдайте за партией</strong>
+              <small>Только открытые столы. Без камеры и микрофона.</small>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+  <section class="join-empty">
+    <div>
+      <h2>Нет приглашения?</h2>
+      <p>Найдите компанию в гостиной или создайте свой стол.</p>
+    </div>
+    <div class="join-empty-actions">
+      <a class="button secondary" href="/lobby">
+        {{ invite_icon('users') }}
+        В гостиную
+      </a>
+      <a class="button secondary" href="/games/new">
+        {{ invite_icon('plus') }}
+        Новая партия
+      </a>
+    </div>
+  </section>
+  <div class="join-ornament" aria-hidden="true"></div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/js/join.js?v={{ asset_version }}"></script>
+{% endblock %}

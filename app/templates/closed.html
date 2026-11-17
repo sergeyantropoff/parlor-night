@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Гостиная закрыта — Parlor Night{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Гостиная закрыта</h1>
+  <p>Сейчас идёт обслуживание. Загляните чуть позже.</p>
+  {% if user %}
+  <form method="post" action="/logout">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <button type="submit" class="secondary">Выйти</button>
+  </form>
+  {% else %}
+  <p><a href="/login">Вход для администратора</a></p>
+  {% endif %}
+</section>
+{% endblock %}

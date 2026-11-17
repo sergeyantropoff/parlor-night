@@ -1,0 +1,14 @@
+Parlor Night поставлен в пространство {{ .Release.Namespace }}.
+
+Образ: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+Секрет с SECRET_KEY и паролем базы: {{ include "parlor.secretName" . }}
+
+Веб слушает сервис {{ include "parlor.fullname" . }}:80.
+{{- if .Values.ingress.enabled }}
+Адрес: http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.host }}/
+{{- else }}
+Локально: kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "parlor.fullname" . }} 8000:80
+{{- end }}
+
+Первого администратора создаёт команда make kube-admin с ADMIN_USERNAME и ADMIN_PASSWORD.
+При ENV=production учётные записи admin и user сами не появляются.

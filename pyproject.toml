@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "parlor-night"
+version = "1.0.0"
+description = "Parlor Night: гостиная настольных игр"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.32,<1",
+    "asyncpg>=0.30,<1",
+    "jinja2>=3.1,<4",
+    "python-multipart>=0.0.12",
+    "pydantic>=2.9,<3",
+    "pydantic-settings>=2.6,<3",
+    "argon2-cffi>=23.1,<26",
+    "python-chess>=1.11,<2",
+    "httpx>=0.27,<1",
+    "valkey>=6,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<9",
+    "pytest-asyncio>=0.24,<1",
+    "ruff>=0.8,<1",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "integration: тесты с PostgreSQL",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["app", "scripts", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["B008"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]

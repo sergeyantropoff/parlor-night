@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}{% if editing %}Изменить новость{% else %}Новая новость{% endif %} — Parlor Night{% endblock %}
+{% block topbar_lead %}
+<div class="topbar-lead"><h1>{% if editing %}Изменить новость{% else %}Новая новость{% endif %}</h1></div>
+{% endblock %}
+{% block content %}
+{% set source = draft or editing %}
+<section class="news-editor">
+  <p class="back"><a class="text-link" href="/admin/news">← Все новости</a></p>
+  <div class="hello">
+    <div>
+      <p class="lede">Страница на всю ширину. Перед публикацией откройте предпросмотр — он показывает новость так, как её увидят на сайте.</p>
+    </div>
+  </div>
+  {% if error %}<p class="banner" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="{% if editing %}/admin/news/{{ editing.id }}{% else %}/admin/news{% endif %}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <label>Заголовок <input name="title" maxlength="120" required="required" value="{{ source.title if source else '' }}" /></label>
+    <label>Кратко, для карточки <textarea name="summary" rows="2" maxlength="400" required="required">{{ source.summary if source else '' }}</textarea></label>
+    <p class="quiet">Текст новости. Выделите фрагмент и выберите оформление.</p>
+    <div class="wysiwyg" data-wysiwyg>
+      <div class="wysiwyg-bar" role="toolbar" aria-label="Оформление">
+        <button type="button" data-cmd="bold"><strong>Ж</strong></button>
+        <button type="button" data-cmd="italic"><em>К</em></button>
+        <button type="button" data-cmd="h2">Заголовок</button>
+        <button type="button" data-cmd="h3">Подзаголовок</button>
+        <button type="button" data-cmd="insertUnorderedList">Список</button>
+        <button type="button" data-cmd="insertOrderedList">Нумерация</button>
+        <button type="button" data-cmd="blockquote">Цитата</button>
+        <button type="button" data-cmd="link">Ссылка</button>
+        <button type="button" data-cmd="image">Картинка</button>
+        <button type="button" data-cmd="p">Обычный</button>
+      </div>
+      <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-image-file />
+      <div class="wysiwyg-sheet story" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Текст новости">{% if source %}{{ source.body|story }}{% endif %}</div>
+      <textarea name="body" hidden>{% if source %}{{ source.body }}{% endif %}</textarea>
+    </div>
+    <div class="news-fields">
+      <label>Тип
+        <select name="kind">
+          {% for value, title in (("announce", "Анонс"), ("event", "Событие"), ("update", "Обновление")) %}
+          <option value="{{ value }}" {% if source and source.kind == value %}selected="selected"{% endif %}>{{ title }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Дата <input name="published_on" type="date" value="{% if source and source.published_on %}{{ source.published_on }}{% endif %}" /></label>
+      <label>Обложка из гостиной
+        <select name="cover" data-cover-preset>
+          <option value="">Без обложки</option>
+          {% for value, title in (("light-theme", "Светлая тема"), ("uno-evening", "Вечер Уно"), ("welcome", "Знакомство с гостиной"), ("card-games", "Новые карточные игры"), ("go", "Го"), ("beta", "Бета-тестирование")) %}
+          <option value="{{ value }}" {% if source and source.cover == value %}selected="selected"{% endif %}>{{ title }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+    {% set own = source.cover if source and source.cover|cover_kind == "upload" else "" %}
+    <div class="cover-own" data-cover-upload>
+      <input type="hidden" name="cover_file" value="{{ own }}" />
+      <button type="button" class="secondary" data-cover-pick>Загрузить обложку</button>
+      <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-cover-file />
+      <img alt="" {% if own %}src="/news-images/{{ own }}"{% else %}hidden{% endif %} data-cover-preview />
+      <button type="button" class="text-button" data-cover-clear {% if not own %}hidden{% endif %}>Убрать свою</button>
+      <p class="quiet">JPEG, PNG или WebP, до 4 МБ. Своя обложка и картинки в тексте хранятся отдельно.</p>
+      <p class="quiet" data-cover-error hidden></p>
+    </div>
+    <div class="news-actions">
+      <button type="submit" class="secondary" formaction="/admin/news/preview" formtarget="_blank" formnovalidate="formnovalidate">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"/></svg>
+        Предпросмотр
+      </button>
+      <button type="submit">{% if editing %}Сохранить{% else %}Опубликовать{% endif %}</button>
+    </div>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/js/editor.js?v={{ asset_version }}"></script>
+{% endblock %}

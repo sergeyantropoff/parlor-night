@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Гости — Parlor Night{% endblock %}
+{% block topbar_lead %}
+<div class="topbar-lead"><h1>Гости</h1></div>
+{% endblock %}
+{% block content %}
+<section class="page" id="guests" {% if create_error %}data-open="create-user"{% endif %}>
+  {% if error %}<p class="banner" role="alert">{{ error }}</p>{% endif %}
+  <section class="panel">
+    <div class="guest-tools">
+      <label class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
+        <input id="guest-search" type="search" placeholder="Имя, логин или роль" autocomplete="off" maxlength="80" aria-label="Поиск гостей" />
+      </label>
+      <button type="button" data-dialog="create-user">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-add"/></svg>
+        Создать пользователя
+      </button>
+    </div>
+    <div class="table-wrap">
+      <table class="data guest-table">
+        <thead>
+          <tr>
+            <th>Гость</th>
+            <th>Роль</th>
+            <th>Статус</th>
+            <th>С нами</th>
+            <th>Фишки</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody id="guest-rows">
+          {% for account in accounts %}
+          <tr data-page-row data-find="{{ account.name }} {{ account.username }} {% if account.role == 'admin' %}администратор{% else %}игрок гость{% endif %} {% if account.is_active %}активен{% else %}отключен отключён{% endif %}">
+            <td>{{ player_link(account.name, account.username, account.avatar, false, true) }}</td>
+            <td>{% if account.role == "admin" %}<span class="badge live">Администратор</span>{% else %}<span class="badge wait">Гость</span>{% endif %}</td>
+            <td>{% if account.is_active %}<span class="badge win">Активен</span>{% else %}<span class="badge loss">Отключён</span>{% endif %}</td>
+            <td>{{ account.created_at|dt }}</td>
+            <td>
+              <form method="post" action="/admin/users/{{ account.id }}/chips">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                <input type="hidden" name="q" value="" data-keep="q" />
+                <input type="hidden" name="page" value="1" data-keep="page" />
+                <label class="chip-edit">
+                  <input name="balance" type="number" min="0" max="100000" value="{{ account.balance }}" aria-label="Фишки, {{ account.name }}" />
+                  <span class="tip-host" data-tip="Сохранить баланс">
+                    <button type="submit" class="icon-act" aria-label="Сохранить баланс">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-save"/></svg>
+                    </button>
+                  </span>
+                </label>
+              </form>
+            </td>
+            <td class="guest-actions">
+              {% if account.role != "admin" %}
+              <form class="tip-host" data-tip="Сделать администратором" data-tip-edge method="post" action="/admin/users/{{ account.id }}/role">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                <input type="hidden" name="role" value="admin" />
+                <input type="hidden" name="q" value="" data-keep="q" />
+                <input type="hidden" name="page" value="1" data-keep="page" />
+                <button type="submit" class="icon-act" aria-label="Сделать администратором">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shield"/></svg>
+                </button>
+              </form>
+              {% endif %}
+              {% if account.id|string != user.id|string %}
+              <form class="tip-host" data-tip="{% if account.is_active %}Отключить{% else %}Включить{% endif %}" data-tip-edge method="post" action="/admin/users/{{ account.id }}/active">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                <input type="hidden" name="page" value="1" data-keep="page" />
+                <input type="hidden" name="q" value="" data-keep="q" />
+                <input type="hidden" name="active" value="{{ '0' if account.is_active else '1' }}" />
+                <button type="submit" class="icon-act{% if account.is_active %} is-danger{% endif %}" aria-label="{% if account.is_active %}Отключить{% else %}Включить{% endif %}">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><use href="{% if account.is_active %}#i-stop{% else %}#i-check{% endif %}"/></svg>
+                </button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          <tr id="guest-empty" hidden>
+            <td colspan="6">Никого не нашлось.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="chip-pager" id="guest-pager">
+      <p class="quiet" id="guest-range"></p>
+    </div>
+  </section>
+
+  <dialog id="create-user" class="social-dialog" aria-labelledby="create-user-title">
+    <form method="post" action="/admin/users">
+      <h2 id="create-user-title">Создать пользователя</h2>
+      {% if create_error %}<p class="banner" role="alert">{{ create_error }}</p>{% endif %}
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <label>Логин
+        <input name="username" required="required" minlength="{{ site.username_min }}" maxlength="{{ site.username_max }}" value="{{ create_username }}" autocomplete="off" />
+      </label>
+      <label>Пароль
+        <input name="password" type="password" required="required" minlength="{{ site.password_min }}" autocomplete="new-password" />
+      </label>
+      <p class="quiet">Логин {{ site.username_min }}–{{ site.username_max }}. Пароль от {{ site.password_min }}{% if site.password_needs_letter %}, с буквой{% endif %}{% if site.password_needs_digit %} и цифрой{% endif %}. Новый гость получает {{ site.starting_chips }} фишек.</p>
+      <div class="name-grid">
+        <label>Фамилия
+          <input name="family" value="{{ create_family }}" autocomplete="off" />
+        </label>
+        <label>Имя
+          <input name="given" value="{{ create_given }}" autocomplete="off" />
+        </label>
+        <label>Отчество
+          <input name="patronymic" value="{{ create_patronymic }}" autocomplete="off" />
+        </label>
+      </div>
+      <p class="quiet">Можно указать фамилию, имя, отчество или любое сочетание. Пустые поля оставляют логин.</p>
+      <fieldset class="birth">
+        <legend>Дата рождения</legend>
+        <div class="born-grid">
+          <label>День
+            <select name="born_day" required="required">
+              <option value="">—</option>
+              {% for day in range(1, 32) %}
+              <option value="{{ day }}" {% if create_day == day|string %}selected="selected"{% endif %}>{{ day }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Месяц
+            <select name="born_month" required="required">
+              <option value="">—</option>
+              {% for name in ("январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь") %}
+              <option value="{{ loop.index }}" {% if create_month == loop.index|string %}selected="selected"{% endif %}>{{ name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Год
+            <select name="born_year" required="required">
+              <option value="">—</option>
+              {% for year in range(year_now, 1899, -1) %}
+              <option value="{{ year }}" {% if create_year == year|string %}selected="selected"{% endif %}>{{ year }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+      </fieldset>
+      <label>Роль
+        <select name="role">
+          <option value="user" {% if create_role != "admin" %}selected="selected"{% endif %}>Гость</option>
+          <option value="admin" {% if create_role == "admin" %}selected="selected"{% endif %}>Администратор</option>
+        </select>
+      </label>
+      <div class="dialog-actions">
+        <button type="submit">Создать</button>
+        <button type="button" class="secondary" data-close>Отмена</button>
+      </div>
+    </form>
+  </dialog>
+</section>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/js/admin-users.js?v={{ asset_version }}"></script>
+{% endblock %}

@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+{% block title %}Обзор — Parlor Night{% endblock %}
+{% block topbar_lead %}
+<div class="topbar-lead"><h1>Обзор гостиной</h1></div>
+{% endblock %}
+{% block content %}
+{% macro ring(chart) %}
+<svg class="donut" viewBox="0 0 120 120" role="img">
+  <circle class="donut-track" cx="60" cy="60" r="42" />
+  {% for slice in chart.slices %}
+  <circle class="donut-slice is-{{ slice.key }}" cx="60" cy="60" r="42" stroke-dasharray="{{ slice.length }} {{ slice.gap }}" stroke-dashoffset="{{ slice.offset }}" transform="rotate(-90 60 60)">
+    <title>{{ slice.label }}: {{ slice.total }}</title>
+  </circle>
+  {% endfor %}
+  <text class="donut-total{% if chart.total > 999 %} is-long{% endif %}" x="60" y="60" text-anchor="middle" dominant-baseline="middle">{{ chart.total }}</text>
+</svg>
+{% endmacro %}
+{% macro line_chart(chart, series) %}
+<svg class="chart" viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img">
+  {% for guide in chart.guides %}
+  <line class="chart-guide" x1="18" x2="{{ chart.width - 18 }}" y1="{{ guide }}" y2="{{ guide }}" />
+  {% endfor %}
+  <polygon class="chart-area" points="{{ chart.area }}" />
+  <polyline class="chart-line" points="{{ chart.line }}" />
+  {% for day in series %}
+  <circle class="chart-dot" cx="{{ day.x }}" cy="{{ day.y }}" r="4"><title>{{ day.label }}: {{ day.total }}</title></circle>
+  {% if day.total %}
+  <text class="chart-value" x="{{ day.x }}" y="{{ day.y - 10 }}" text-anchor="middle">{{ day.total }}</text>
+  {% endif %}
+  {% endfor %}
+</svg>
+<div class="chart-axis">
+  {% for day in series %}<span>{{ day.label }}</span>{% endfor %}
+</div>
+{% endmacro %}
+{% macro donut_card(title, note, chart) %}
+<section class="panel donut-card">
+  <h2>{{ title }}</h2>
+  <p class="quiet">{{ note }}</p>
+  {{ ring(chart) }}
+  {% if chart.legend %}
+  <ul class="legend">
+    {% for item in chart.legend %}
+    <li><i class="is-{{ item.key }}"></i> {{ item.label }} {{ item.total }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="quiet">Пока нет данных.</p>
+  {% endif %}
+</section>
+{% endmacro %}
+{% macro bars(title, note, rows) %}
+<section class="panel">
+  <h2>{{ title }}</h2>
+  {% if note %}<p class="quiet">{{ note }}</p>{% endif %}
+  {% if rows %}
+  <div class="hbars">
+    {% for row in rows %}
+    <div class="hbar">
+      <span>{{ row.label }}</span>
+      <span class="hbar-track"><span data-size="{{ row.bar }}"></span></span>
+      <strong>{{ row.total }}</strong>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="quiet">Пока нет данных.</p>
+  {% endif %}
+</section>
+{% endmacro %}
+<section class="page" id="overview">
+  <div class="overview-head">
+    <div>
+      <p class="lede">Сводка по гостям, партиям и столам. Вкладка «Игры» показывает, чем заканчиваются партии и кто сильнее компьютера.</p>
+    </div>
+    <button type="button" class="secondary" id="clear-games">Очистить партии</button>
+  </div>
+  {% if cleared %}<p class="banner ok" role="status">Партии очищены. Гости и фишки не изменены.</p>{% endif %}
+  <div class="live-filters" role="tablist" aria-label="Разделы обзора">
+    <button type="button" role="tab" data-tab="summary" aria-selected="true">Сводка</button>
+    <button type="button" role="tab" class="secondary" data-tab="games" aria-selected="false">Игры</button>
+    <button type="button" role="tab" class="secondary" data-tab="people" aria-selected="false">Игроки</button>
+    <button type="button" role="tab" class="secondary" data-tab="sessions" aria-selected="false">Сессии</button>
+  </div>
+
+  <div data-panel="summary">
+    <div class="kpi">
+      <article><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-user"/></svg><strong>{{ totals.users }}</strong><span>Гостей · {{ totals.online }} в сети</span></article>
+      <article><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-grid"/></svg><strong>{{ totals.games }}</strong><span>Партий всего</span></article>
+      <article><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"/></svg><strong>{{ totals.active_games }}</strong><span>Идут сейчас</span></article>
+      <article><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-lobby"/></svg><strong>{{ totals.waiting_games }}</strong><span>Ждут соперника</span></article>
+      <article><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg><strong>{{ totals.finished_games }}</strong><span>Завершено</span></article>
+      <article><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg><strong>{{ totals.moves|grouped }}</strong><span>Ходов сыграно</span></article>
+      <article><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chat"/></svg><strong>{{ totals.messages|grouped }}</strong><span>Сообщений</span></article>
+      <article><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-coins"/></svg><strong>{{ totals.chips|grouped }}</strong><span>Фишек на счетах</span></article>
+    </div>
+    <div class="chart-row">
+      <section class="panel">
+        <h2>Новые партии</h2>
+        <p class="quiet">{{ day_total }} за последние 14 дней</p>
+        {{ line_chart(chart, days) }}
+      </section>
+      <section class="panel">
+        <h2>Ходы</h2>
+        <p class="quiet">{{ move_total }} за последние 14 дней</p>
+        {{ line_chart(move_chart, move_days) }}
+      </section>
+    </div>
+    <div class="donut-row">
+      {{ donut_card("Состояние", "Идут, ждут соперника или уже завершены", status_donut) }}
+      {{ donut_card("Режим", "С кем и как начата партия", mode_donut) }}
+      {{ donut_card("Кто смотрит", "Открытый стол виден гостям, закрытый — нет", audience_donut) }}
+      {{ donut_card("Сообщения", "Личные беседы и разговоры за столом", message_donut) }}
+    </div>
+    <section class="panel">
+      <h2>По играм</h2>
+      <p class="quiet">Сколько партий начато в каждой игре</p>
+      <div class="hbars">
+        {% for game in games %}
+        <div class="hbar">
+          <span>{{ type_label[game.key] }}</span>
+          <span class="hbar-track"><span data-size="{{ game.bar }}"></span></span>
+          <strong>{{ game.total }}</strong>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    <section class="panel">
+      <div class="recent-head">
+        <h2>Последние партии</h2>
+        <p class="quiet">{{ recent_total }} партий</p>
+      </div>
+      {% if recent_games %}
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Игра</th><th>Стол</th><th>Итог</th><th>Когда</th></tr></thead>
+          <tbody>
+            {% for game in recent_games %}
+            <tr>
+              <td>
+                <span class="glyph" aria-hidden="true"><img class="theme-light game-mark" src="/static/images/games/game-{{ game.game_type }}-light.png?v={{ asset_version }}" alt="" /><img class="theme-dark game-mark" src="/static/images/games/game-{{ game.game_type }}-dark.png?v={{ asset_version }}" alt="" /></span>
+                {{ type_label[game.game_type] }}
+              </td>
+              <td>{{ player_link(game.creator_name, game.creator_login, '', false, false, true) }}{% if game.opponent_name %} · {{ player_link(game.opponent_name, game.opponent_login, '', false, false, true) }}{% elif game.cpu_label %} · <span class="cpu-tag"><img src="/static/images/computer-avatar.jpg?v={{ asset_version }}" alt="" />{{ game.cpu_label }}</span>{% else %} · ждёт{% endif %}<br /><span class="quiet">{{ mode_label[game.mode] }}{% if game.audience == 'open' %} · открыт{% endif %}</span></td>
+              <td>{% if game.status == 'waiting' %}Ждёт соперника{% elif game.status == 'active' %}Идёт{% elif game.result %}{{ result_label[game.result] }}{% else %}Завершена{% endif %}</td>
+              <td>{{ game.updated_at|when }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="quiet">Партий ещё не было.</p>
+      {% endif %}
+      {% set pager_label = "Страницы партий" %}
+      {% set pager_page = games_page %}
+      {% set pager_pages = games_pages %}
+      {% set pager_links = games_links %}
+      {% set pager_href = games_href %}
+      {% include "_pager.html" %}
+    </section>
+  </div>
+
+  <div data-panel="games" hidden="hidden">
+    <p class="quiet">Наблюдателей сейчас {{ totals.watchers }}.</p>
+    <div class="donut-row">
+      {{ donut_card("По играм", "Доля каждой игры", type_donut) }}
+      {{ donut_card("Итоги", "Кто победил во всех партиях", result_donut) }}
+      {{ donut_card("Сила компьютера", "Партии против компьютера по уровню", level_donut) }}
+      {{ donut_card("Причины", "Чем закончились завершённые партии", reason_donut) }}
+    </div>
+    {{ bars("Чем закончились", "Причины завершения по всем играм", reason_bars) }}
+    <div class="insight-grid">
+      {% for game in games %}
+      <article class="panel insight">
+        <span class="shot">
+          <img class="theme-light" src="/static/parlor/light/game-{{ game.key }}.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
+          <img class="theme-dark" src="/static/parlor/dark/game-{{ game.key }}.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
+          {% if game.key in ['poker', 'blackjack', 'preferans'] %}<span class="age">18+</span>{% endif %}
+        </span>
+        <div>
+          <div class="live-top">
+            <h2>{{ type_label[game.key] }}</h2>
+            <strong class="kpi-inline">{{ game.total }}</strong>
+          </div>
+          {% if game.total %}
+          <div class="card-donut">
+            {{ ring(game.result_donut) }}
+            <ul class="legend">
+              {% for item in game.result_donut.legend %}
+              <li><i class="is-{{ item.key }}"></i> {{ item.label }} {{ item.total }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+          <dl class="mini-stats">
+            <div><dt>Завершено</dt><dd>{{ game.finished }}</dd></div>
+            <div><dt>Идут</dt><dd>{{ game.active }}</dd></div>
+            <div><dt>Ждут</dt><dd>{{ game.waiting }}</dd></div>
+            <div><dt>Средний ход</dt><dd>{{ game.avg_moves }}</dd></div>
+            <div><dt>Самая длинная</dt><dd>{{ game.longest }}</dd></div>
+            <div><dt>Открытых столов</dt><dd>{{ game.open_tables }}</dd></div>
+          </dl>
+          <div class="mode-pills">
+            {% for title, count in game.modes %}
+            {% if count %}<span class="pill">{{ title }} · {{ count }}</span>{% endif %}
+            {% endfor %}
+          </div>
+          {% if game.computer %}
+          <div class="card-donut">
+            {{ ring(game.duel_donut) }}
+            <div>
+              <p class="quiet">Против компьютера</p>
+              <ul class="legend">
+                {% for item in game.duel_donut.legend %}
+                <li><i class="is-{{ item.key }}"></i> {{ item.label }} {{ item.total }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+          {% endif %}
+          {% if game.reasons %}
+          <div class="reasons">
+            {% for reason in game.reasons %}
+            <div class="reason">
+              <span>{{ reason.label }}</span>
+              <span class="reason-track"><span data-size="{{ reason.share }}"></span></span>
+              <strong>{{ reason.total }}</strong>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% else %}
+          <p class="quiet">Партий ещё не было.</p>
+          {% endif %}
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    <section class="panel">
+      <h2>Сила компьютера</h2>
+      <p class="quiet">Сколько партий с компьютером начато на каждом уровне.</p>
+      <div class="strength">
+        {% for level in strength %}
+        <div>
+          <span class="strength-col"><span data-size="{{ level.height }}"></span></span>
+          <strong>{{ level.total }}</strong>
+          <small>{{ level.title }}</small>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <div data-panel="people" hidden="hidden">
+    <div class="donut-row">
+      {{ donut_card("Партии", "Где гость сидел. Партия на двоих считается обоим", people_game_donut) }}
+      {{ donut_card("Победы", "Победы гостей. Победы компьютера сюда не входят", people_win_donut) }}
+      {{ donut_card("Фишки", "Как фишки лежат на счетах", people_chip_donut) }}
+      {{ donut_card("Сейчас", "Кто заходил в последние две минуты", people_presence_donut) }}
+    </div>
+    <div class="chart-row">
+      {{ bars("Партии гостей", "Сколько партий у каждого", people_game_bars) }}
+      {{ bars("Победы гостей", "Сколько побед у каждого", people_win_bars) }}
+    </div>
+    {{ bars("Приглашения", "Кто привёл гостей по своей ссылке", referral_bars) }}
+    <section class="panel">
+      <h2>Игроки</h2>
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Гость</th><th>Роль</th><th>Партий</th><th>Побед</th><th>Завершено</th>
+              <th>Фишки</th><th>Был</th><th>Пригласил</th><th>Откуда</th><th>Рождение</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for person in people %}
+            <tr>
+              <td>
+                {{ player_link(person.username, person.login, person.avatar) }}
+              </td>
+              <td>{% if person.role == 'admin' %}администратор{% else %}игрок{% endif %}</td>
+              <td>{{ person.games }}</td>
+              <td>{{ person.wins }}</td>
+              <td>{{ person.finished }}</td>
+              <td>{{ person.balance|grouped }}</td>
+              <td>{{ person.last_seen|when or "—" }}</td>
+              <td>{% if person.invited_login %}{{ player_link(person.invited_by, person.invited_login, '', false, false, true) }}{% else %}—{% endif %}</td>
+              <td>{{ person.last_country or "не определена" }}<br /><span class="quiet">{{ person.device }}{% if person.last_ip %} · {{ person.last_ip }}{% endif %}</span></td>
+              <td>{{ person.born_label or "—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% set pager_label = "Страницы игроков" %}
+      {% set pager_page = people_page %}
+      {% set pager_pages = people_pages %}
+      {% set pager_links = people_links %}
+      {% set pager_href = people_href %}
+      {% include "_pager.html" %}
+    </section>
+  </div>
+
+  <div data-panel="sessions" hidden="hidden">
+    <div class="chart-row">
+      <section class="panel">
+        <h2>Входы</h2>
+        <p class="quiet">{{ login_total }} за последние 14 дней</p>
+        {{ line_chart(login_chart, login_days) }}
+      </section>
+      {{ bars("Кто входил", "Сколько сессий у каждого гостя", session_user_bars) }}
+    </div>
+    <div class="donut-row">
+      {{ donut_card("Состояние", "Открытые, истёкшие и завершённые сессии", session_state_donut) }}
+      {{ donut_card("Устройства", "Откуда входили", device_donut) }}
+      {{ donut_card("Гости", "Чья доля среди входов", session_user_donut) }}
+    </div>
+    <section class="panel">
+      <h2>Последние входы</h2>
+      <div class="table-wrap">
+        <table class="data">
+          <thead><tr><th>Гость</th><th>Устройство</th><th>IP</th><th>Вход</th><th>Состояние</th></tr></thead>
+          <tbody>
+            {% for row in recent_sessions %}
+            <tr>
+              <td>{{ player_link(row.username, row.login, '', false, false, true) }}</td>
+              <td>{{ row.device }}</td>
+              <td>{{ row.ip_address or "—" }}</td>
+              <td>{{ row.created_at|when }}</td>
+              <td>{% if row.revoked_at %}Завершена{% elif row.live %}<span class="pill live-open">Открыта</span>{% else %}Истекла {{ row.expires_at|when }}{% endif %}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5">Входов ещё не было.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% set pager_label = "Страницы входов" %}
+      {% set pager_page = sessions_page %}
+      {% set pager_pages = sessions_pages %}
+      {% set pager_links = sessions_links %}
+      {% set pager_href = sessions_href %}
+      {% include "_pager.html" %}
+    </section>
+  </div>
+
+  <dialog id="clear-dialog" class="confirm-dialog">
+    <h2>Очистить все партии?</h2>
+    <p>Удалятся партии, ходы, места за столом и сообщения за столом. Сейчас партий: {{ totals.games }}. Гости, фишки, друзья и личные беседы останутся.</p>
+    <form method="post" action="/admin/overview/clear">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <input type="hidden" name="confirm" value="yes" />
+      <div class="confirm-actions">
+        <button type="button" class="secondary" id="clear-cancel">Отмена</button>
+        <button type="submit" class="is-danger">Очистить партии</button>
+      </div>
+    </form>
+  </dialog>
+</section>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/js/overview.js?v={{ asset_version }}"></script>
+{% endblock %}

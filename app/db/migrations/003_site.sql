@@ -1,0 +1,31 @@
+CREATE TABLE site_settings (
+    id BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (id),
+    registration_open BOOLEAN NOT NULL DEFAULT FALSE,
+    username_min SMALLINT NOT NULL DEFAULT 3,
+    username_max SMALLINT NOT NULL DEFAULT 32,
+    password_min SMALLINT NOT NULL DEFAULT 10,
+    password_needs_letter BOOLEAN NOT NULL DEFAULT TRUE,
+    password_needs_digit BOOLEAN NOT NULL DEFAULT TRUE,
+    session_hours INTEGER NOT NULL DEFAULT 336,
+    login_failures SMALLINT NOT NULL DEFAULT 5,
+    login_window_minutes INTEGER NOT NULL DEFAULT 15,
+    starting_chips INTEGER NOT NULL DEFAULT 500,
+    chess_open BOOLEAN NOT NULL DEFAULT TRUE,
+    checkers_open BOOLEAN NOT NULL DEFAULT TRUE,
+    uno_open BOOLEAN NOT NULL DEFAULT TRUE,
+    poker_open BOOLEAN NOT NULL DEFAULT TRUE,
+    notice TEXT NOT NULL DEFAULT '',
+    maintenance BOOLEAN NOT NULL DEFAULT FALSE,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CHECK (username_min BETWEEN 3 AND 16),
+    CHECK (username_max BETWEEN 8 AND 32),
+    CHECK (username_min <= username_max),
+    CHECK (password_min BETWEEN 4 AND 64),
+    CHECK (session_hours BETWEEN 1 AND 2160),
+    CHECK (login_failures BETWEEN 3 AND 20),
+    CHECK (login_window_minutes BETWEEN 5 AND 1440),
+    CHECK (starting_chips BETWEEN 0 AND 100000),
+    CHECK (char_length(notice) <= 240)
+);
+
+INSERT INTO site_settings (id) VALUES (TRUE);

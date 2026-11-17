@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Вход в приложение — Parlor Night{% endblock %}
+{% block content %}
+<section class="login">
+  <div class="login-card">
+    <h1>{{ client_name }}</h1>
+    <p>Приложение просит войти в вашу гостиную. Ему будет доступно то же, что и вам на сайте. Пароль приложение не увидит.</p>
+    <form method="post" action="/oauth/authorize">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <input type="hidden" name="client_id" value="{{ client_id }}" />
+      <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}" />
+      <input type="hidden" name="state" value="{{ state }}" />
+      <button type="submit" name="decision" value="allow">Разрешить</button>
+      <button type="submit" name="decision" value="deny" class="quiet">Отмена</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

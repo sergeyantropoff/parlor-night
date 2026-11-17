@@ -1,0 +1,2 @@
+ALTER TABLE watchers
+    ADD COLUMN seen_at TIMESTAMPTZ NOT NULL DEFAULT now();

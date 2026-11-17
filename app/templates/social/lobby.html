@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Гостиная — Parlor Night{% endblock %}
+{% block topbar_lead %}
+<div class="topbar-lead"><h1>Гостиная</h1></div>
+{% endblock %}
+{% block content %}
+<section class="room" data-room="lobby">
+  <header class="room-head">
+    <div>
+      <p class="lede">Кто в сети и кто ищет компанию для партии</p>
+    </div>
+    <a class="button secondary" href="/live">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-play"/></svg>
+      Идёт игра · {{ live_count }}
+    </a>
+  </header>
+  {% if error %}<p class="banner" role="alert">{{ error }}</p>{% endif %}
+
+  <section class="seek-card">
+    <form method="post" action="/lobby/seek">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <p class="seek-label">Во что сыграем?</p>
+      <label class="seek-pick">
+        <img data-seek-mark class="theme-light game-mark" src="/static/images/games/game-chess-light.png?v={{ asset_version }}" alt="" />
+        <img data-seek-mark class="theme-dark game-mark" src="/static/images/games/game-chess-dark.png?v={{ asset_version }}" alt="" />
+        <select id="seek-game" name="game_type" aria-label="Игра">
+          {% set seat_bounds = {
+            'chess': (2, 2),
+            'checkers': (2, 2),
+            'go': (2, 2),
+            'uno': (2, 6),
+            'poker': (2, 6),
+            'durak': (2, 6),
+            'blackjack': (2, 6),
+            'preferans': (3, 3),
+          } %}
+          {% for key, spec in games.items() %}
+          {% if not site or site.allows(key) %}
+          <option value="{{ key }}" data-min="{{ seat_bounds[key][0] }}" data-max="{{ seat_bounds[key][1] }}">{{ spec.title }}{% if spec.adult %} 18+{% endif %}</option>
+          {% endif %}
+          {% endfor %}
+        </select>
+      </label>
+      <div id="seek-seats" class="seek-seats" hidden="hidden">
+        <p class="seek-label" id="seek-seats-label">Сколько человек?</p>
+        <div class="seek-count" role="radiogroup" aria-labelledby="seek-seats-label">
+          {% for count in (2, 3, 4, 5, 6) %}
+          <label>
+            <input type="radio" name="seats" value="{{ count }}" data-seat="{{ count }}" {% if count == 2 %}checked="checked"{% endif %} />
+            <span>{{ count }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <button type="submit">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-add"/></svg>
+        Ищу стол
+      </button>
+    </form>
+    <form method="post" action="/lobby/cancel">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <button type="submit" class="secondary">Снять свой вызов</button>
+    </form>
+  </section>
+
+  <div class="room-grid">
+    <section class="room-card">
+      <div class="seek-head">
+        <h2>Ищут стол {% if seekers %}<span class="count-badge">{{ seekers|length }}</span>{% endif %}</h2>
+        <label class="seek-filter">
+          <select id="seek-filter" aria-label="Какая игра">
+            <option value="all" selected="selected">Все</option>
+            {% for key, spec in games.items() %}
+            {% if not site or site.allows(key) %}
+            <option value="{{ key }}">{% if key == 'checkers' %}Шашки{% else %}{{ spec.title }}{% endif %}</option>
+            {% endif %}
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <div class="seek-list">
+        {% for row in seekers %}
+        <article class="seek-row" data-page-row="1" data-seek="{{ row.game_type }}">
+          <span class="seek-person">
+            {{ player_link(row.name, row.username, row.avatar) }}
+            <span class="seek-live">(В сети)</span>
+          </span>
+          <span class="seek-game">
+            <img class="theme-light game-mark" src="/static/images/games/game-{{ row.game_type }}-light.png?v={{ asset_version }}" alt="" />
+            <img class="theme-dark game-mark" src="/static/images/games/game-{{ row.game_type }}-dark.png?v={{ asset_version }}" alt="" />
+            <span>
+              <strong>{{ type_label[row.game_type] }}</strong>
+              {% set party = {2: 'на двоих', 3: 'на троих', 4: 'на четверых', 5: 'на пятерых', 6: 'на шестерых'} %}
+              <span class="quiet">Партия {{ party[row.seats] }}</span>
+            </span>
+          </span>
+          {% if row.user_id != user.id %}
+          <form method="post" action="/lobby/accept/{{ row.user_id }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button type="submit">Сесть</button>
+          </form>
+          {% else %}
+          <span class="quiet">Ваш вызов</span>
+          {% endif %}
+        </article>
+        {% endfor %}
+        <p class="quiet room-empty" id="seek-empty" {% if seekers %}hidden{% endif %}>Сейчас никто не ищет стол.</p>
+      </div>
+      <p class="room-foot">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-info"/></svg>
+        Можно присоединиться к вызову или создать свой
+      </p>
+    </section>
+
+    <section class="room-card">
+      <h2>Сейчас в гостиной {% if online %}<span class="count-badge">{{ online|length }}</span>{% endif %}</h2>
+      <label class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
+        <input id="guest-search" type="search" placeholder="Найти гостя" autocomplete="off" />
+      </label>
+      {% if online %}
+      <ul class="guest-list" id="guest-list">
+        {% for row in online %}
+        <li data-page-row="1" data-guest="{{ row.name|lower }} {{ row.username|lower }} {{ (row.last_country or '')|lower }}">
+          <span>
+            {{ player_link(row.name, row.username, row.avatar) }}
+            {% if row.last_country %}<span class="quiet">{{ row.last_country }}</span>{% endif %}
+          </span>
+          <a href="/chats/{{ row.username }}">Написать</a>
+        </li>
+        {% endfor %}
+      </ul>
+      <p class="quiet room-empty" id="guest-empty" hidden>Такого гостя сейчас нет.</p>
+      {% else %}
+      <p class="quiet">Других игроков в сети не видно.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <a class="watch-card" href="/live">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"/></svg>
+    <span>
+      <strong>Посмотреть чужую партию</strong>
+      <span>Открытые столы доступны для наблюдения. Ходы обновляются автоматически.</span>
+    </span>
+    <span class="watch-go">Перейти к текущим играм <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-send"/></svg></span>
+  </a>
+</section>
+{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/js/lobby.js?v={{ asset_version }}"></script>
+{% endblock %}

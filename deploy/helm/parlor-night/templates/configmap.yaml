@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "parlor.fullname" . }}
+  labels:
+    {{- include "parlor.labels" . | nindent 4 }}
+data:
+  ENV: {{ .Values.web.env | quote }}
+  COOKIE_SECURE: {{ .Values.web.cookieSecure | quote }}
+  SESSION_TTL_HOURS: {{ .Values.web.sessionTtlHours | quote }}
+  TRUST_PROXY: {{ .Values.web.trustProxy | quote }}
+  FORWARDED_ALLOW_IPS: {{ .Values.web.forwardedAllowIps | quote }}
+  TRUSTED_HOSTS: {{ include "parlor.trustedHosts" . | quote }}
+  CHESS_ENGINE_PATH: /usr/games/stockfish
+  CHESS_ENGINE_POOL_SIZE: "2"
+  CHESS_ENGINE_HASH_MB: "16"
+  CHESS_ENGINE_THREADS: "1"
+  CHECKERS_WORKERS: "2"
+  ENGINE_MAX_CONCURRENT: "2"
+  ENGINE_MAX_TIME_MS: "10000"
+  LOGIN_MAX_FAILURES: "5"
+  LOGIN_WINDOW_SECONDS: "900"
+  ENGINE_RATE_PER_MINUTE: "300"
+  VALKEY_URL: redis://{{ include "parlor.fullname" . }}-valkey:6379/0
+  REQUEST_LIMIT: "240"
+  REQUEST_WINDOW_SECONDS: "10"
+  MAX_BODY_BYTES: "65536"
+  NEWS_IMAGE_DIR: /var/lib/parlor/news
+  NEWS_IMAGE_BYTES: "4194304"
+  AVATAR_DIR: /var/lib/parlor/news/avatars
+  ALLOW_REGISTRATION: "false"
+  LOG_LEVEL: {{ .Values.web.logLevel | quote }}
+  ARGON_TIME_COST: "2"
+  ARGON_MEMORY_COST: "32768"
+  ARGON_PARALLELISM: "1"
+  TZ: Europe/Moscow

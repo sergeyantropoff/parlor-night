@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+{% block title %}{% if setup_title %}Игра {{ setup_title }}{% else %}Новая партия{% endif %} — Parlor Night{% endblock %}
+{% block topbar_lead %}
+<div class="topbar-lead"><h1>{% if setup_title %}Игра {{ setup_title }}{% else %}Новая партия{% endif %}</h1></div>
+{% endblock %}
+{% block content %}
+{% set chess_on = not site or site.allows('chess') %}
+{% set checkers_on = not site or site.allows('checkers') %}
+{% set go_on = not site or site.allows('go') %}
+{% set uno_on = not site or site.allows('uno') %}
+{% set poker_on = not site or site.allows('poker') %}
+{% set durak_on = not site or site.allows('durak') %}
+{% set blackjack_on = not site or site.allows('blackjack') %}
+{% set preferans_on = not site or site.allows('preferans') %}
+{% set cards = game in ['uno', 'poker', 'durak', 'blackjack', 'preferans'] %}
+{% set titles = {'chess': 'Шахматы', 'checkers': 'Русские шашки', 'go': 'Го', 'uno': 'Уно', 'poker': 'Покер', 'durak': 'Дурак', 'blackjack': 'Блэкджек', 'preferans': 'Преферанс'} %}
+<section class="page">
+  {% if not game %}
+  <p class="lede">Выберите игру.</p>
+  {% if error %}<p class="banner" role="alert">{{ error }}</p>{% endif %}
+  <div class="setup-form">
+    <div class="setup-games">
+      {% if chess_on %}
+      <a class="choice pick" href="/games/new/chess">
+        <span class="shot">
+          <img class="theme-light" src="/static/parlor/light/game-chess.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
+          <img class="theme-dark" src="/static/parlor/dark/game-chess.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
+        </span>
+        <span class="shot-body">
+          <span><strong>Шахматы</strong><small>Партия на классической доске</small></span>
+          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
+        </span>
+      </a>
+      {% endif %}
+      {% if checkers_on %}
+      <a class="choice pick" href="/games/new/checkers">
+        <span class="shot">
+          <img class="theme-light" src="/static/parlor/light/game-checkers.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
+          <img class="theme-dark" src="/static/parlor/dark/game-checkers.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
+        </span>
+        <span class="shot-body">
+          <span><strong>Русские шашки</strong><small>Дамки и обязательный бой</small></span>
+          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
+        </span>
+      </a>
+      {% endif %}
+      {% if go_on %}
+      <a class="choice pick" href="/games/new/go">
+        <span class="shot">
+          <img class="theme-light" src="/static/parlor/light/game-go.png?v={{ asset_version }}" width="1440" height="1080" alt="" />
+          <img class="theme-dark" src="/static/parlor/dark/game-go.png?v={{ asset_version }}" width="1440" height="1080" alt="" />
+        </span>
+        <span class="shot-body">
+          <span><strong>Го</strong><small>С человеком или с компьютером</small></span>
+          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
+        </span>
+      </a>
+      {% endif %}
+      {% if uno_on %}
+      <a class="choice pick" href="/games/new/uno">
+        <span class="shot">
+          <img class="theme-light" src="/static/parlor/light/game-uno.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
+          <img class="theme-dark" src="/static/parlor/dark/game-uno.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
+        </span>
+        <span class="shot-body">
+          <span><strong>Уно</strong><small>Цвета, цифры и дикие карты</small></span>
+          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
+        </span>
+      </a>
+      {% endif %}
+      {% if poker_on and adult %}
+      <a class="choice pick" href="/games/new/poker">
+        <span class="shot">
+          <img class="theme-light" src="/static/parlor/light/game-poker.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
+          <img class="theme-dark" src="/static/parlor/dark/game-poker.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
+          <span class="age">18+</span>
+        </span>
+        <span class="shot-body">
+          <span><strong>Покер</strong><small>Техасский холдем на фишки</small></span>
+          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
+        </span>
+      </a>
+      {% endif %}
+      {% if durak_on %}
+      <a class="choice pick" href="/games/new/durak">
+        <span class="shot">
+          <img class="theme-light" src="/static/parlor/light/game-durak.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
+          <img class="theme-dark" src="/static/parlor/dark/game-durak.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
+        </span>
+        <span class="shot-body">
+          <span><strong>Дурак</strong><small>Подкидной или переводной</small></span>
+          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
+        </span>
+      </a>
+      {% endif %}
+      {% if blackjack_on and adult %}
+      <a class="choice pick" href="/games/new/blackjack">
+        <span class="shot">
+          <img class="theme-light" src="/static/parlor/light/game-blackjack.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
+          <img class="theme-dark" src="/static/parlor/dark/game-blackjack.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
+          <span class="age">18+</span>
+        </span>
+        <span class="shot-body">
+          <span><strong>Блэкджек</strong><small>Против дилера на фишки</small></span>
+          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
+        </span>
+      </a>
+      {% endif %}
+      {% if preferans_on and adult %}
+      <a class="choice pick" href="/games/new/preferans">
+        <span class="shot">
+          <img class="theme-light" src="/static/parlor/light/game-preferans.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
+          <img class="theme-dark" src="/static/parlor/dark/game-preferans.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
+          <span class="age">18+</span>
+        </span>
+        <span class="shot-body">
+          <span><strong>Преферанс</strong><small>Торг и взятки на троих</small></span>
+          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
+        </span>
+      </a>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="setup-lead">
+    <p class="lede">{{ setup_blurb }} Чтобы начать, выберите параметры игры.</p>
+    <a class="button secondary" href="/games/new">Другая игра</a>
+  </div>
+  {% if error %}<p class="banner" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/games" id="new-game" class="setup-form" data-game="{{ game }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <input type="hidden" name="game_type" value="{{ game }}" data-title="{{ titles[game] }}" />
+
+    <section class="panel" id="durak-kind" {% if game != 'durak' %}hidden="hidden"{% endif %}>
+      <h2 id="pick-durak">Вид дурака</h2>
+      <div class="mode-grid" role="radiogroup" aria-labelledby="pick-durak">
+        <label class="mode-choice pick">
+          <input type="radio" name="durak_kind" value="podkidnoy" data-title="Подкидной" checked="checked" />
+          <strong>Подкидной</strong>
+          <small>Бьют карту, затем подкидывают те же достоинства</small>
+        </label>
+        <label class="mode-choice pick">
+          <input type="radio" name="durak_kind" value="perevodnoy" data-title="Переводной" />
+          <strong>Переводной</strong>
+          <small>Небитую карту одного достоинства можно перевести дальше</small>
+        </label>
+      </div>
+    </section>
+
+    <section class="panel" id="preferans-pool" {% if game != 'preferans' %}hidden="hidden"{% endif %}>
+      <h2 id="pick-pool">До скольких очков</h2>
+      <div class="mode-grid pool-grid" role="radiogroup" aria-labelledby="pick-pool">
+        {% for size, note in ((6, "Короткая"), (10, "Небольшая"), (12, "Обычная пуля"), (16, "Длинная"), (20, "Большая")) %}
+        <label class="mode-choice pick">
+          <input type="radio" name="pool" value="{{ size }}" data-title="до {{ size }}" {% if size == 12 %}checked="checked"{% endif %} />
+          <strong>{{ size }}</strong>
+          <small>{{ note }}</small>
+        </label>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel" id="go-size" {% if game != 'go' %}hidden="hidden"{% endif %}>
+      <h2 id="pick-size">Размер доски</h2>
+      <div class="mode-grid" role="radiogroup" aria-labelledby="pick-size">
+        {% for size, note in ((9, "Короткая"), (13, "Средняя"), (19, "Обычная")) %}
+        <label class="mode-choice pick">
+          <input type="radio" name="board_size" value="{{ size }}" data-title="{{ size }}×{{ size }}" {% if size == 19 %}checked="checked"{% endif %} />
+          <strong>{{ size }}×{{ size }}</strong>
+          <small>{{ note }}</small>
+        </label>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel" id="play-mode">
+      <h2 id="pick-mode">Как играть</h2>
+      <div class="mode-grid" role="radiogroup" aria-labelledby="pick-mode">
+        {% for value, title, note, icon in (
+          ('vs_computer', 'С компьютером', 'Отвечает за другую сторону', 'screen'),
+          ('online', 'С человеком онлайн', 'Код приглашения, камера и чат', 'lobby'),
+          ('free', 'Свободная доска', 'Ходы за обе стороны', 'grid'),
+          ('analysis', 'Анализ', 'Подсказки по позиции', 'chart'),
+          ('lesson', 'Разбор партии', 'Чужая запись, ход за ходом', 'book'),
+        ) %}
+        <label class="mode-choice pick">
+          <input type="radio" name="mode" value="{{ value }}" data-title="{{ title }}" {% if value == 'vs_computer' %}checked{% endif %} required="required" />
+          <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-{{ icon }}"/></svg>
+          <strong>{{ title }}</strong>
+          <small>{{ note }}</small>
+        </label>
+        {% endfor %}
+      </div>
+      <p id="online-note" class="callout" hidden="hidden">После создания появится код: по нему садится второй игрок. Камера и микрофон есть только у игроков за столом, до шести человек. Наблюдатели звук и видео не передают.</p>
+      <p id="adult-note" class="callout{% if born and not adult %} adult{% endif %}" hidden="hidden">{% if adult %}Игра открыта. Она идёт на фишки, не на деньги.{% elif born %}Сейчас сохранено {{ born_label }} — {{ age_label }}. Это меньше 18 лет, поэтому стол закрыт. Дату можно изменить в <a href="/settings">настройках</a>.{% else %}Укажите дату рождения в <a href="/settings">настройках</a>. Покер, блэкджек и преферанс открываются с 18 лет и идут на фишки, не на деньги.{% endif %}</p>
+    </section>
+
+    <section class="panel" id="audience-fields" hidden="hidden">
+      <h2 id="pick-audience">Кто может смотреть</h2>
+      <div class="mode-grid audience-grid" role="radiogroup" aria-labelledby="pick-audience">
+        <label class="mode-choice pick">
+          <input type="radio" name="audience" value="closed" data-title="Закрытый стол" checked="checked" />
+          <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shield"/></svg>
+          <strong>Закрытый</strong>
+          <small>Наблюдатель не сможет войти и смотреть партию</small>
+        </label>
+        <label class="mode-choice pick">
+          <input type="radio" name="audience" value="open" data-title="Открытый стол" />
+          <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-lobby"/></svg>
+          <strong>Открытый</strong>
+          <small>Любой игрок гостиной может смотреть</small>
+        </label>
+      </div>
+    </section>
+
+    <div class="setup-split" id="table-setup"{% if cards %} hidden="hidden"{% endif %}>
+      <section class="panel" id="side-fields">
+        <h2 id="pick-side">Ваша сторона</h2>
+        <div class="side-grid" role="radiogroup" aria-labelledby="pick-side">
+          <label class="side-choice pick span">
+            <input type="radio" name="player_side" value="random" data-title="Случайная сторона" checked="checked" required="required" />
+            <span class="side-art roll" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><use href="#i-dice"/></svg>
+            </span>
+            <span><strong>Случайно</strong><small>Белые или чёрные, решится при создании</small></span>
+          </label>
+          <label class="side-choice pick">
+            <input type="radio" name="player_side" value="white" data-title="Белые снизу" required="required" />
+            <span class="side-art light" aria-hidden="true">
+              <img class="piece-chess" src="/static/images/pieces/chess-w-k.png?v={{ asset_version }}" alt="" />
+              <img class="piece-checkers" src="/static/images/pieces/checkers-w-man.png?v={{ asset_version }}" alt="" />
+              <img class="piece-go" src="/static/images/go/go-stone-white.png?v={{ asset_version }}" alt="" />
+            </span>
+            <span><strong>Белые</strong><small>Снизу, ходят первыми</small></span>
+          </label>
+          <label class="side-choice pick">
+            <input type="radio" name="player_side" value="black" data-title="Чёрные снизу" required="required" />
+            <span class="side-art dark" aria-hidden="true">
+              <img class="piece-chess" src="/static/images/pieces/chess-b-k.png?v={{ asset_version }}" alt="" />
+              <img class="piece-checkers" src="/static/images/pieces/checkers-b-man.png?v={{ asset_version }}" alt="" />
+              <img class="piece-go" src="/static/images/go/go-stone-black.png?v={{ asset_version }}" alt="" />
+            </span>
+            <span><strong>Чёрные</strong><small>Снизу, отвечают на ход</small></span>
+          </label>
+        </div>
+      </section>
+      <section class="panel" id="card-seats" {% if not cards %}hidden="hidden"{% endif %}>
+        <h2>Места за столом</h2>
+        <p class="quiet">Вы уже сидите. Вместе с вами за столом шесть мест: компьютеры и свободные стулья делят оставшиеся пять.</p>
+        <div class="seat-picks">
+          <label>Компьютеры
+            <input id="computers" name="computers" type="number" min="0" max="5" value="1" inputmode="numeric" />
+          </label>
+          <label>Свободные места
+            <input id="open-seats" name="open_seats" type="number" min="0" max="5" value="0" inputmode="numeric" />
+          </label>
+        </div>
+        <p id="seat-note" class="quiet">Один компьютер отвечает за другую сторону.</p>
+      </section>
+    </div>
+
+    <section class="panel" id="engine-fields">
+      <h2 id="pick-level">Сила искусственного интеллекта</h2>
+      <p id="engine-level-label" class="quiet">Сила игры</p>
+      <div class="meter" role="radiogroup" aria-labelledby="pick-level">
+        <span class="meter-track" aria-hidden="true"></span>
+        <span class="meter-fill" id="meter-fill" style="width: 40%" aria-hidden="true"></span>
+        {% for level, title in ((1, "Новичок"), (2, "Любитель"), (3, "Опытный"), (4, "Сильный"), (5, "Мастер")) %}
+        <label class="meter-step pick{% if level <= 3 %} is-hot{% endif %}{% if level == 3 %} is-on{% endif %}">
+          <input type="radio" name="engine_level" value="{{ level }}" data-title="{{ title }}" {% if level == 3 %}checked{% endif %} required="required" />
+          <span class="meter-dot" aria-hidden="true"></span>
+          <span class="meter-name">{{ title }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </section>
+
+    <details class="panel advanced" id="advanced"{% if cards %} hidden="hidden"{% endif %}{% if error and not cards %} open{% endif %}>
+      <summary>
+        <svg class="twist" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
+        Своя позиция и готовые ходы
+        <span class="quiet">необязательно</span>
+      </summary>
+      <div class="advanced-body">
+        <label id="fen-field"{% if game != 'chess' %} hidden="hidden"{% endif %}>Начальный FEN, если нужен не старт
+          <textarea name="initial_fen" rows="2" placeholder="Пусто — обычная начальная позиция"></textarea>
+        </label>
+        <label id="pgn-field"{% if game != 'chess' %} hidden="hidden"{% endif %}>PGN внешней партии
+          <textarea name="pgn" rows="4" placeholder="Вставьте партию в PGN"></textarea>
+        </label>
+        <label id="rcp-field"{% if game != 'checkers' %} hidden="hidden"{% endif %}>Позиция шашек в формате RCP
+          <textarea name="initial_position" rows="2" placeholder="Пусто — обычная начальная расстановка"></textarea>
+        </label>
+        <label id="moves-field"{% if cards %} hidden="hidden"{% endif %}>
+          <span id="moves-hint">{% if game == 'checkers' %}Ходы шашек, по одному в строке: 22-18 или 21:14:7{% else %}Ходы шахмат в UCI, по одному в строке{% endif %}</span>
+          <textarea name="moves" rows="4" placeholder="{% if game == 'checkers' %}22-18{% else %}e2e4{% endif %}"></textarea>
+        </label>
+      </div>
+    </details>
+
+    <div class="panel setup-bar">
+      <div>
+        <p class="quiet">Партия</p>
+        <p id="setup-summary" aria-live="polite">{% if cards %}{{ titles[game] }} · С компьютером{% else %}{{ titles[game] }} · С компьютером · Случайная сторона · Опытный{% endif %}</p>
+      </div>
+      <button type="submit"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plus"/></svg> Создать партию</button>
+    </div>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+{% if game %}<script type="module" src="/static/js/new-game.js?v={{ asset_version }}"></script>{% endif %}
+{% endblock %}

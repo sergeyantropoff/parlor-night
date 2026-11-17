@@ -1,0 +1,15 @@
+<footer class="site-foot">
+  <a class="brand foot-brand" href="/">
+    <img class="mark theme-light" src="/static/images/logo-mark-for-light.png?v={{ asset_version }}" width="982" height="1002" alt="" />
+    <img class="mark theme-dark" src="/static/images/logo-mark-for-dark.png?v={{ asset_version }}" width="1003" height="1024" alt="" />
+    <span class="brand-title">Parlor Night</span>
+    <span class="brand-rule">гостиная</span>
+  </a>
+  <div class="foot-links">
+    <a href="/about"{% if path == "/about" %} aria-current="page"{% endif %}>О нас</a>
+    <a href="/rules"{% if path == "/rules" %} aria-current="page"{% endif %}>Правила гостиной</a>
+    <a href="/privacy"{% if path == "/privacy" %} aria-current="page"{% endif %}>Конфиденциальность</a>
+    <a href="/contact"{% if path == "/contact" %} aria-current="page"{% endif %}>Связаться с нами</a>
+    <a href="https://antropoff.ru" target="_blank" rel="noopener noreferrer">© 2026 Antropoff.RU</a>
+  </div>
+</footer>
