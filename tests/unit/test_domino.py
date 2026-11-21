@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
 from app.cards.domino import _pack, apply, deal, legal, replay, suggest, view
+from app.errors import AppError
+from app.games.service import GameService
 
 
 def test_pack_has_every_double_six_tile() -> None:
@@ -156,3 +160,31 @@ def dumps_roundtrip(state: dict) -> dict:
     from app.cards.domino import dumps, loads
 
     return loads(dumps(state))
+
+
+def test_domino_plays_with_a_person_or_a_computer_only() -> None:
+    service = GameService.__new__(GameService)
+    base = {
+        "game_type": "domino",
+        "mode": "vs_computer",
+        "player_side": "white",
+        "engine_level": 3,
+        "engine_time_ms": 1000,
+        "audience": "closed",
+        "computers": 1,
+        "open_seats": 0,
+    }
+    service._validate_create(dict(base))
+    assert base["mode"] == "vs_computer"
+    for mode in ("free", "analysis", "lesson"):
+        with pytest.raises(AppError, match="компьютером"):
+            service._validate_create(
+                {
+                    "game_type": "domino",
+                    "mode": mode,
+                    "player_side": "white",
+                    "engine_level": 3,
+                    "engine_time_ms": 1000,
+                    "audience": "closed",
+                }
+            )

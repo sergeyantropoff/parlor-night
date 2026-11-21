@@ -226,12 +226,14 @@
           ('analysis', 'Анализ', 'Подсказки по позиции', 'chart'),
           ('lesson', 'Разбор партии', 'Чужая запись, ход за ходом', 'book'),
         ) %}
+        {% if not (game == 'domino' and value in ['free', 'analysis', 'lesson']) %}
         <label class="mode-choice pick">
           <input type="radio" name="mode" value="{{ value }}" data-title="{{ title }}" {% if value == 'vs_computer' %}checked{% endif %} required="required" />
           <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-{{ icon }}"/></svg>
           <strong>{{ title }}</strong>
           <small>{{ note }}</small>
         </label>
+        {% endif %}
         {% endfor %}
       </div>
       <p id="online-note" class="callout" hidden="hidden">После создания появится код: по нему садится второй игрок. Камера и микрофон есть только у игроков за столом, до шести человек. Наблюдатели звук и видео не передают.</p>

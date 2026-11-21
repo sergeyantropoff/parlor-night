@@ -4974,7 +4974,7 @@ main:has(.play-domino) { padding: 0.65rem 12px 8px; }
   align-items: center;
   min-width: 0;
   padding: 14px 16px 12px;
-  --bone: clamp(20px, 3.2cqw, 40px);
+  --bone: clamp(29px, 4.5cqw, 48px);
 }
 #card-table.is-domino .domino-top,
 #card-table.is-domino .domino-bottom,
@@ -4996,6 +4996,7 @@ main:has(.play-domino) { padding: 0.65rem 12px 8px; }
   min-width: 0;
 }
 .domino-bottom {
+  position: relative;
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr) 96px;
   align-items: end;
@@ -5016,10 +5017,9 @@ main:has(.play-domino) { padding: 0.65rem 12px 8px; }
   padding: 4px 0;
 }
 #card-table.is-domino .domino-line.is-snake {
-  flex-flow: column nowrap;
-  align-items: stretch;
-  justify-content: center;
-  gap: 8px;
+  display: block;
+  position: relative;
+  gap: 0;
 }
 .domino-row {
   display: flex;
@@ -5052,6 +5052,7 @@ main:has(.play-domino) { padding: 0.65rem 12px 8px; }
   flex-direction: column;
   align-items: center;
   justify-self: start;
+  z-index: 4;
   gap: 4px;
   margin: 0;
   padding: 0;
@@ -5125,6 +5126,7 @@ button.bone:active { cursor: grabbing; }
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
+.bone.is-up.is-flip img { transform: translate(-50%, -50%) rotate(180deg); }
 .bone.is-flat img { transform: translate(-50%, -50%) rotate(90deg); }
 .bone.is-flat.is-flip img { transform: translate(-50%, -50%) rotate(-90deg); }
 .bone.is-live { transition: transform 180ms ease; }
@@ -5134,7 +5136,7 @@ button.bone:active { cursor: grabbing; }
 .bone.is-float {
   position: fixed;
   z-index: 80;
-  --bone: 46px;
+  --bone: 32px;
   pointer-events: none;
   transform: translate(-50%, -62%) rotate(-8deg);
   filter: drop-shadow(0 12px 10px #0008);

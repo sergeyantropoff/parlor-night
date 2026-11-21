@@ -802,6 +802,8 @@ async def _board_page(request: Request, game_id: uuid.UUID, *, analysis: bool) -
         if exc.status == 404:
             return error_response(request, 404, note=exc.message)
         raise
+    if analysis and state.get("game_type") == "domino":
+        return RedirectResponse(f"/games/{game_id}", status_code=303)
     prefs = await _prefs(request, user.id)
     return render(
         request,

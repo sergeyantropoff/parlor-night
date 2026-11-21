@@ -2367,6 +2367,8 @@ function dominoBone(tile, options) {
   img.draggable = false;
   img.src = asset(`/static/images/dominoes/${options.back ? "back" : tile}.webp`);
   node.append(img);
+  node.dataset.spin = options.spin ? "1" : "0";
+  node.dataset.hiLeft = options.hiLeft ? "1" : "0";
   if (options.spin) node.classList.add("is-up");
   else {
     node.classList.add("is-flat");
@@ -2469,43 +2471,120 @@ function dominoFan(count) {
 }
 
 function dominoPieces(line) {
-  if (line.classList.contains("is-snake")) return [...line.querySelectorAll(":scope > .domino-row > *")];
+  const nested = [...line.querySelectorAll(":scope > .domino-row > *")];
+  if (nested.length) return nested;
   return [...line.children];
+}
+
+function dominoTile(piece) {
+  return piece.classList.contains("bone") ? piece : piece.querySelector(".bone");
+}
+
+function orientDomino(piece, dir) {
+  const bone = dominoTile(piece);
+  if (!bone) return;
+  const spin = bone.dataset.spin === "1";
+  const hiLeft = bone.dataset.hiLeft === "1";
+  bone.classList.remove("is-up", "is-flat", "is-flip");
+  if (dir === "down") {
+    bone.classList.add("is-up");
+    if (!spin && !hiLeft) bone.classList.add("is-flip");
+    return;
+  }
+  if (spin) {
+    bone.classList.add("is-up");
+    return;
+  }
+  bone.classList.add("is-flat");
+  const hiOnLeft = dir === "right" ? hiLeft : !hiLeft;
+  if (hiOnLeft) bone.classList.add("is-flip");
+}
+
+function dominoBox(piece, dir, bone) {
+  if (piece.classList.contains("domino-end")) {
+    const box = bone * 2.35;
+    return { w: box, h: box };
+  }
+  const spin = dominoTile(piece)?.dataset.spin === "1";
+  if (dir === "down") return { w: bone, h: bone * 2 };
+  return spin ? { w: bone, h: bone * 2 } : { w: bone * 2, h: bone };
+}
+
+function usedBone(line) {
+  const inline = parseFloat(line.style.getPropertyValue("--bone"));
+  if (inline) return inline;
+  const img = line.querySelector(".bone img");
+  const width = parseFloat(img ? getComputedStyle(img).width : "");
+  return width || 32;
+}
+
+function clearDominoPlace(piece) {
+  piece.style.position = "";
+  piece.style.left = "";
+  piece.style.top = "";
 }
 
 function layoutDominoSnake(line) {
   const pieces = dominoPieces(line);
   if (!pieces.length || pieces[0].classList.contains("domino-empty")) return;
+  pieces.forEach(clearDominoPlace);
   line.classList.remove("is-snake");
+  line.style.height = "";
   line.replaceChildren(...pieces);
-  const layer = line.closest(".table-layer");
-  const limit = Math.max(0, (layer?.clientWidth || line.clientWidth) - 8);
-  if (!limit) return;
-  const rows = [];
-  let row = [];
-  let width = 0;
-  for (const piece of pieces) {
-    const pieceWidth = piece.getBoundingClientRect().width;
-    const next = row.length ? width + 2 + pieceWidth : pieceWidth;
-    if (row.length && next > limit - 1) {
-      rows.push(row);
-      row = [piece];
-      width = pieceWidth;
-    } else {
-      row.push(piece);
-      width = next;
+  const limit = Math.max(0, line.clientWidth - 2);
+  const bone = usedBone(line);
+  if (!limit || !bone) return;
+  pieces.forEach((piece) => orientDomino(piece, "right"));
+  const join = 1;
+  const total = pieces.reduce((sum, piece, index) => sum + dominoBox(piece, "right", bone).w - (index ? join : 0), 0);
+  if (total <= limit) return;
+  const spots = [];
+  let flow = 1;
+  let edgeX = 0;
+  let bandTop = 0;
+  for (let index = 0; index < pieces.length; index += 1) {
+    const piece = pieces[index];
+    const forward = flow > 0 ? "right" : "left";
+    const across = dominoBox(piece, forward, bone);
+    const turn = index > 0 && (flow > 0 ? edgeX + across.w > limit + 0.5 : edgeX - across.w < -0.5);
+    if (!turn) {
+      orientDomino(piece, forward);
+      const size = dominoBox(piece, forward, bone);
+      const left = flow > 0 ? edgeX : edgeX - size.w;
+      const top = size.h > bone + 0.5 ? bandTop - (size.h - bone) / 2 : bandTop;
+      spots.push({ piece, left, top, w: size.w, h: size.h });
+      edgeX = flow > 0 ? left + size.w - join : left + join;
+      continue;
     }
+    orientDomino(piece, "down");
+    const size = dominoBox(piece, "down", bone);
+    let left = flow > 0 ? edgeX : edgeX - size.w;
+    left = flow > 0 ? Math.min(left, Math.max(0, limit - size.w)) : Math.max(0, left);
+    const top = bandTop;
+    spots.push({ piece, left, top, w: size.w, h: size.h });
+    flow = -flow;
+    edgeX = flow < 0 ? left + size.w + join : left - join;
+    bandTop = top + size.h - join;
   }
-  if (row.length) rows.push(row);
-  if (rows.length < 2) return;
+  let minLeft = Infinity;
+  let maxRight = 0;
+  let minTop = Infinity;
+  let maxBottom = 0;
+  for (const spot of spots) {
+    minLeft = Math.min(minLeft, spot.left);
+    maxRight = Math.max(maxRight, spot.left + spot.w);
+    minTop = Math.min(minTop, spot.top);
+    maxBottom = Math.max(maxBottom, spot.top + spot.h);
+  }
+  const shiftX = Math.max(0, (limit - (maxRight - minLeft)) / 2 - minLeft);
+  const shiftY = -minTop;
   line.classList.add("is-snake");
-  line.replaceChildren();
-  rows.forEach((items, index) => {
-    const strip = document.createElement("div");
-    strip.className = index % 2 ? "domino-row is-back" : "domino-row";
-    items.forEach((item) => strip.append(item));
-    line.append(strip);
-  });
+  line.style.height = `${Math.ceil(maxBottom - minTop)}px`;
+  for (const spot of spots) {
+    spot.piece.style.position = "absolute";
+    spot.piece.style.left = `${(spot.left + shiftX).toFixed(1)}px`;
+    spot.piece.style.top = `${(spot.top + shiftY).toFixed(1)}px`;
+  }
 }
 
 function fitDominoLine(line) {
@@ -2516,10 +2595,10 @@ function fitDominoLine(line) {
   const room = (layer?.clientHeight || 0) - top - bottom - 28;
   const need = line.scrollHeight;
   if (room < 80 || need <= room + 6) return;
-  const bone = parseFloat(getComputedStyle(layer).getPropertyValue("--bone")) || 32;
-  const next = Math.max(15, bone * (room / need));
+  const bone = usedBone(line);
+  const next = Math.max(22, bone * (room / need));
   if (next >= bone - 0.5) return;
-  layer.style.setProperty("--bone", `${next.toFixed(1)}px`);
+  line.style.setProperty("--bone", `${next.toFixed(1)}px`);
   layoutDominoSnake(line);
 }
 
@@ -2527,8 +2606,19 @@ function fitDominoHand(hand) {
   const limit = hand.clientWidth;
   const need = hand.scrollWidth;
   if (!limit || need <= limit + 1) return;
-  const bone = parseFloat(getComputedStyle(hand).getPropertyValue("--bone")) || 32;
-  hand.style.setProperty("--bone", `${Math.max(16, (bone * limit) / need).toFixed(1)}px`);
+  const bone = usedBone(hand);
+  hand.style.setProperty("--bone", `${Math.max(25, (bone * limit) / need).toFixed(1)}px`);
+}
+
+function placeDominoYard(layer) {
+  const yard = layer.querySelector(".domino-yard");
+  const tile = layer.querySelector(".domino-hand .bone");
+  const bottom = layer.querySelector(".domino-bottom");
+  if (!yard || !tile || !bottom) return;
+  const lift = bottom.getBoundingClientRect().bottom - tile.getBoundingClientRect().top + 10;
+  yard.style.position = "absolute";
+  yard.style.left = "0";
+  yard.style.bottom = `${Math.round(lift)}px`;
 }
 
 function dominoEnd(move, chain) {
@@ -2714,6 +2804,7 @@ function renderDomino() {
   box.replaceChildren(layer);
   fitDominoLine(line);
   fitDominoHand(hand);
+  placeDominoYard(layer);
   flyDomino();
 }
 
@@ -3140,6 +3231,7 @@ async function act(path, body, key) {
       const spoken = (data.lines || []).map((line) => line.notation).filter(Boolean);
       if (spoken.length) note = `Подсказка: ${spoken.join(" · ")}`;
       const box = document.querySelector("#lines");
+      if (!box) return;
       box.replaceChildren();
       for (const line of data.lines || []) {
         const row = document.createElement("p");

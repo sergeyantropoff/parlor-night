@@ -117,7 +117,7 @@ Card games ask for computers and open seats instead of a side. The creator is al
 
 ![Dominoes](../images/games/domino.webp)
 
-**Dominoes.** A double-six set, twenty-eight tiles, from blank to double six. Two to four sit down: two players draw seven tiles each, three or four draw five. The rest is the boneyard. The player with the highest double leads and must play it. If there is no double, the player with the highest tile leads. A later tile matches one open end. With no match, tiles are drawn until a play appears or the boneyard is empty, and then the turn is a pass. The first empty hand wins. If a pass goes all the way around, the hand is blocked: the lowest pip sum wins, and equal sums draw. Chips are awarded for a win and a draw. There is no pot. A tile is dragged to the end it matches. When only one end matches, a tap is enough. The computer uses the same five levels. There is no clock. The record downloads as text.
+**Dominoes.** A double-six set, twenty-eight tiles, from blank to double six. Two to four sit down: two players draw seven tiles each, three or four draw five. The rest is the boneyard. The player with the highest double leads and must play it. If there is no double, the player with the highest tile leads. A later tile matches one open end. With no match, tiles are drawn until a play appears or the boneyard is empty, and then the turn is a pass. The first empty hand wins. If a pass goes all the way around, the hand is blocked: the lowest pip sum wins, and equal sums draw. Chips are awarded for a win and a draw. There is no pot. A tile is dragged to the end it matches. When only one end matches, a tap is enough. When the line reaches the edge, the next tile stands upright and the line comes back the other way: one continuous snake, not two separate rows. Opponents show a fan of tile backs on the table and a count on their card. The boneyard sits on the left, just above your tiles. Dominoes have no free board, analysis, or lesson: a game is only against a person or the computer. The computer uses the same five levels. There is no clock. The record downloads as text.
 
 ![Backgammon, coming soon](../images/games/backgammon-soon.webp)
 
@@ -141,7 +141,7 @@ When a game ends, a summary opens: the result sentence, moves, captures, and who
 
 ![Analysis](../images/features/analysis.webp)
 
-Analysis and the hint belong to an administrator. A guest plays, reads the move list, and downloads the record. Go has no computer hint.
+Analysis and the hint belong to an administrator in chess and checkers. A guest plays, reads the move list, and downloads the record. Go has no computer hint. Dominoes have no free board, analysis, or lesson.
 
 A person can be invited from a table that is still waiting: the username goes to a private chat together with the code.
 

@@ -238,18 +238,23 @@
   <div id="notes-backdrop" class="notes-backdrop"></div>
   <aside id="table-notes" class="side-panel" data-drawer="notes" aria-hidden="true">
     <div class="notes-head">
-      <h2>Ходы и разбор</h2>
+      <h2>{% if state.game_type == "domino" %}Ходы{% else %}Ходы и разбор{% endif %}</h2>
       <button type="button" class="secondary" data-drawer-close>Закрыть</button>
     </div>
     <section>
       <h2>Ходы</h2>
       <ol id="history"></ol>
+      {% if state.game_type == "domino" %}
+      <p class="download"><a href="/api/v1/games/{{ state.id }}/export"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-save"/></svg> Скачать запись</a></p>
+      {% endif %}
     </section>
+    {% if state.game_type != "domino" %}
     <section>
       <h2>Разбор</h2>
       <div id="lines"></div>
       <p class="download"><a href="/api/v1/games/{{ state.id }}/export"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-save"/></svg> {% if state.game_type == "go" %}Сохранить SGF{% else %}Скачать запись{% endif %}</a></p>
     </section>
+    {% endif %}
   </aside>
 </section>
 {% if state.game_type == "poker" %}

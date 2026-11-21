@@ -779,7 +779,7 @@ Modes:
 | `analysis` | Chess and checkers only | Study a position. Both sides are yours |
 | `lesson` | Chess and checkers only | The same, suited to a pasted record |
 
-Go accepts only `vs_computer` and `online`. Cards do too: `free`, `analysis`, and `lesson` are `422 bad_mode`. When cards are given `computers` and `open_seats`, the server sets `online` if a seat is open for a person, and `vs_computer` if none is.
+Go and dominoes accept only `vs_computer` and `online`: `free`, `analysis`, and `lesson` are `422 bad_mode`. The other card games hide those three modes in the form. When cards are given `computers` and `open_seats`, the server sets `online` if a seat is open for a person, and `vs_computer` if none is.
 
 Extra fields:
 
@@ -906,7 +906,7 @@ Then, by game:
 | `trump`, `trump_card`, `pairs`, `held` | Durak. `trump` is the trump suit, `trump_card` is the face-up trump while it is still in the deck. `pairs` are `{ "attack", "defense" }` on the table. `held` means this is an already beaten table, not a new attack. While `held`, the site keeps the cards for about two and a half seconds before it asks for the computer's next move |
 | `hole`, `board`, `stacks`, `committed` | Blackjack. `board` is the dealer's cards. `hole: true` means the dealer's second card is still hidden and is not in `board`. Bets are in `committed` |
 | `contract`, `contract_need`, `declarer`, `tricks`, `sheet`, `scored`, `note`, `talon`, `held` | Preferans. `contract` is the current bid in words. `contract_need` is the number of tricks in the contract, `0` for a miser, `null` for raspasy. `declarer` is the seat that ordered the game. `tricks` is how many tricks each seat already has. `sheet`: `pool`, `closed`, `seats`, `bullet`, `mountain`, `whists`, `total`. `board` is the trick. `held` is the previous trick, and it also stays on the table before the next lead |
-| `chain`, `deck`, `hand` | Dominoes. `hand` is your tiles, coded `6-1`. Other tiles are not sent, only `seats[].count`. `deck` is how many tiles remain in the boneyard. `chain` is the line from left to right: `tile`, `spin` (a double stands upright), `hi_left` (the higher half faces left). `phase` is `play` or `done`. A result reason `empty` means a hand ran out, `blocked` means the line is closed, `left` means an opponent left. `summary.kind` for dominoes is `parlor` |
+| `chain`, `deck`, `hand` | Dominoes. `hand` is your tiles, coded `6-1`. Other tiles are not sent, only `seats[].count`. `deck` is how many tiles remain in the boneyard. `chain` is the play order from the opening tile: `tile`, `spin` (a double lies across the line), `hi_left` (the higher half faces back toward the start). On the table a long line is drawn as one snake, horizontal then a vertical turn, but the `chain` order does not change. `phase` is `play` or `done`. A result reason `empty` means a hand ran out, `blocked` means the line is closed, `left` means an opponent left. `summary.kind` for dominoes is `parlor` |
 
 `note` and `status_line` can be shown above the table. A Preferans `summary` also has `sheet`.
 

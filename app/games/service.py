@@ -1446,6 +1446,8 @@ class GameService:
             raise AppError(422, "bad_audience", "Выберите открытый или закрытый стол.")
         else:
             data["audience"] = audience
+        if data["game_type"] == "domino" and data["mode"] not in {"online", "vs_computer"}:
+            raise AppError(422, "bad_mode", "Домино играется с человеком или с компьютером.")
 
     def _rematch_if_solvent(self, game: dict[str, Any], offer: dict[str, Any], seat_key: str) -> dict[str, Any]:
         raw = game.get("current_position")
