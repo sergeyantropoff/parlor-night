@@ -133,6 +133,7 @@ Accept: application/json
 | `POST /games/{id}/go` | Команда го |
 | `POST /games/{id}/undo` | Отменить ход |
 | `POST /games/{id}/resign` | Сдаться |
+| `POST /games/{id}/step-aside` | В дураке отойти и досмотреть компьютеры или закончить стол сразу |
 | `POST /games/{id}/stop` | Остановить партию |
 | `POST /games/{id}/engine-move` | Попросить ход компьютера |
 | `POST /games/{id}/hint` | Разбор. Только администратор |
@@ -810,6 +811,7 @@ https://app.example/callback?code=...&state=xyz
 | `version` | Номер позиции. Его нужно возвращать в ходе |
 | `your_side`, `side_to_move`, `your_turn` | Ваша сторона, чья очередь и можно ли ходить вам |
 | `watching` | Вы смотрите, а не играете |
+| `gallery` | В дураке место отдано компьютеру, и вы смотрите доигрывание. Пока `true`, следующий `engine-move` лучше просить с `steps: 1` |
 | `legal_moves` | Ходы, которые сервер примет сейчас. На чужом ходе список пуст |
 | `moves` | История: `ply`, `notation`, `algebraic`, `by` |
 | `result`, `result_reason`, `result_message`, `result_tone` | Итог. `result`: `white_win`, `black_win`, `draw` или `{место}_win`. `result_message` — фраза для экрана. `result_tone`: `win`, `loss`, `draw`, `stop` или `null` |
@@ -830,7 +832,7 @@ https://app.example/callback?code=...&state=xyz
 
 Пока `live` равен `true`, читайте `GET /games/{id}` примерно раз в полторы секунды и перерисовывайте стол, если изменились `version`, `status` или `rematch`. Чат стола можно читать отдельно, примерно раз в две секунды. Ходы по сокету не приходят.
 
-Если `can_engine` и партия активна против компьютера, либо у карт `computer_turn`, вызовите `POST /games/{id}/engine-move` с текущим `version`. В го то же самое во время подсчёта, когда `can_engine`. После своего хода ответ `/moves` уже содержит ответ компьютера, если он успел; `engine_error` тогда говорит, что ответ не вышел и его нужно запросить отдельно.
+Если `can_engine` и партия активна против компьютера, либо у карт `computer_turn`, вызовите `POST /games/{id}/engine-move` с текущим `version`. В теле можно передать `steps` от 1 до 40. В картах, когда `held` уже истина, подождите, пока игрок посмотрит стол, и только потом просите следующий ход: сервер на таком ответе останавливает серию. В го то же самое во время подсчёта, когда `can_engine`. После своего хода ответ `/moves` уже содержит ответ компьютера, если он успел; `engine_error` тогда говорит, что ответ не вышел и его нужно запросить отдельно.
 
 `summary` появляется, когда партия кончилась или её остановили. `summary.line` — фраза окна итога. `summary.seats` — строки: `key`, `name`, `login`, `avatar`, `winner`. У доски ещё `pieces` и `kings`, у карт — `cards`, `count`, `action`. У покера в строке есть `payout`, `invested`, `stack`, `made`, `busted`. У уно — `said`. `summary.kind`: `board`, `uno`, `poker` или `parlor`.
 
@@ -891,7 +893,7 @@ https://app.example/callback?code=...&state=xyz
 | Блэкджек | Ставка `["bet", "10"]`, затем `["act", "hit"]`, `["act", "stand"]`, `["act", "double"]` |
 | Преферанс | Торг `["bid", "pass"]`, `["bid", "miser"]` или заказ из `notation`. Вист `["whist", "yes"]` и `["whist", "no"]`. Сброс прикупа `["discard", "7C", "8D"]`. Ход во взятку `["play", "AH"]` |
 
-Общие поля стола: `phase`, `pot`, `deck` (сколько карт в колоде), `board` (общие карты, взятка или карты дилера), `last_move`. `seats` — кто сидит: `key`, `name`, `login`, `avatar`, `kind` (`you`, `human`, `computer`, `open`), `count`, `you`, `turn`, `cpu`, `stack`, `bet`, `folded`, `busted`, `dealer`, `winner`, `mark`.
+Общие поля стола: `phase`, `pot`, `deck` (сколько карт в колоде), `board` (общие карты, взятка или карты дилера), `last_move`. `seats` — кто сидит: `key`, `name`, `login`, `avatar`, `kind` (`you`, `human`, `computer`, `open`), `count`, `you`, `turn`, `cpu`, `stack`, `bet`, `folded`, `busted`, `dealer`, `winner`, `mark`. В преферансе у места ещё есть `taken` — сколько взяток уже взято — и `order_need`: сколько заказано, только у объявившего во время розыгрыша, иначе `null`.
 
 Дальше по играм:
 
@@ -899,9 +901,9 @@ https://app.example/callback?code=...&state=xyz
 | --- | --- |
 | `stacks`, `committed`, `button`, `shown`, `winner_hand` | Покер. `shown` — вскрытые руки по ключам мест. `phase`: `waiting`, `preflop`, `flop`, `turn`, `river`, `done` |
 | `top`, `color`, `deck`, `said` | Уно. `top` — верх сброса, `color` — текущий цвет `R`/`Y`/`G`/`B`/`W`, `said` — кто сказал уно |
-| `trump`, `trump_card`, `pairs`, `held` | Дурак. `trump` — масть козыря, `trump_card` — открытый козырь, пока он в колоде. `pairs` — пары `{ "attack", "defense" }` на столе. `held` — это уже битый стол, а не новая атака |
+| `trump`, `trump_card`, `pairs`, `held` | Дурак. `trump` — масть козыря, `trump_card` — открытый козырь, пока он в колоде. `pairs` — пары `{ "attack", "defense" }` на столе. `held` — это уже битый стол, а не новая атака. Пока `held`, сайт держит карты около двух с половиной секунд и только потом просит следующий ход компьютера |
 | `hole`, `board`, `stacks`, `committed` | Блэкджек. `board` — карты дилера. `hole: true` значит, вторая карта дилера ещё закрыта и в `board` её нет. Ставки в `committed` |
-| `contract`, `sheet`, `scored`, `note`, `talon`, `held` | Преферанс. `contract` — текущий заказ. `sheet`: `pool`, `closed`, `seats`, `bullet`, `mountain`, `whists`, `total`. `board` — карты взятки. `held` — это прошлая взятка |
+| `contract`, `contract_need`, `declarer`, `tricks`, `sheet`, `scored`, `note`, `talon`, `held` | Преферанс. `contract` — текущий заказ словами. `contract_need` — число взяток в заказе, у мизера `0`, у распасов `null`. `declarer` — место, которое заказало игру. `tricks` — сколько взяток уже у каждого места. `sheet`: `pool`, `closed`, `seats`, `bullet`, `mountain`, `whists`, `total`. `board` — карты взятки. `held` — это прошлая взятка, её тоже держат на столе перед следующим заходом |
 
 `note` и `status_line` можно показать как подпись над столом. В `summary` у преферанса тоже есть `sheet`.
 
@@ -937,8 +939,9 @@ https://app.example/callback?code=...&state=xyz
 | `GET /games/{id}/history` | — | `{ "version", "moves" }` |
 | `POST /games/{id}/undo` | `{ "version" }` | состояние |
 | `POST /games/{id}/resign` | `{ "version" }` | состояние |
+| `POST /games/{id}/step-aside` | `{ "version", "pace" }` | Только начатый дурак, где кроме вас двое или больше компьютеров и нет других людей и пустых мест. `pace`: `watch` отдаёт место компьютеру и возвращает состояние с `gallery: true`; `fast` доигрывает партию сразу. Иначе `409 stay` |
 | `POST /games/{id}/stop` | `{ "version" }` | состояние. Остановить может создатель стола |
-| `POST /games/{id}/engine-move` | `{ "version" }` | состояние, когда ход компьютера пора запросить |
+| `POST /games/{id}/engine-move` | `{ "version", "steps" }` | состояние, когда ход компьютера пора запросить. `steps` от 1 до 40, по умолчанию 40. В картах серия останавливается на `held`, чтобы клиент показал собранный стол |
 | `POST /games/{id}/hint` | `{ "version" }` | Только администратор. `{ "version", "private": true, "engine", "nodes", "lines" }`. Строка разбора: `notation`, `path`, `promotion`, `score_white`, `mate`, `pv`, `depth`. В го подсказки нет |
 | `POST /games/{id}/orientation` | пусто | Новое состояние с перевёрнутой доской |
 | `POST /games/{id}/save` | пусто | `{ "saved": true, "updated_at" }`. Партия поднимается в «продолжить» |

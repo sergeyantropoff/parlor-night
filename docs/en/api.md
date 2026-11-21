@@ -133,6 +133,7 @@ Every JSON method of the project is listed here. The sections below give the bod
 | `POST /games/{id}/go` | A Go command |
 | `POST /games/{id}/undo` | Undo a move |
 | `POST /games/{id}/resign` | Resign |
+| `POST /games/{id}/step-aside` | In Durak, step aside to watch the computers or finish the table at once |
 | `POST /games/{id}/stop` | Stop the game |
 | `POST /games/{id}/engine-move` | Ask for the computer's move |
 | `POST /games/{id}/hint` | Analysis. Administrator only |
@@ -811,6 +812,7 @@ These exist for the board and for cards.
 | `version` | The position number. Send it back with a move |
 | `your_side`, `side_to_move`, `your_turn` | Your side, whose turn it is, and whether you may move |
 | `watching` | You are watching, not playing |
+| `gallery` | In Durak your seat was given to a computer and you are watching the finish. While `true`, the next `engine-move` should use `steps: 1` |
 | `legal_moves` | Moves the server will accept now. Empty on someone else's turn |
 | `moves` | History: `ply`, `notation`, `algebraic`, `by` |
 | `result`, `result_reason`, `result_message`, `result_tone` | The outcome. `result` is `white_win`, `black_win`, `draw`, or `{seat}_win`. `result_message` is the sentence for the screen. `result_tone` is `win`, `loss`, `draw`, `stop`, or `null` |
@@ -831,7 +833,7 @@ These exist for the board and for cards.
 
 While `live` is `true`, read `GET /games/{id}` about once every 1.5 seconds and redraw when `version`, `status`, or `rematch` changes. The table chat can be read separately, about once every 2 seconds. Moves do not arrive on the socket.
 
-If `can_engine` and the game is active against the computer, or cards have `computer_turn`, call `POST /games/{id}/engine-move` with the current `version`. In Go, do the same during scoring when `can_engine` is set. After your own move, the `/moves` response already contains the computer's reply when it arrived in time. `engine_error` then says the reply did not come out and must be requested separately.
+If `can_engine` and the game is active against the computer, or cards have `computer_turn`, call `POST /games/{id}/engine-move` with the current `version`. The body may include `steps` from 1 to 40. In cards, when `held` is already true, wait until the player has seen the table and only then ask for the next move: the server stops the series on that reply. In Go, do the same during scoring when `can_engine` is set. After your own move, the `/moves` response already contains the computer's reply when it arrived in time. `engine_error` then says the reply did not come out and must be requested separately.
 
 `summary` appears when the game ends or is stopped. `summary.line` is the sentence of the summary window. `summary.seats` rows have `key`, `name`, `login`, `avatar`, `winner`. A board also has `pieces` and `kings`. Cards have `cards`, `count`, `action`. A poker row has `payout`, `invested`, `stack`, `made`, `busted`. UNO has `said`. `summary.kind` is `board`, `uno`, `poker`, or `parlor`.
 
@@ -892,7 +894,7 @@ A move is a whole `legal_moves` item. Show the person `notation`, and send its `
 | Blackjack | A bet `["bet", "10"]`, then `["act", "hit"]`, `["act", "stand"]`, `["act", "double"]` |
 | Preferans | Bidding `["bid", "pass"]`, `["bid", "miser"]`, or a contract taken from `notation`. Whist `["whist", "yes"]` and `["whist", "no"]`. Discarding the talon `["discard", "7C", "8D"]`. A trick `["play", "AH"]` |
 
-Shared table fields: `phase`, `pot`, `deck` (cards left in the deck), `board` (community cards, the trick, or the dealer's cards), `last_move`. `seats` is who sits: `key`, `name`, `login`, `avatar`, `kind` (`you`, `human`, `computer`, `open`), `count`, `you`, `turn`, `cpu`, `stack`, `bet`, `folded`, `busted`, `dealer`, `winner`, `mark`.
+Shared table fields: `phase`, `pot`, `deck` (cards left in the deck), `board` (community cards, the trick, or the dealer's cards), `last_move`. `seats` is who sits: `key`, `name`, `login`, `avatar`, `kind` (`you`, `human`, `computer`, `open`), `count`, `you`, `turn`, `cpu`, `stack`, `bet`, `folded`, `busted`, `dealer`, `winner`, `mark`. In Preferans a seat also has `taken`, the tricks already taken, and `order_need`: how many were ordered, only for the declarer during play, otherwise `null`.
 
 Then, by game:
 
@@ -900,9 +902,9 @@ Then, by game:
 | --- | --- |
 | `stacks`, `committed`, `button`, `shown`, `winner_hand` | Poker. `shown` is revealed hands by seat key. `phase`: `waiting`, `preflop`, `flop`, `turn`, `river`, `done` |
 | `top`, `color`, `deck`, `said` | UNO. `top` is the discard, `color` is the current color `R`/`Y`/`G`/`B`/`W`, `said` is who called UNO |
-| `trump`, `trump_card`, `pairs`, `held` | Durak. `trump` is the trump suit, `trump_card` is the face-up trump while it is still in the deck. `pairs` are `{ "attack", "defense" }` on the table. `held` means this is an already beaten table, not a new attack |
+| `trump`, `trump_card`, `pairs`, `held` | Durak. `trump` is the trump suit, `trump_card` is the face-up trump while it is still in the deck. `pairs` are `{ "attack", "defense" }` on the table. `held` means this is an already beaten table, not a new attack. While `held`, the site keeps the cards for about two and a half seconds before it asks for the computer's next move |
 | `hole`, `board`, `stacks`, `committed` | Blackjack. `board` is the dealer's cards. `hole: true` means the dealer's second card is still hidden and is not in `board`. Bets are in `committed` |
-| `contract`, `sheet`, `scored`, `note`, `talon`, `held` | Preferans. `contract` is the current bid. `sheet`: `pool`, `closed`, `seats`, `bullet`, `mountain`, `whists`, `total`. `board` is the trick. `held` means this is the previous trick |
+| `contract`, `contract_need`, `declarer`, `tricks`, `sheet`, `scored`, `note`, `talon`, `held` | Preferans. `contract` is the current bid in words. `contract_need` is the number of tricks in the contract, `0` for a miser, `null` for raspasy. `declarer` is the seat that ordered the game. `tricks` is how many tricks each seat already has. `sheet`: `pool`, `closed`, `seats`, `bullet`, `mountain`, `whists`, `total`. `board` is the trick. `held` is the previous trick, and it also stays on the table before the next lead |
 
 `note` and `status_line` can be shown above the table. A Preferans `summary` also has `sheet`.
 
@@ -938,8 +940,9 @@ Other actions at the table:
 | `GET /games/{id}/history` | — | `{ "version", "moves" }` |
 | `POST /games/{id}/undo` | `{ "version" }` | state |
 | `POST /games/{id}/resign` | `{ "version" }` | state |
+| `POST /games/{id}/step-aside` | `{ "version", "pace" }` | Only a started Durak where two or more computers sit with you and no other person or empty seat remains. `pace`: `watch` gives your seat to a computer and returns a state with `gallery: true`; `fast` finishes the game at once. Otherwise `409 stay` |
 | `POST /games/{id}/stop` | `{ "version" }` | state. Only the creator can stop the game |
-| `POST /games/{id}/engine-move` | `{ "version" }` | state, when it is time to ask for the computer |
+| `POST /games/{id}/engine-move` | `{ "version", "steps" }` | state, when it is time to ask for the computer. `steps` is 1 to 40, and 40 is the default. In cards the series stops at `held`, so the client can show the finished table |
 | `POST /games/{id}/hint` | `{ "version" }` | Administrator only. `{ "version", "private": true, "engine", "nodes", "lines" }`. A line has `notation`, `path`, `promotion`, `score_white`, `mate`, `pv`, `depth`. Go has no hint |
 | `POST /games/{id}/orientation` | empty | The new state with the board flipped |
 | `POST /games/{id}/save` | empty | `{ "saved": true, "updated_at" }`. The game rises into Continue |

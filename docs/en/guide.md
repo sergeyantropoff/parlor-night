@@ -85,7 +85,7 @@ Card games ask for computers and open seats instead of a side. The creator is al
 
 ![Russian checkers](../images/games/checkers.webp)
 
-**Russian checkers.** An 8×8 board, play on the dark squares, a capture is mandatory, kings are included. A man in the record is `M`, a king is `K`. A draw is 30 half-moves without a capture and without a man move, plus threefold repetition. The draw rules live in `app/checkers/draws.py`. The checkers search does not count threefold repetition inside its own search. The record downloads as text.
+**Russian checkers.** An 8×8 board, play on the dark squares, a capture is mandatory, kings are included. A man in the record is `M`, a king is `K`. The computer moves with SimpleEngine from py-draughts. The five levels still choose how deep and how long it thinks: a beginner searches less, a master searches longer. When the library does not return a move the rules allow, the parlor's own search plays. A draw is 30 half-moves without a capture and without a man move, plus threefold repetition. The draw rules live in `app/checkers/draws.py`. Threefold repetition is applied by the game rules after a move, outside the search. The record downloads as text.
 
 ![Go](../images/games/go.webp)
 
@@ -103,7 +103,7 @@ Card games ask for computers and open seats instead of a side. The creator is al
 
 ![Durak](../images/games/durak.webp)
 
-**Durak.** Podkidnoy or perevodnoy, chosen before the first card. A 36-card deck, from the six. Up to six players. In perevodnoy an unbeaten card of the same rank can be passed on.
+**Durak.** Podkidnoy or perevodnoy, chosen before the first card. A 36-card deck, from the six. Up to six players. In perevodnoy an unbeaten card of the same rank can be passed on. When two or more computers sit with you and no other person is at the table, Leave offers to watch the rest, finish it at once, or stay. Watch gives your seat to a computer, and the others play on one card at a time, so each throw and each beat stays visible. Finish at once plays the table out without a pause and opens the summary. A single computer still ends the game at once.
 
 ![Blackjack](../images/games/blackjack.webp)
 
@@ -113,7 +113,7 @@ Card games ask for computers and open seats instead of a side. The creator is al
 
 ![A Preferans table](../screenshots/preferans.png)
 
-**Preferans.** Three players, bidding, whist, and tricks, from age 18. The pool is chosen at creation: 6, 10, 12, 16, or 20 points, or another number from 6 to 20. The price of a point is chosen then too: 1, 2, 5, or 10 chips. Everyone sits with a stack of 100 points at the chosen price: 100 chips at price 1, 200 at 2, 500 at 5, and 1,000 at 10. Only that stack leaves the account; the rest stays for other games. If the account has less than the stack, the game does not start: there is no play on credit. Stopping the game returns the stack. Chips stay put while the pool is open. When it closes, the score sheet turns the difference into chips, and never more than the stack. If the sheet is larger than the stack, it shows how much did not move. Nothing beyond the stack is taken from the account. This is not a tournament pool. A whist is answered with whist, half-whist, or pass. Under the table are the bullet, the mountain, the whists, and the chips.
+**Preferans.** Three players, bidding, whist, and tricks, from age 18. The pool is chosen at creation: 6, 10, 12, 16, or 20 points, or another number from 6 to 20. The price of a point is chosen then too: 1, 2, 5, or 10 chips. Everyone sits with a stack of 100 points at the chosen price: 100 chips at price 1, 200 at 2, 500 at 5, and 1,000 at 10. Only that stack leaves the account; the rest stays for other games. If the account has less than the stack, the game does not start: there is no play on credit. Stopping the game returns the stack. Chips stay put while the pool is open. When it closes, the score sheet turns the difference into chips, and never more than the stack. If the sheet is larger than the stack, it shows how much did not move. Nothing beyond the stack is taken from the account. This is not a tournament pool. A whist is answered with whist, half-whist, or pass. Beside the player who made the contract, a counter shows how many tricks are already taken out of the order, for example "2 of 6". It sits to the right of the upper-left and the bottom cards, and to the left of the upper-right card. On a miser it shows how many tricks are already taken, with the word miser. Under the table are the bullet, the mountain, the whists, and the chips.
 
 ![A multiplayer table](../images/features/multiplayer.webp)
 
@@ -124,6 +124,8 @@ UNO, poker, and Durak seat several people and computers at one table. Blackjack 
 A game refreshes on its own, about once every second and a half. There is no socket for moves. The table socket is only for video and voice of the people who are seated.
 
 Above the board the page says whose turn it is, whether the table is open, and whether you may move. The buttons depend on the game: undo exists for chess and checkers, flip changes who sits at the bottom, and save lifts the game into Continue. The creator can stop the table. A player can resign a started game. A watcher does not get those buttons.
+
+A card travels to the table along an arc, slower than a straight toss, and turns a little on the way. A checker or a chess piece hops over the squares and settles on its own. When a card trick or a beaten bout is complete, the cards stay on the table for about two and a half seconds. The button "В бито" beside them clears them earlier. While they stay, the computers do not start the next bout.
 
 ![A finished game](../screenshots/checkers-summary.png)
 
@@ -159,7 +161,7 @@ Friends are added by username. A request waits for consent. Only the recipient c
 
 A friend shows whether they are online and which game they are in. Write opens a private chat. Invite creates a table of the chosen game and sends the code into the chat. An invitation in the text can be accepted: the code leads to the seat.
 
-Chats are stored on the server. A message is 1 to 1000 characters. Opening a thread marks it read. The bell in the header gathers up to six fresh messages and friend requests. There is no phone push: the site and the app ask whether anything is new.
+Chats are stored on the server. A message is 1 to 1000 characters. Opening a thread marks it read. The bell in the header gathers up to six fresh messages and friend requests. There is no phone push: the site and the app ask whether anything is new. On a tablet the thread keeps the same space under it as on a large screen.
 
 The table chat is a different thread. Seated players and watchers of an open game can see it. It keeps the latest 80 lines.
 
@@ -247,7 +249,7 @@ A new game is added in `app/catalog.py`: a title and a rules module that deals, 
 ## Limits
 
 - An online game has no chess clock and no automatic award when the connection drops.
-- The checkers engine does not count threefold repetition inside its search.
+- Threefold repetition in checkers is applied by the game rules after a move. The computer is SimpleEngine from py-draughts, and the five levels still set depth and time. When the library does not return a legal move, the parlor's own search plays.
 - Go does not claim the strength of a professional program.
 - The call has no mixer for every participant: a stream is either direct or relayed through TURN. A network that allows only port 443 does not get a relay.
 - Lc0 and other networks are not included: they need weights and often a GPU. Any local UCI engine can be set in `CHESS_ENGINE_PATH`.
