@@ -46,6 +46,14 @@ class VersionBody(BaseModel):
     version: int = Field(ge=1)
 
 
+class EngineMoveBody(VersionBody):
+    steps: int = Field(default=40, ge=1, le=40)
+
+
+class StepAsideBody(VersionBody):
+    pace: Literal["watch", "fast"]
+
+
 class GoCommandBody(BaseModel):
     command_id: str = Field(min_length=8, max_length=80)
     version: int = Field(ge=1)

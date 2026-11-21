@@ -595,6 +595,19 @@ async def insert_seats(
     )
 
 
+async def set_seat_kind(conn: asyncpg.Connection, game_id: uuid.UUID, seat_key: str, kind: str) -> None:
+    await conn.execute(
+        """
+        UPDATE game_seats
+        SET kind = $3
+        WHERE game_id = $1 AND seat_key = $2
+        """,
+        game_id,
+        seat_key,
+        kind,
+    )
+
+
 async def list_seats(conn: asyncpg.Connection, game_id: uuid.UUID) -> list[asyncpg.Record]:
     return await conn.fetch(
         """

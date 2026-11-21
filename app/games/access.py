@@ -38,6 +38,30 @@ def user_may_move(mode: str, status: str, seat: str | None, side_to_move: str) -
     return seat == side_to_move
 
 
+def durak_can_step_aside(seats: list[dict[str, object]], user_id: str) -> bool:
+    """Человек может отдать место компьютеру и смотреть, как доигрывают остальные.
+
+    Нужны хотя бы два компьютера и ни одного другого человека. Одному компьютеру
+    доигрывать не с кем, а живого соперника так не оставляем.
+    """
+    mine = False
+    computers = 0
+    strangers = 0
+    for item in seats:
+        owner = str(item.get("user_id") or "")
+        kind = str(item.get("kind") or "")
+        if owner and owner == user_id:
+            if kind == "computer":
+                return False
+            mine = True
+            continue
+        if kind == "computer":
+            computers += 1
+        else:
+            strangers += 1
+    return mine and computers >= 2 and strangers == 0
+
+
 def user_may_request_engine(
     mode: str,
     status: str,
@@ -46,7 +70,7 @@ def user_may_request_engine(
     *,
     computer_turn: bool = False,
 ) -> bool:
-    if computer_turn and status == "active" and seat is not None and side_to_move != seat:
+    if computer_turn and status == "active" and seat is not None:
         return True
     if status != "active" or seat is None or mode == "online":
         return False

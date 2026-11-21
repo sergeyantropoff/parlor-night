@@ -1080,9 +1080,12 @@ body.auth main {
 .confirm-actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 1.15rem;
 }
+.confirm-dialog.is-choice { width: min(34rem, calc(100vw - 1.5rem)); }
+.confirm-dialog.is-choice .confirm-actions button { flex: 1 1 8.5rem; }
 .welcome-dialog { width: min(28rem, calc(100vw - 1.5rem)); }
 .welcome-dialog form {
   display: flex;
@@ -2362,7 +2365,37 @@ html[data-theme="dark"] .pulya td.is-minus { color: #e0a090; }
   height: 100%;
 }
 #card-table .table-row { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: max(0.35rem, calc(var(--u) * 0.7)) max(0.2rem, calc(var(--u) * 0.4)); max-width: 78%; }
-#card-table .throw-stack { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; max-width: 78%; }
+#card-table .throw-stack { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; max-width: 86%; }
+#card-table .throw-tools { display: flex; align-items: center; justify-content: center; gap: 0.55rem; max-width: 100%; }
+#card-table .clear-table {
+  position: relative;
+  z-index: 6;
+  flex: none;
+  min-height: 2.1rem;
+  padding: 0.28rem 0.75rem;
+  border: 1px solid #e7c56a;
+  border-radius: 999px;
+  background: #e7c56ae0;
+  color: #2a2118;
+  font: 700 max(12px, calc(var(--u) * 1.2))/1 Inter, Arial, sans-serif;
+  cursor: pointer;
+}
+#card-table .clear-table:hover { filter: brightness(1.06); }
+#card-table .order-take {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  padding: 0.28rem 0.6rem;
+  border: 1px solid #c4a46a;
+  border-radius: 999px;
+  background: #2a2118f2;
+  color: #f6f0e4;
+  box-shadow: 0 6px 14px #0006;
+  font: 700 max(12px, calc(var(--u) * 1.2))/1 Inter, Arial, sans-serif;
+  white-space: nowrap;
+}
+#card-table .order-take.is-right { left: calc(100% + 0.45rem); transform: translateY(-50%); }
+#card-table .order-take.is-left { right: calc(100% + 0.45rem); transform: translateY(-50%); }
 #card-table .throw-line {
   margin: 0;
   padding: 0.18rem 0.7rem;
@@ -2566,7 +2599,9 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 @media (max-width: 860px) {
   .app { grid-template-columns: 1fr; min-width: 0; }
   body:has(.talk) .app { grid-template-rows: auto minmax(0, 1fr); }
-  body:has(.talk) .workspace { height: auto; }
+  body:has(.talk) .workspace { height: 100%; min-height: 0; }
+  body:has(.talk) main { padding-bottom: max(1.35rem, env(safe-area-inset-bottom)); }
+  body:has(.talk) .talk { margin-bottom: 0.85rem; }
   .sidebar {
     position: sticky;
     top: 0;

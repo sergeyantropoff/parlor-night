@@ -1235,6 +1235,11 @@ function playerFace(seat) {
 }
 
 function computerSpeaker() {
+  const last = current.moves?.at(-1);
+  if (last?.seat) {
+    const named = (current.seats || []).find((item) => item.key === last.seat);
+    if (named?.name) return named.name;
+  }
   const side = current.computer_side;
   if (side === "white" || side === "black") {
     return side === "black" ? current.black_name : current.white_name;
@@ -1943,6 +1948,8 @@ function paintSalonPlayers(box, heroCards) {
     const plate = salonPlatePlace(spot[0], spot[1], { x: place.x, y: fanY }, seat.you);
     const badge = unoPlate(seat, plate.x, plate.y);
     if (plate.lift) badge.style.transform = `translate(-50%, calc(-50% - ${plate.lift}px))`;
+    const order = orderTake(seat, spot);
+    if (order) badge.append(order);
     box.append(badge);
     if (current.game_type === "preferans") {
       const status = preferansStatusBadge(seat);
@@ -1974,11 +1981,52 @@ function throwCaption(text) {
   return line;
 }
 
+function orderTake(seat, spot) {
+  if (current.game_type !== "preferans" || current.phase !== "play") return null;
+  if (seat.order_need === null || seat.order_need === undefined || seat.order_need === "") return null;
+  const need = Number(seat.order_need);
+  if (!Number.isFinite(need)) return null;
+  const node = document.createElement("span");
+  const upperRight = spot[1] < 40 && spot[0] > 50;
+  node.className = `order-take is-${upperRight ? "left" : "right"}`;
+  node.textContent = need === 0 ? `${takenLabel(seat)} · мизер` : `${takenLabel(seat)} из ${need}`;
+  if (current.contract) node.title = String(current.contract);
+  return node;
+}
+
+function takenLabel(seat) {
+  const taken = Number(seat.taken || 0);
+  return Number.isFinite(taken) ? String(taken) : "0";
+}
+
+function heldHidden() {
+  return Boolean(current.held) && dismissedTable === current.version;
+}
+
+function clearTableButton() {
+  if (!tableHold || tableHold.version !== current.version) return null;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "clear-table";
+  button.textContent = "В бито";
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    skipTableHold();
+  });
+  return button;
+}
+
 function throwStack(caption, row) {
   const stack = document.createElement("div");
   stack.className = "throw-stack";
   if (caption) stack.append(throwCaption(caption));
-  stack.append(row);
+  const tools = document.createElement("div");
+  tools.className = "throw-tools";
+  tools.append(row);
+  const clear = clearTableButton();
+  if (clear) tools.append(clear);
+  stack.append(tools);
   return stack;
 }
 
@@ -2030,6 +2078,7 @@ function paintPreferansThrow(box) {
 }
 
 function paintSalonTable(box) {
+  if (heldHidden()) return;
   const held = Boolean(current.held);
   const pairs = current.pairs || [];
   if (current.game_type === "durak" && pairs.length) {
@@ -2633,6 +2682,7 @@ async function present(next) {
     wildOpen = false;
     bidLevel = "";
   }
+  syncTableHold();
   render();
   const engineMove = added && spoken?.by === "engine" && (shot || cards || next.table === "go");
   if (engineMove) {
@@ -2754,7 +2804,19 @@ function snapshotMotion(plan) {
 
 function hopDuration(from, to) {
   const squares = from.w ? Math.max(1, Math.round(Math.max(Math.abs(to.x - from.x), Math.abs(to.y - from.y)) / from.w)) : 1;
-  return 260 + squares * 80;
+  return 460 + squares * 130;
+}
+
+function hopFrames(from, to) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const lift = Math.min(46, 14 + Math.hypot(dx, dy) * 0.24);
+  return [
+    { transform: `translate(${from.x}px, ${from.y}px) scale(1)` },
+    { transform: `translate(${from.x + dx * 0.5}px, ${from.y + dy * 0.4 - lift}px) scale(1.14)`, offset: 0.46 },
+    { transform: `translate(${to.x}px, ${to.y}px) scale(1, 0.9)`, offset: 0.84 },
+    { transform: `translate(${to.x}px, ${to.y}px) scale(1)` },
+  ];
 }
 
 async function glide(layer, slide, victims) {
@@ -2783,13 +2845,11 @@ async function glide(layer, slide, victims) {
         { duration: 220, easing: "ease-in", fill: "forwards" },
       );
     }
-    const anim = ghost.animate(
-      [
-        { transform: `translate(${from.x}px, ${from.y}px)` },
-        { transform: `translate(${to.x}px, ${to.y}px)` },
-      ],
-      { duration: hopDuration(from, to), easing: "cubic-bezier(.22,.7,.2,1)", fill: "forwards" },
-    );
+    const anim = ghost.animate(hopFrames(from, to), {
+      duration: hopDuration(from, to),
+      easing: "cubic-bezier(.16,.72,.2,1)",
+      fill: "forwards",
+    });
     await anim.finished.catch(() => {});
     ghost.style.transform = `translate(${to.x}px, ${to.y}px)`;
   }
@@ -2847,12 +2907,18 @@ async function flipCards(before) {
   if (reducedMotion()) return;
   const jobs = [];
   const seen = new Set();
+  const live = new Set([...document.querySelectorAll("[data-card]")].map((node) => node.dataset.card));
+  const spare = [...before.entries()]
+    .filter(([key, shot]) => key.startsWith("back:") && shot?.width && !live.has(key))
+    .map(([, shot]) => shot);
+  const flight = current.gallery ? 1400 : 1100;
   document.querySelectorAll("[data-card]").forEach((node) => {
     const key = node.dataset.card;
     seen.add(key);
     const found = earlierCard(before, key);
     if (found.source) seen.add(found.source);
-    const prev = found.shot;
+    let prev = found.shot;
+    if ((!prev || !prev.width) && key.startsWith("table:") && spare.length) prev = spare.shift();
     const next = node.getBoundingClientRect();
     if (!prev || !next.width) {
       node.animate(
@@ -2864,12 +2930,14 @@ async function flipCards(before) {
     const dx = prev.left - next.left;
     const dy = prev.top - next.top;
     if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+    const arc = Math.min(42, Math.hypot(dx, dy) * 0.16);
     jobs.push(node.animate(
       [
-        { transform: `translate(${dx}px, ${dy}px) scale(0.96)` },
-        { transform: "translate(0, 0) scale(1)" },
+        { transform: `translate(${dx}px, ${dy}px) rotate(-8deg) scale(0.94)` },
+        { transform: `translate(${dx * 0.42}px, ${dy * 0.42 - arc}px) rotate(4deg) scale(1.05)`, offset: 0.55 },
+        { transform: "translate(0, 0) rotate(0deg) scale(1)" },
       ],
-      { duration: 620, easing: "cubic-bezier(.16,.84,.24,1)" },
+      { duration: flight, easing: "cubic-bezier(.16,.78,.22,1)" },
     ).finished.catch(() => {}));
   });
   const host = document.querySelector("#card-table");
@@ -2887,12 +2955,15 @@ async function flipCards(before) {
       ghost.style.top = `${prev.top - hostRect.top}px`;
       ghost.style.width = `${prev.width}px`;
       host.append(ghost);
+      const away = key.startsWith("table:")
+        ? "translate(12vw, 10vh) rotate(8deg) scale(0.62)"
+        : "translate(0, 36px) scale(0.82)";
       jobs.push(ghost.animate(
         [
-          { opacity: 1, transform: "translate(0, 0) scale(1)" },
-          { opacity: 0, transform: "translate(0, 28px) scale(0.8)" },
+          { opacity: 1, transform: "translate(0, 0) rotate(0deg) scale(1)" },
+          { opacity: 0, transform: away },
         ],
-        { duration: 720, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" },
+        { duration: 980, easing: "cubic-bezier(.32,.04,.2,1)", fill: "forwards" },
       ).finished.catch(() => {}).finally(() => ghost.remove()));
     }
   }
@@ -2968,17 +3039,24 @@ ranksDialog?.addEventListener("click", (event) => {
 });
 document.querySelector("#engine-move")?.addEventListener("click", () => act("engine-move", { version: current.version }));
 document.querySelector("#undo")?.addEventListener("click", () => act("undo", { version: current.version }));
-function ask({ title, text, accept, tone }) {
+function ask({ title, text, accept, tone, alt = "", cancel: cancelLabel = "Отмена" }) {
   const dialog = document.querySelector("#confirm-dialog");
   const heading = document.querySelector("#confirm-title");
   const body = document.querySelector("#confirm-text");
   const ok = document.querySelector("#confirm-ok");
   const cancel = document.querySelector("#confirm-cancel");
+  const extra = document.querySelector("#confirm-alt");
   if (!dialog || !ok || !cancel || dialog.open) return Promise.resolve(false);
   heading.textContent = title;
   body.textContent = text;
   ok.textContent = accept;
+  cancel.textContent = cancelLabel;
   ok.classList.toggle("is-danger", tone === "danger");
+  dialog.classList.toggle("is-choice", Boolean(alt));
+  if (extra) {
+    extra.hidden = !alt;
+    extra.textContent = alt;
+  }
   return new Promise((resolve) => {
     let settled = false;
     const finish = (value) => {
@@ -2986,18 +3064,23 @@ function ask({ title, text, accept, tone }) {
       settled = true;
       ok.removeEventListener("click", onOk);
       cancel.removeEventListener("click", onCancel);
+      extra?.removeEventListener("click", onAlt);
       dialog.removeEventListener("close", onClose);
       dialog.removeEventListener("click", onBackdrop);
+      dialog.classList.remove("is-choice");
+      if (extra) extra.hidden = true;
       if (dialog.open) dialog.close();
       resolve(value);
     };
     const onOk = () => finish(true);
+    const onAlt = () => finish("fast");
     const onCancel = () => finish(false);
     const onClose = () => finish(false);
     const onBackdrop = (event) => {
       if (event.target === dialog) finish(false);
     };
     ok.addEventListener("click", onOk);
+    extra?.addEventListener("click", onAlt);
     cancel.addEventListener("click", onCancel);
     dialog.addEventListener("close", onClose);
     dialog.addEventListener("click", onBackdrop);
@@ -3005,8 +3088,28 @@ function ask({ title, text, accept, tone }) {
   });
 }
 
+function durakCrowd() {
+  if (current.game_type !== "durak" || current.gallery || current.table !== "cards") return false;
+  const seats = current.seats || [];
+  const computers = seats.filter((seat) => (seat.cpu || seat.kind === "computer") && !seat.you).length;
+  const others = seats.filter((seat) => !seat.you && !(seat.cpu || seat.kind === "computer"));
+  return computers >= 2 && others.length === 0;
+}
+
 document.querySelector("#end-game")?.addEventListener("click", async () => {
   const cards = current.table === "cards";
+  if (durakCrowd()) {
+    const choice = await ask({
+      title: "Выйти из-за стола",
+      text: "Компьютеры могут доиграть партию у вас на глазах, карту за картой, или закончить её сразу.",
+      accept: "Смотреть",
+      alt: "Закончить сразу",
+      cancel: "Остаться",
+    });
+    if (choice === "fast") act("step-aside", { version: current.version, pace: "fast" });
+    else if (choice === true) act("step-aside", { version: current.version, pace: "watch" });
+    return;
+  }
   const accepted = await ask({
     title: cards ? "Выйти из-за стола" : "Сдаться",
     text: cards ? "Партия закончится." : "Победа будет засчитана сопернику.",
@@ -3958,18 +4061,62 @@ document.querySelector("#call-board")?.addEventListener("click", (event) => {
 });
 
 let engineTicket = 0;
+let tableHold = null;
+let dismissedTable = null;
+let holdToken = 0;
+
+function tableCardsNow() {
+  if (current.game_type === "durak") return (current.pairs || []).some((pair) => pair.attack);
+  return (current.board || []).length > 0;
+}
+
+function syncTableHold() {
+  if (current.table !== "cards" || !current.held || !tableCardsNow() || dismissedTable === current.version) {
+    tableHold = null;
+    return;
+  }
+  if (tableHold?.version === current.version) return;
+  const token = ++holdToken;
+  tableHold = { version: current.version, token };
+  window.setTimeout(() => finishTableHold(token), 2500);
+}
+
+function finishTableHold(token) {
+  if (!tableHold || tableHold.token !== token) return;
+  const version = tableHold.version;
+  tableHold = null;
+  if (current.version !== version || !current.held) return;
+  dismissedTable = version;
+  const cards = rememberCards();
+  render();
+  flipCards(cards);
+  if (!current.can_engine || !current.computer_turn || current.status !== "active") return;
+  const body = { version: current.version };
+  if (current.gallery) body.steps = 1;
+  act("engine-move", body);
+}
+
+function skipTableHold() {
+  if (!tableHold) return;
+  finishTableHold(tableHold.token);
+}
+
 function maybeEngine() {
   const ticket = ++engineTicket;
+  if (tableHold && tableHold.version === current.version) return;
   const scoring = current.table === "go" && current.status === "scoring";
   const auto = current.can_engine && !busy
     && (scoring || (current.status === "active" && (current.mode === "vs_computer" || current.computer_turn)));
   if (!auto) return;
+  const gallery = Boolean(current.gallery);
   window.setTimeout(() => {
     if (ticket !== engineTicket || busy || !current.can_engine) return;
     const still = current.table === "go" && current.status === "scoring";
     if (!still && current.status !== "active") return;
-    act("engine-move", { version: current.version });
-  }, 480);
+    const body = { version: current.version };
+    if (current.gallery) body.steps = 1;
+    act("engine-move", body);
+  }, gallery ? 1600 : 480);
 }
 
 function setDrawer(name) {
@@ -4043,6 +4190,7 @@ bindGo({
     maybeEngine();
   },
 });
+syncTableHold();
 render();
 maybeEngine();
 setInterval(poll, 1500);

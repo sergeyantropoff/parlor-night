@@ -56,6 +56,27 @@ def test_hints_are_admin_only() -> None:
     assert can_hint("user") is False
 
 
+def test_durak_step_aside_needs_two_computers() -> None:
+    from app.games.access import durak_can_step_aside
+
+    me = "user-1"
+    mine = {"user_id": me, "kind": "human"}
+    cpu = {"user_id": None, "kind": "computer"}
+    assert durak_can_step_aside([mine, cpu, cpu], me) is True
+    assert durak_can_step_aside([mine, cpu], me) is False
+    assert durak_can_step_aside(
+        [mine, cpu, cpu, {"user_id": "user-2", "kind": "human"}],
+        me,
+    ) is False
+    assert durak_can_step_aside([mine, cpu, {"user_id": None, "kind": "human"}], me) is False
+    assert durak_can_step_aside([{**mine, "kind": "computer"}, cpu, cpu], me) is False
+
+
+def test_gallery_may_ask_the_engine_on_its_own_seat() -> None:
+    assert user_may_request_engine("vs_computer", "active", "white", "white", computer_turn=True) is True
+    assert user_may_request_engine("vs_computer", "active", "white", "white") is False
+
+
 def test_online_permissions() -> None:
     assert user_may_move("online", "active", "white", "white") is True
     assert user_may_move("online", "active", "white", "black") is False

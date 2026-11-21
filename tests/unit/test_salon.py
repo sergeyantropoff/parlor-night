@@ -170,6 +170,9 @@ def test_preferans_reaches_a_score() -> None:
     assert state["pool"] == 6
     opening = view_preferans(state, "p0")
     assert opening["scored"] is False
+    assert opening["contract_need"] is None
+    assert opening["declarer"] == ""
+    assert opening["tricks"] == {"p0": 0, "p1": 0, "p2": 0}
     assert opening["note"] == ""
     assert opening["sheet"]["pool"] == 6
     assert opening["sheet"]["total"] == {"p0": 0, "p1": 0, "p2": 0}

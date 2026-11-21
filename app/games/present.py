@@ -292,6 +292,26 @@ def _preferans_marks(card: dict[str, object]) -> dict[str, str]:
     return marks
 
 
+def _stamp_preferans(seats: list[dict[str, object]], card: dict[str, object], game_type: str) -> None:
+    if game_type != "preferans":
+        return
+    tricks = card.get("tricks") if isinstance(card.get("tricks"), dict) else {}
+    declarer = str(card.get("declarer") or "")
+    phase = str(card.get("phase") or "")
+    need = card.get("contract_need")
+    for item in seats:
+        key = str(item.get("key") or "")
+        try:
+            item["taken"] = int(tricks.get(key, 0) or 0)
+        except (TypeError, ValueError):
+            item["taken"] = 0
+        show = phase == "play" and bool(declarer) and key == declarer and need is not None
+        try:
+            item["order_need"] = int(need) if show else None
+        except (TypeError, ValueError):
+            item["order_need"] = None
+
+
 def _chip(mapping: object, key: str) -> int | None:
     if not isinstance(mapping, dict) or key not in mapping:
         return None
@@ -399,6 +419,37 @@ def _status_line(
     return "Ход другой стороны."
 
 
+def _stepped_aside(table_seats: list[dict[str, object]], user: User) -> bool:
+    return any(
+        isinstance(item, dict)
+        and str(item.get("user_id") or "") == str(user.id)
+        and item.get("kind") == "computer"
+        for item in table_seats
+    )
+
+
+def _gallery_line(phase: str) -> str:
+    if phase == "defend":
+        return "Компьютеры доигрывают. Сейчас бьют карту."
+    if phase == "throw":
+        return "Компьютеры доигрывают. Сейчас подкидывают."
+    if phase == "attack":
+        return "Компьютеры доигрывают. Сейчас ходят картой."
+    return "Компьютеры доигрывают."
+
+
+def _card_move(move: dict[str, object]) -> dict[str, object]:
+    payload = move.get("move_payload")
+    raw = payload if isinstance(payload, dict) else {}
+    return {
+        "ply": move.get("ply"),
+        "notation": move.get("notation"),
+        "algebraic": None,
+        "by": raw.get("by"),
+        "seat": str(raw.get("seat") or ""),
+    }
+
+
 def _project_cards(
     game: dict[str, object],
     user: User,
@@ -462,11 +513,11 @@ def _project_cards(
     for item in table_seats:
         key = str(item.get("seat_key"))
         info = counted.get(key) or {}
-        if item.get("user_id") and str(item["user_id"]) == str(user.id):
-            name, kind = user.display_name, "you"
-        elif item.get("kind") == "computer":
+        if item.get("kind") == "computer":
             alias = aliases.get(key) or cpu_name(game["id"], key, _table_reserved(game))
             name, kind = alias, "computer"
+        elif item.get("user_id") and str(item["user_id"]) == str(user.id):
+            name, kind = user.display_name, "you"
         elif item.get("username"):
             name, kind = str(item["username"]), "human"
         else:
@@ -535,6 +586,7 @@ def _project_cards(
         for item in public_seats:
             item["mark"] = marks.get(str(item["key"]), "")
             item["winner"] = bool(report and report.get("winner") == item["key"])
+    _stamp_preferans(public_seats, card, str(game["game_type"]))
     summary = None
     if stopped:
         summary = _halted_card_summary(str(game["game_type"]), report, public_seats, named)
@@ -547,6 +599,14 @@ def _project_cards(
         else:
             summary = _parlor_summary(str(game["game_type"]), report, public_seats, named)
             line = str(summary["line"])
+    stepped = _stepped_aside(table_seats, user)
+    if stepped:
+        your_turn = False
+        computer_turn = side in computers and status == "active"
+        card["hand"] = []
+        card["actions"] = []
+        if status == "active":
+            line = _gallery_line(str(card.get("phase") or ""))
     winner_hand = str(card.get("winner_hand") or "")
     if str(game["game_type"]) == "poker":
         winner_hand = _poker_caption(report if isinstance(report, dict) else None, public_seats, winner_hand)
@@ -564,7 +624,8 @@ def _project_cards(
         "your_side": seat if mode in {"vs_computer", "online"} else None,
         "side_to_move": side,
         "your_turn": your_turn,
-        "watching": seat is None and mode in {"online", "vs_computer"},
+        "watching": (seat is None and mode in {"online", "vs_computer"}) or stepped,
+        "gallery": stepped and status == "active",
         "black_at_bottom": False,
         "cells": [],
         "legal_moves": card["actions"] if your_turn else [],
@@ -611,9 +672,7 @@ def _project_cards(
         "last_move": last_path,
         "in_check": False,
         "check_square": None,
-        "moves": [
-            {"ply": move["ply"], "notation": move["notation"], "algebraic": None, "by": None} for move in moves
-        ],
+        "moves": [_card_move(move) for move in moves],
         "result": game.get("result"),
         "result_reason": game.get("result_reason"),
         "result_message": finished,

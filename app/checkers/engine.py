@@ -297,7 +297,27 @@ def search_job(
     from app.checkers.notation import format_move, format_move_algebraic
     from app.checkers.serialization import parse_rcp
 
+    from app.checkers.simple import play_simple
+
+    found = None
+    try:
+        found = play_simple(rcp, max_depth, time_ms)
+    except Exception:
+        found = None
     position = parse_rcp(rcp)
+    if found is not None:
+        if variety:
+            matched = next(
+                (item for item in legal_moves(position) if [str(square) for square in item.path] == found["path"]),
+                None,
+            )
+            if matched is not None:
+                varied = _varied_move(position, EvalWeights(**weights), matched)
+                found["path"] = [str(square) for square in varied.path]
+                found["notation"] = format_move(varied)
+                found["algebraic"] = format_move_algebraic(varied)
+                found["pv"] = [found["notation"]]
+        return found
     result = search(
         position,
         max_depth=max_depth,
@@ -315,6 +335,7 @@ def search_job(
         "nodes": result.nodes,
         "pv": [format_move(item) for item in result.pv],
         "elapsed_ms": result.elapsed_ms,
+        "engine": "boardmentor-checkers 1.0.0",
     }
 
 

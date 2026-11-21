@@ -15,11 +15,13 @@ from app.db.repositories.settings import as_preferences
 from app.errors import AppError
 from app.games.schemas import (
     CreateGameBody,
+    EngineMoveBody,
     GoCommandBody,
     InviteBody,
     JoinBody,
     MoveBody,
     SettingsBody,
+    StepAsideBody,
     ThemeBody,
     VersionBody,
 )
@@ -164,10 +166,20 @@ async def resign(request: Request, game_id: uuid.UUID, body: VersionBody) -> JSO
     return JSONResponse(await request.app.state.service.resign(user, game_id, body.version))
 
 
-@router.post("/games/{game_id}/engine-move")
-async def engine_move(request: Request, game_id: uuid.UUID, body: VersionBody) -> JSONResponse:
+@router.post("/games/{game_id}/step-aside")
+async def step_aside(request: Request, game_id: uuid.UUID, body: StepAsideBody) -> JSONResponse:
     user = _user(request)
-    return JSONResponse(await request.app.state.service.engine_move(user, game_id, body.version))
+    return JSONResponse(
+        await request.app.state.service.step_aside(user, game_id, body.version, body.pace)
+    )
+
+
+@router.post("/games/{game_id}/engine-move")
+async def engine_move(request: Request, game_id: uuid.UUID, body: EngineMoveBody) -> JSONResponse:
+    user = _user(request)
+    return JSONResponse(
+        await request.app.state.service.engine_move(user, game_id, body.version, body.steps)
+    )
 
 
 @router.post("/games/{game_id}/hint")

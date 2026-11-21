@@ -226,6 +226,16 @@ def _contract_rank(contract: dict[str, Any] | None) -> float:
     return int(contract["level"]) * 5 + SUIT_ORDER.index(str(contract["suit"]))
 
 
+def _contract_need(contract: dict[str, Any] | None) -> int | None:
+    if not isinstance(contract, dict) or contract.get("raspasy"):
+        return None
+    if contract.get("miser"):
+        return 0
+    if contract.get("level") is None:
+        return None
+    return int(contract["level"])
+
+
 def _contract_title(contract: dict[str, Any] | None) -> str:
     if not contract:
         return "Распасы"
@@ -1002,6 +1012,12 @@ def view(state: dict[str, Any], seat: str | None) -> dict[str, Any]:
         "hole": False,
         "talon": [],
         "contract": title if phase != "done" else f"Пуля до {int(state['pool'])}",
+        "contract_need": _contract_need(state.get("contract")),
+        "declarer": str(state.get("declarer") or ""),
+        "tricks": {
+            str(seat): int((state.get("tricks") or {}).get(seat, 0))
+            for seat in order
+        },
         "sheet": state.get("sheet") or _public_sheet(state, closed=phase == "done"),
         "scored": scored,
         "note": str(state.get("line") or "") if scored else "",

@@ -17,6 +17,7 @@ import chess
 from app.cards import poker, preferans, uno
 from app.cards.registry import ADULT_GAMES, CARD_GAMES, CHIP_GAMES, card_module
 from app.checkers.engine import LEVELS
+from app.checkers.simple import ENGINE_NAME, ready as simple_ready
 from app.checkers.evaluation import DEFAULT_WEIGHTS, EvalWeights
 from app.checkers.notation import dump_game_record, format_algebraic, format_move, format_move_algebraic, parse_notation
 from app.checkers.rules import apply_move, move_from_path
@@ -42,6 +43,7 @@ from app.db.repositories.settings import as_preferences
 from app.db.repositories.users import User
 from app.errors import AnalysisIncomplete, AppError, EngineError, IllegalMove
 from app.games.access import (
+    durak_can_step_aside,
     other_side,
     seat_of,
     undo_count,
@@ -582,6 +584,28 @@ class GameService:
                 await self._save_position(conn, row, user.id, version, applied)
         return await self.view(user, game_id)
 
+    async def step_aside(self, user: User, game_id: uuid.UUID, version: int, pace: str) -> dict[str, Any]:
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                row = await self._lock(conn, game_id, user.id, version)
+                if row["status"] != "active" or row["game_type"] != "durak":
+                    raise AppError(409, "stay", "Так выходят только из начатой партии в дурака.")
+                game = await self._seated_game(conn, row)
+                seats = [dict(item) for item in game["table_seats"]]
+                if not durak_can_step_aside(seats, str(user.id)):
+                    raise AppError(
+                        409,
+                        "stay",
+                        "Смотреть доигрывание можно, когда за столом несколько компьютеров и нет других людей.",
+                    )
+                seat = self._seat(game, user)
+                if seat is None:
+                    raise AppError(403, "not_player", "Наблюдатель не выходит из-за стола.")
+                await games_repo.set_seat_kind(conn, game_id, seat, "computer")
+        if pace == "fast":
+            return await self.engine_move(user, game_id, version, steps=240)
+        return await self.view(user, game_id)
+
     async def go_command(
         self,
         user: User,
@@ -904,13 +928,22 @@ class GameService:
             "charges": [],
         }
 
-    async def engine_move(self, user: User, game_id: uuid.UUID, version: int) -> dict[str, Any]:
+    async def engine_move(
+        self,
+        user: User,
+        game_id: uuid.UUID,
+        version: int,
+        steps: int = 40,
+    ) -> dict[str, Any]:
         await self._limit_engine(user)
         current = version
         view: dict[str, Any] | None = None
-        for _step in range(40):
+        bound = max(1, min(int(steps), 240))
+        for _step in range(bound):
             view = await self._engine_step(user, game_id, current)
             if view["status"] != "active" or not view.get("computer_turn"):
+                break
+            if bound <= 40 and view.get("table") == "cards" and view.get("held"):
                 break
             current = int(view["version"])
         return view or await self.view(user, game_id)
@@ -931,7 +964,8 @@ class GameService:
         game["table_seats"] = [dict(item) for item in seat_rows]
         rebuilt = self._rebuild(game, _payload_list(moves))
         seat = self._seat(game, user)
-        computer_turn = rebuilt["side"] in {str(item["seat_key"]) for item in seat_rows if item["kind"] == "computer"}
+        computers = {str(item["seat_key"]) for item in seat_rows if item["kind"] == "computer"}
+        computer_turn = rebuilt["side"] in computers
         if not user_may_request_engine(
             row["mode"],
             row["status"],
@@ -1318,7 +1352,8 @@ class GameService:
             {"depth": depth, "time_ms": time_ms, "weights": asdict(weights), "variety": variety, "slack": slack}
         )
         position_text = dump_rcp(position)
-        cached = await self._read_cache(game, position_text, "1.0.0", settings_hash)
+        engine_token = ENGINE_NAME if simple_ready() else "boardmentor-checkers 1.0.0"
+        cached = await self._read_cache(game, position_text, engine_token, settings_hash)
         if cached and self._checkers_cached_ok(position, cached):
             return cached
         try:
@@ -1348,13 +1383,13 @@ class GameService:
             "depth": found["depth"],
         }
         result = {
-            "engine": "boardmentor-checkers 1.0.0",
+            "engine": str(found.get("engine") or engine_token),
             "nodes": found["nodes"],
             "path": path,
             "promotion": None,
             "lines": [line],
         }
-        await self._write_cache(game, position_text, "1.0.0", settings_hash, result, int(found["depth"]))
+        await self._write_cache(game, position_text, engine_token, settings_hash, result, int(found["depth"]))
         return result
 
     def _validate_create(self, data: dict[str, Any]) -> None:
@@ -1909,7 +1944,7 @@ class GameService:
             "before": before,
             "after": module.dumps(after_state),
             "notation": notation,
-            "payload": {"path": list(path), "by": actor},
+            "payload": {"path": list(path), "by": actor, "seat": side_before},
             "side_before": side_before,
             "side_after": str(after_state.get("to_move") or side_before),
             "result": after_state.get("result"),
