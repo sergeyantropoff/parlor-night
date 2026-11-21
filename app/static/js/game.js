@@ -2,6 +2,7 @@ import { pokerFace, svgDataUrl, unoFace } from "./cards.mjs";
 import { mountEmoji } from "./emoji.js";
 import { attachPager } from "./pager.js";
 import { bindGo, paintGo } from "./go.js";
+import { bindNardy, paintNardy } from "./nardy.js";
 
 const source = document.querySelector("#game-state");
 let current = JSON.parse(source.textContent);
@@ -321,8 +322,9 @@ function paintChrome() {
   if (scene) scene.hidden = !go;
   const keys = document.querySelector(".table-core .keys");
   if (keys) keys.hidden = cards || go;
+  const nardy = current.game_type === "nardy";
   const flip = document.querySelector("#flip");
-  if (flip) flip.hidden = cards || go;
+  if (flip) flip.hidden = go || (cards && !nardy);
   showTool("hint", current.table === "board" && Boolean(current.can_hint) && !current.watching);
   const invite = document.querySelector("#invite");
   if (invite) invite.hidden = inviteDismissed() || !current.join_code;
@@ -340,7 +342,13 @@ function paintChrome() {
   if (engine) engine.disabled = !current.can_engine || busy;
   const end = document.querySelector("#end-game");
   const canEnd = (current.status === "active" || current.status === "scoring") && !current.watching && !busy;
-  if (end) end.hidden = !canEnd;
+  if (end) {
+    end.hidden = !canEnd;
+    const label = nardy || !cards ? "Сдаться" : "Выйти";
+    end.setAttribute("aria-label", label);
+    const tip = end.parentElement?.querySelector(".tip");
+    if (tip) tip.textContent = label;
+  }
   const stop = document.querySelector("#stop-game");
   if (stop) stop.hidden = !current.can_stop || busy;
   const boardGame = current.table !== "cards" && current.table !== "go";
@@ -2381,6 +2389,9 @@ function dominoBone(tile, options) {
 }
 
 let dominoSpots = new Map();
+let dominoFans = [];
+let dominoArrivals = [];
+let dominoFlight = Promise.resolve();
 let dominoGhost = null;
 
 function hideDominoGhost() {
@@ -2398,36 +2409,126 @@ function showDominoGhost(tile, x, y) {
   dominoGhost.style.top = `${y}px`;
 }
 
+function boneSpot(node) {
+  const rect = node.getBoundingClientRect();
+  const where = node.closest(".domino-hand") ? "hand" : node.closest(".domino-line") ? "line" : "other";
+  return { left: rect.left, top: rect.top, width: rect.width, height: rect.height, where };
+}
+
 function rememberDomino() {
   const next = new Map();
   for (const node of document.querySelectorAll("#card-table [data-bone]")) {
     if (node.classList.contains("is-ghost") || next.has(node.dataset.bone)) continue;
-    next.set(node.dataset.bone, node.getBoundingClientRect());
+    const previous = dominoSpots.get(node.dataset.bone);
+    const flying = previous && node.getAnimations().some((anim) => anim.playState === "running" || anim.playState === "paused");
+    next.set(node.dataset.bone, flying ? previous : boneSpot(node));
   }
   const yard = document.querySelector("#card-table .domino-yard");
-  if (yard) next.set("yard", yard.getBoundingClientRect());
+  if (yard) next.set("yard", boneSpot(yard));
   dominoSpots = next;
+  dominoFans = [...document.querySelectorAll("#card-table .domino-seat")].flatMap((seat) => {
+    const fan = seat.querySelector(".domino-fan") || seat.querySelector(".plate");
+    const rect = fan?.getBoundingClientRect();
+    if (!rect?.width) return [];
+    return [{
+      key: seat.dataset.seat || "",
+      count: Number(seat.dataset.count || 0),
+      left: rect.left + rect.width / 2,
+      top: rect.top,
+      center: true,
+    }];
+  });
 }
 
-function flyDomino() {
+function playBoneFlight(node, dx, dy, leaving) {
+  const distance = Math.hypot(dx, dy);
+  const arc = leaving ? Math.min(34, 12 + distance * 0.06) : 0;
+  const duration = leaving
+    ? Math.round(Math.min(1080, Math.max(780, 680 + distance * 0.26)))
+    : Math.round(Math.min(620, Math.max(420, 360 + distance * 0.18)));
+  node.getAnimations().forEach((anim) => anim.cancel());
+  const frames = leaving
+    ? [
+      { transform: `translate(${dx}px, ${dy}px) rotate(-6deg) scale(0.95)` },
+      { transform: `translate(${(dx * 0.52).toFixed(1)}px, ${(dy * 0.48 - arc).toFixed(1)}px) rotate(2deg) scale(1.03)`, offset: 0.58 },
+      { transform: "translate(0, 0) rotate(0deg) scale(1)" },
+    ]
+    : [
+      { transform: `translate(${dx}px, ${dy}px)` },
+      { transform: "translate(0, 0)" },
+    ];
+  const anim = node.animate(frames, {
+    duration,
+    easing: leaving ? "cubic-bezier(.33,.04,.18,1)" : "cubic-bezier(.4,0,.2,1)",
+    fill: "both",
+  });
+  if (leaving) {
+    anim.pause();
+    anim.currentTime = 0;
+  }
+  return anim;
+}
+
+function arrivalTile(notation) {
+  const matched = String(notation || "").match(/^(\d)[–-](\d)/);
+  return matched ? `${matched[1]}-${matched[2]}` : "";
+}
+
+async function flyDomino() {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const seats = [...document.querySelectorAll("#card-table .domino-seat")];
+  const dropped = dominoFans.filter((fan) => {
+    const seat = seats.find((node) => node.dataset.seat === fan.key);
+    return seat && Number(seat.dataset.count || 0) < fan.count;
+  });
+  const queued = [];
   for (const node of document.querySelectorAll("#card-table [data-bone]")) {
     if (node.classList.contains("is-ghost")) continue;
     const next = node.getBoundingClientRect();
     const prev = dominoSpots.get(node.dataset.bone);
-    const from = prev || (node.closest(".domino-hand") ? dominoSpots.get("yard") : null);
-    if (!from || (Math.abs(from.left - next.left) < 2 && Math.abs(from.top - next.top) < 2)) {
+    const onLine = Boolean(node.closest(".domino-line"));
+    let from = prev;
+    let leaving = Boolean(onLine && prev?.where === "hand");
+    if (!prev && onLine) {
+      const fan = dropped.shift() || dominoFans[0];
+      if (fan) {
+        from = fan;
+        leaving = true;
+      }
+    } else if (!prev && node.closest(".domino-hand")) {
+      from = dominoSpots.get("yard");
+    }
+    const originLeft = from?.center ? from.left - next.width / 2 : from?.left;
+    if (!from || (Math.abs(originLeft - next.left) < 2 && Math.abs(from.top - next.top) < 2)) {
       if (!from) node.classList.add("is-arrive");
       continue;
     }
-    const dx = from.left - next.left;
-    const dy = from.top - next.top;
-    node.style.transition = "none";
-    node.style.transform = `translate(${dx}px, ${dy}px)`;
-    requestAnimationFrame(() => {
-      node.style.transition = "transform 460ms cubic-bezier(.2,.75,.2,1)";
-      node.style.transform = "";
-    });
+    const leavingPlayer = Boolean(leaving && prev?.where !== "line");
+    if (leavingPlayer) {
+      dominoSpots.set(node.dataset.bone, {
+        left: originLeft,
+        top: from.top,
+        width: next.width,
+        height: next.height,
+        where: "hand",
+      });
+    }
+    const anim = playBoneFlight(node, originLeft - next.left, from.top - next.top, leavingPlayer);
+    if (leavingPlayer) queued.push({ tile: node.dataset.bone || "", anim });
+    else anim.finished.finally(() => anim.cancel());
+  }
+  const order = new Map();
+  dominoArrivals.forEach((move, index) => {
+    const tile = arrivalTile(move.notation);
+    if (tile && !order.has(tile)) order.set(tile, index);
+  });
+  queued.sort((a, b) => (order.get(a.tile) ?? 99) - (order.get(b.tile) ?? 99));
+  for (let index = 0; index < queued.length; index += 1) {
+    if (index) await new Promise((resolve) => window.setTimeout(resolve, 560));
+    const anim = queued[index].anim;
+    anim.play();
+    await anim.finished.catch(() => {});
+    anim.cancel();
   }
 }
 
@@ -2443,7 +2544,7 @@ function dominoPlate(seat) {
   const title = document.createElement("span");
   title.className = "plate-name";
   fillPersonName(title, { name: seat.you ? `${seat.name} · вы` : seat.name, login: seat.login });
-  const count = Number(seat.you ? (current.hand || []).length : seat.count || 0);
+  const count = dominoCount(seat);
   const left = document.createElement("span");
   left.className = "plate-stack";
   left.textContent = `${count} ${bonesWord(count)}`;
@@ -2452,18 +2553,26 @@ function dominoPlate(seat) {
   return node;
 }
 
+function dominoCount(seat) {
+  if (seat.you) return (current.hand || []).length;
+  return Number(seat.count || 0);
+}
+
 function dominoFan(count) {
   const row = document.createElement("div");
   row.className = "domino-fan";
   row.setAttribute("aria-hidden", "true");
-  const shown = Math.min(count, 7);
-  const angles = fanAngles(shown);
+  const shown = Math.max(0, count);
+  const spread = shown <= 1 ? 0 : Math.min(40, 22 + shown * 2.6);
+  const step = shown <= 1 ? 0 : spread / (shown - 1);
+  row.style.setProperty("--fan-overlap", shown > 12 ? "0.34" : shown > 8 ? "0.28" : "0.22");
+  row.style.setProperty("--fan-scale", "0.78");
   for (let index = 0; index < shown; index += 1) {
     const back = document.createElement("img");
     back.alt = "";
     back.draggable = false;
     back.src = asset("/static/images/dominoes/back.webp");
-    back.style.setProperty("--angle", `${angles[index]}deg`);
+    back.style.setProperty("--angle", `${(-spread / 2 + step * index).toFixed(1)}deg`);
     back.style.zIndex = String(index + 1);
     row.append(back);
   }
@@ -2531,22 +2640,31 @@ function layoutDominoSnake(line) {
   line.classList.remove("is-snake");
   line.style.height = "";
   line.replaceChildren(...pieces);
-  const limit = Math.max(0, line.clientWidth - 2);
+  const box = getComputedStyle(line);
+  const padLeft = parseFloat(box.paddingLeft) || 0;
+  const padRight = parseFloat(box.paddingRight) || 0;
+  const start = padLeft;
+  const end = Math.max(start, line.clientWidth - padRight);
+  const room = end - start;
   const bone = usedBone(line);
-  if (!limit || !bone) return;
+  if (room < 8 || !bone) return;
   pieces.forEach((piece) => orientDomino(piece, "right"));
   const join = 1;
   const total = pieces.reduce((sum, piece, index) => sum + dominoBox(piece, "right", bone).w - (index ? join : 0), 0);
-  if (total <= limit) return;
+  if (total <= room) return;
   const spots = [];
   let flow = 1;
-  let edgeX = 0;
+  let edgeX = start;
   let bandTop = 0;
   for (let index = 0; index < pieces.length; index += 1) {
     const piece = pieces[index];
     const forward = flow > 0 ? "right" : "left";
     const across = dominoBox(piece, forward, bone);
-    const turn = index > 0 && (flow > 0 ? edgeX + across.w > limit + 0.5 : edgeX - across.w < -0.5);
+    const pastEdge = flow > 0 ? edgeX + across.w > end + 0.5 : edgeX - across.w < start - 0.5;
+    const gapAfter = flow > 0 ? end - (edgeX + across.w) : (edgeX - across.w) - start;
+    const bendRoom = flow > 0 ? end - edgeX : edgeX - start;
+    const more = index < pieces.length - 1 && index > 0;
+    const turn = index > 0 && (pastEdge || (more && gapAfter < bone - 0.5 && bendRoom >= bone - 0.5));
     if (!turn) {
       orientDomino(piece, forward);
       const size = dominoBox(piece, forward, bone);
@@ -2558,13 +2676,15 @@ function layoutDominoSnake(line) {
     }
     orientDomino(piece, "down");
     const size = dominoBox(piece, "down", bone);
+    const prev = spots[spots.length - 1];
     let left = flow > 0 ? edgeX : edgeX - size.w;
-    left = flow > 0 ? Math.min(left, Math.max(0, limit - size.w)) : Math.max(0, left);
-    const top = bandTop;
+    if (prev && flow > 0) left = prev.left + prev.w;
+    if (prev && flow < 0) left = prev.left - size.w;
+    const top = prev && prev.h > bone + 0.5 ? prev.top : bandTop;
     spots.push({ piece, left, top, w: size.w, h: size.h });
     flow = -flow;
-    edgeX = flow < 0 ? left + size.w + join : left - join;
-    bandTop = top + size.h - join;
+    edgeX = flow < 0 ? left + size.w : left;
+    bandTop = top + size.h;
   }
   let minLeft = Infinity;
   let maxRight = 0;
@@ -2576,7 +2696,7 @@ function layoutDominoSnake(line) {
     minTop = Math.min(minTop, spot.top);
     maxBottom = Math.max(maxBottom, spot.top + spot.h);
   }
-  const shiftX = Math.max(0, (limit - (maxRight - minLeft)) / 2 - minLeft);
+  const shiftX = start + Math.max(0, (room - (maxRight - minLeft)) / 2) - minLeft;
   const shiftY = -minTop;
   line.classList.add("is-snake");
   line.style.height = `${Math.ceil(maxBottom - minTop)}px`;
@@ -2617,8 +2737,36 @@ function placeDominoYard(layer) {
   if (!yard || !tile || !bottom) return;
   const lift = bottom.getBoundingClientRect().bottom - tile.getBoundingClientRect().top + 10;
   yard.style.position = "absolute";
-  yard.style.left = "0";
+  yard.style.left = "64px";
+  yard.style.marginLeft = "0";
   yard.style.bottom = `${Math.round(lift)}px`;
+}
+
+let dominoFitLock = false;
+
+function refitDomino(box) {
+  if (dominoFitLock || !box?.classList.contains("is-domino")) return;
+  const line = box.querySelector(".domino-line");
+  const layer = box.querySelector(".table-layer");
+  const hand = box.querySelector(".domino-hand");
+  if (!line || !layer) return;
+  const width = Math.round(line.clientWidth);
+  if (!width || width === Number(box.dataset.snakeWidth || 0)) return;
+  dominoFitLock = true;
+  line.style.removeProperty("--bone");
+  if (hand) hand.style.removeProperty("--bone");
+  fitDominoLine(line);
+  if (hand) fitDominoHand(hand);
+  placeDominoYard(layer);
+  box.dataset.snakeWidth = String(Math.round(line.clientWidth));
+  dominoFitLock = false;
+}
+
+function watchDominoTable(box) {
+  if (box.dataset.snakeWatch === "1") return;
+  box.dataset.snakeWatch = "1";
+  if (window.ResizeObserver) new ResizeObserver(() => refitDomino(box)).observe(box);
+  window.addEventListener("resize", () => refitDomino(box));
 }
 
 function dominoEnd(move, chain) {
@@ -2731,8 +2879,10 @@ function renderDomino() {
   others.forEach((seat) => {
     const place = document.createElement("div");
     place.className = "domino-seat";
+    const count = dominoCount(seat);
+    place.dataset.seat = seat.key || "";
+    place.dataset.count = String(count);
     place.append(dominoPlate(seat));
-    const count = Number(seat.count || 0);
     if (count > 0) place.append(dominoFan(count));
     top.append(place);
   });
@@ -2765,28 +2915,38 @@ function renderDomino() {
 
   const draw = (current.legal_moves || []).find((move) => move.path[0] === "draw");
   const pass = (current.legal_moves || []).find((move) => move.path[0] === "pass");
-  const yard = document.createElement(draw || pass ? "button" : "div");
-  yard.className = "domino-yard";
-  if (draw || pass) yard.type = "button";
-  const stack = document.createElement("span");
-  stack.className = "domino-stack";
-  const piled = Math.min(Number(current.deck || 0), 3);
-  for (let index = 0; index < piled; index += 1) {
-    const back = document.createElement("img");
-    back.alt = "";
-    back.src = asset("/static/images/dominoes/back.webp");
-    stack.append(back);
-  }
-  const caption = document.createElement("span");
-  caption.textContent = pass ? "Пас" : `Базар · ${current.deck || 0}`;
-  yard.append(stack, caption);
-  if (draw) yard.addEventListener("click", () => submit(draw));
-  if (pass) yard.addEventListener("click", () => submit(pass));
+  const deck = Number(current.deck || 0);
   const bottom = document.createElement("div");
   bottom.className = "domino-bottom";
-  bottom.append(yard);
+  if (deck > 0) {
+    const yard = document.createElement(draw ? "button" : "div");
+    yard.className = "domino-yard";
+    if (draw) yard.type = "button";
+    const stack = document.createElement("span");
+    stack.className = "domino-stack";
+    const piled = Math.min(deck, 3);
+    for (let index = 0; index < piled; index += 1) {
+      const back = document.createElement("img");
+      back.alt = "";
+      back.src = asset("/static/images/dominoes/back.webp");
+      stack.append(back);
+    }
+    const caption = document.createElement("span");
+    caption.textContent = `Базар · ${deck}`;
+    yard.append(stack, caption);
+    if (draw) yard.addEventListener("click", () => submit(draw));
+    bottom.append(yard);
+  }
   const yours = document.createElement("div");
   yours.className = "domino-you";
+  if (pass) {
+    const badge = document.createElement("button");
+    badge.type = "button";
+    badge.className = "domino-pass";
+    badge.textContent = "Пас";
+    badge.addEventListener("click", () => submit(pass));
+    yours.append(badge);
+  }
   if (you) yours.append(dominoPlate(you));
   const hand = document.createElement("div");
   hand.className = "domino-hand";
@@ -2805,7 +2965,9 @@ function renderDomino() {
   fitDominoLine(line);
   fitDominoHand(hand);
   placeDominoYard(layer);
-  flyDomino();
+  box.dataset.snakeWidth = String(Math.round(line.clientWidth));
+  watchDominoTable(box);
+  dominoFlight = flyDomino();
 }
 
 function dominoSeats(youName) {
@@ -2995,7 +3157,8 @@ function render() {
     return;
   }
   if (current.table === "cards") {
-    if (current.game_type === "domino") renderDomino();
+    if (current.game_type === "nardy") paintNardy(current);
+    else if (current.game_type === "domino") renderDomino();
     else renderCards();
     return;
   }
@@ -3179,12 +3342,16 @@ function apply(next) {
 async function present(next) {
   const plan = motionPlan(current, next);
   const shot = plan ? snapshotMotion(plan) : null;
-  const cards = next.table === "cards" && current.table === "cards" && next.version !== current.version
+  const cards = next.table === "cards" && next.game_type !== "nardy" && current.table === "cards" && current.game_type !== "nardy" && next.version !== current.version
     ? rememberCards()
     : null;
   const spoken = next.moves?.at(-1);
   const added = (next.moves?.length || 0) > (current.moves?.length || 0);
   const changed = next.version !== current.version || next.status !== current.status;
+  if (next.game_type === "domino") {
+    const before = current.game_type === "domino" ? (current.moves || []) : [];
+    dominoArrivals = (next.moves || []).slice(before.length);
+  }
   current = next;
   if (guestTurned) current.black_at_bottom = !current.black_at_bottom;
   if ((current.hand || []).length !== 2 || !current.your_turn || current.status !== "active" || current.game_type !== "uno") {
@@ -3207,6 +3374,7 @@ async function present(next) {
   }
   if (shot) await runMotion(shot);
   if (cards) await flipCards(cards);
+  if (current.game_type === "domino") await dominoFlight;
   if (engineMove) say(current.status_line);
 }
 
@@ -3614,7 +3782,7 @@ function durakCrowd() {
 }
 
 document.querySelector("#end-game")?.addEventListener("click", async () => {
-  const cards = current.table === "cards";
+  const cards = current.table === "cards" && current.game_type !== "nardy";
   if (durakCrowd()) {
     const choice = await ask({
       title: "Выйти из-за стола",
@@ -3649,7 +3817,7 @@ document.querySelector("#stop-game")?.addEventListener("click", async () => {
   act("stop", { version: current.version });
 });
 document.querySelector("#flip")?.addEventListener("click", () => {
-  if (current.watching) {
+  if (current.watching || current.game_type === "nardy") {
     guestTurned = !guestTurned;
     current.black_at_bottom = !current.black_at_bottom;
     render();
@@ -4626,14 +4794,16 @@ function maybeEngine() {
     && (scoring || (current.status === "active" && (current.mode === "vs_computer" || current.computer_turn)));
   if (!auto) return;
   const gallery = Boolean(current.gallery);
+  const nardy = current.game_type === "nardy";
+  const delay = gallery ? 1600 : nardy ? 720 : current.game_type === "domino" ? 680 : 480;
   window.setTimeout(() => {
     if (ticket !== engineTicket || busy || !current.can_engine) return;
     const still = current.table === "go" && current.status === "scoring";
     if (!still && current.status !== "active") return;
     const body = { version: current.version };
-    if (current.gallery) body.steps = 1;
+    if (current.gallery || current.game_type === "nardy") body.steps = 1;
     act("engine-move", body);
-  }, gallery ? 1600 : 480);
+  }, delay);
 }
 
 function setDrawer(name) {
@@ -4698,6 +4868,23 @@ bindGo({
   apply,
   ask,
   refresh,
+  getState: () => current,
+  getBusy: () => busy,
+  setBusy(value) {
+    busy = value;
+  },
+  onSettled() {
+    maybeEngine();
+  },
+});
+bindNardy({
+  post,
+  say,
+  apply,
+  refresh,
+  asset,
+  plateFace,
+  fillPersonName,
   getState: () => current,
   getBusy: () => busy,
   setBusy(value) {

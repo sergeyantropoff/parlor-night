@@ -1,9 +1,9 @@
 const root = document.querySelector("#overview");
 if (root) {
-  const names = ["summary", "games", "people", "sessions"];
+  const names = ["top", "summary", "games", "people", "sessions"];
 
   function show(name) {
-    const tab = names.includes(name) ? name : "summary";
+    const tab = names.includes(name) ? name : "top";
     for (const panel of root.querySelectorAll("[data-panel]")) {
       panel.hidden = panel.dataset.panel !== tab;
     }

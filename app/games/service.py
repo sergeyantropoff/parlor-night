@@ -228,6 +228,7 @@ class GameService:
             "blackjack": "classic",
             "preferans": "classic",
             "domino": "draw",
+            "nardy": str(data.get("nardy_kind") or "long"),
         }
         if data["game_type"] == "durak":
             variant = self._salon_variant(data)
@@ -235,6 +236,8 @@ class GameService:
             variant = f"pool-{_preferans_pool(data)}"
         elif data["game_type"] == "go":
             variant = str(int(data["board_size"]))
+        elif data["game_type"] == "nardy":
+            variant = str(data.get("nardy_kind") or "long")
         else:
             variant = variants.get(data["game_type"], "standard")
         async with self.pool.acquire() as conn:
@@ -742,6 +745,8 @@ class GameService:
                 payload["stake"] = _position_stake(row)
             if row["game_type"] == "go":
                 payload["board_size"] = int(str(row["variant"]))
+            if row["game_type"] == "nardy":
+                payload["nardy_kind"] = str(row["variant"]) if str(row["variant"]) in {"long", "short"} else "long"
             if row["game_type"] == "poker":
                 carried = await self._next_table(row, user.id)
                 if carried is not None:
@@ -823,6 +828,8 @@ class GameService:
             payload["stake"] = _position_stake(row)
         if row["game_type"] == "go":
             payload["board_size"] = int(str(row["variant"]))
+        if row["game_type"] == "nardy":
+            payload["nardy_kind"] = str(row["variant"]) if str(row["variant"]) in {"long", "short"} else "long"
         plan = await self._saved_plan(row["id"])
         if plan is not None and row["game_type"] in CARD_GAMES:
             payload["computers"] = plan[0]
@@ -840,6 +847,7 @@ class GameService:
             "durak": str(row["variant"]) if row["game_type"] == "durak" else "podkidnoy",
             "go": str(row["variant"]),
             "domino": "draw",
+            "nardy": str(row["variant"]) if str(row["variant"]) in {"long", "short"} else "long",
         }
         return await games_repo.insert_game(
             conn,
@@ -902,10 +910,11 @@ class GameService:
             state = _card_state(module, game, payloads)
             before = module.dumps(state)
             after_state = module.leave(state, seat)
+            resigned = game["game_type"] == "nardy" and state.get("phase") != "waiting"
             return {
                 "before": before,
                 "after": module.dumps(after_state),
-                "notation": "Вышел из-за стола",
+                "notation": "Сдался" if resigned else "Вышел из-за стола",
                 "payload": {"leave": True, "seat": seat, "by": "human"},
                 "result": after_state.get("result"),
                 "reason": after_state.get("reason") or "left",
@@ -1407,6 +1416,15 @@ class GameService:
             if size not in {9, 13, 19}:
                 raise AppError(422, "bad_board", "Размер доски го: 9, 13 или 19.")
             data["board_size"] = size
+        if data["game_type"] == "nardy":
+            if data["mode"] not in {"online", "vs_computer"}:
+                raise AppError(422, "bad_mode", "Нарды играются с человеком или с компьютером.")
+            kind = str(data.get("nardy_kind") or "long")
+            if kind not in {"long", "short"}:
+                raise AppError(422, "bad_variant", "Выберите длинные или короткие нарды.")
+            data["nardy_kind"] = kind
+            data["computers"] = None
+            data["open_seats"] = None
         if data["mode"] not in {"vs_computer", "free", "analysis", "lesson", "online"}:
             raise AppError(422, "bad_mode", "Неизвестный режим партии.")
         if data["player_side"] not in {"white", "black"}:
@@ -1582,6 +1600,10 @@ class GameService:
             variant = self._salon_variant(data)
         elif game == "preferans":
             variant = f"pool-{_preferans_pool(data)}"
+        elif game == "nardy":
+            variant = str(data.get("nardy_kind") or "long")
+            if variant not in {"long", "short"}:
+                variant = "long"
         else:
             variant = "classic"
         explicit = data.get("computers") is not None or data.get("open_seats") is not None
@@ -1943,6 +1965,12 @@ class GameService:
             else:
                 after_state = played
                 charges = []
+            if hasattr(module, "stored_path"):
+                path = [str(item) for item in module.stored_path(list(path), after_state)]
+            if hasattr(module, "label"):
+                named = str(module.label(state, after_state, list(path)) or "")
+                if named:
+                    notation = named
             if game["game_type"] == "uno" and (after_state.get("acts") or {}).get(side_before) == "miss" and "УНО" not in notation:
                 notation = f"{notation} · не сказал УНО"
         except ValueError as exc:
@@ -2194,6 +2222,9 @@ class GameService:
                 if row["game_type"] == "poker"
                 else module.deal_table([str(item) for item in order])
             )
+        elif row["game_type"] == "nardy":
+            kind = str(row["variant"]) if str(row["variant"]) in {"long", "short"} else "long"
+            opened = module.deal(["white", "black"], kind)
         else:
             opened = poker.deal(buy_in, purses) if row["game_type"] == "poker" else module.deal()
         self._mark_dealer(str(row["game_type"]), opened, {"engine_level": row["engine_level"]})
@@ -2381,6 +2412,7 @@ def _summarize(rows: list[Any], user_id: uuid.UUID) -> dict[str, dict[str, int]]
         "blackjack": {"total": 0, "active": 0, "wins": 0, "losses": 0, "draws": 0},
         "preferans": {"total": 0, "active": 0, "wins": 0, "losses": 0, "draws": 0},
         "domino": {"total": 0, "active": 0, "wins": 0, "losses": 0, "draws": 0},
+        "nardy": {"total": 0, "active": 0, "wins": 0, "losses": 0, "draws": 0},
     }
     for row in rows:
         bucket = summary.setdefault(

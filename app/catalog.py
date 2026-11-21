@@ -31,6 +31,13 @@ GAMES: dict[str, GameSpec] = {
         False,
         "Кости в линию, от двух до четырёх. С человеком или с компьютером.",
     ),
+    "nardy": GameSpec(
+        "nardy",
+        "Нарды",
+        "board",
+        False,
+        "Длинные и короткие. С человеком или с компьютером.",
+    ),
     "uno": GameSpec("uno", "Уно", "cards", False, "Цвета, цифры и дикие карты. Без денег."),
     "poker": GameSpec(
         "poker",

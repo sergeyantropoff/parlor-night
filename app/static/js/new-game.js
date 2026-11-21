@@ -71,10 +71,11 @@ if (form) {
     const grown = poker || blackjack || preferans;
     const checkers = gameValue === "checkers";
     const go = gameValue === "go";
+    const nardy = gameValue === "nardy";
     form.dataset.game = gameValue;
 
     for (const input of form.querySelectorAll('input[name="mode"]')) {
-      const off = (cards || go) && boardOnly.has(input.value);
+      const off = (cards || go || nardy) && boardOnly.has(input.value);
       input.disabled = off;
       input.closest("label").hidden = off;
       if (off) input.checked = false;
@@ -188,13 +189,15 @@ if (form) {
     if (stakePanel) stakePanel.hidden = !preferans;
     const goSize = byId("#go-size");
     if (goSize) goSize.hidden = !go;
+    const nardyKind = byId("#nardy-kind");
+    if (nardyKind) nardyKind.hidden = !nardy;
     const whiteInput = form.querySelector('input[name="player_side"][value="white"]');
     const blackInput = form.querySelector('input[name="player_side"][value="black"]');
     const whiteSmall = whiteInput?.closest("label")?.querySelector("small");
     const blackSmall = blackInput?.closest("label")?.querySelector("small");
     if (whiteSmall && blackSmall) {
-      whiteSmall.textContent = go ? "Ходят вторыми" : "Снизу, ходят первыми";
-      blackSmall.textContent = go ? "Ходят первыми" : "Снизу, отвечают на ход";
+      whiteSmall.textContent = nardy ? "Ходят первыми" : go ? "Ходят вторыми" : "Снизу, ходят первыми";
+      blackSmall.textContent = nardy ? "Отвечают на бросок" : go ? "Ходят первыми" : "Снизу, отвечают на ход";
     }
     if (whiteInput && blackInput) {
       whiteInput.dataset.title = go ? "Белые" : "Белые снизу";
@@ -203,9 +206,9 @@ if (form) {
     byId("#fen-field").hidden = gameValue !== "chess";
     byId("#pgn-field").hidden = gameValue !== "chess";
     byId("#rcp-field").hidden = !checkers;
-    byId("#moves-field").hidden = cards;
+    byId("#moves-field").hidden = cards || nardy;
     const advanced = byId("#advanced");
-    advanced.hidden = cards || go;
+    advanced.hidden = cards || go || nardy;
 
     const hint = byId("#moves-hint");
     const moves = byId("#moves-field")?.querySelector("textarea");
@@ -237,6 +240,7 @@ if (form) {
     } else {
       parts.push(modeNow?.dataset.title, checked("player_side")?.dataset.title);
       if (go) parts.push(checked("board_size")?.dataset.title);
+      if (nardy) parts.push(checked("nardy_kind")?.dataset.title);
       if (!onlineNow) parts.push(checked("engine_level")?.dataset.title);
       if (shareableNow) parts.push(checked("audience")?.dataset.title);
     }
@@ -245,7 +249,7 @@ if (form) {
     const submit = form.querySelector('button[type="submit"]');
     if (submit) submit.disabled = preferans && preferansNeed(false) === "";
 
-    if (openLesson && modeValue === "lesson" && !cards) {
+    if (openLesson && modeValue === "lesson" && !cards && !nardy) {
       advanced.hidden = false;
       advanced.open = true;
       const field = checkers ? byId("#rcp-field") : byId("#pgn-field");

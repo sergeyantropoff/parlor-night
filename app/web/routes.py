@@ -32,7 +32,7 @@ from app.games.service import _summarize
 from app.greeting import greeting
 from app.names import called, parse_full_name, shown, split_full_name
 from app.news_images import image_file, media_type
-from app.paging import page_links
+from app.paging import clamp_page, list_href, page_count, page_links, read_page
 from app.profile_stats import tally
 from app.site_policy import current as current_policy
 from app.templating import render, safe_json
@@ -133,14 +133,26 @@ async def chip_history(request: Request) -> Response:
 
 @router.get("/news")
 async def news_index(request: Request) -> Response:
-    if request.query_params.get("page"):
-        return RedirectResponse("/news", status_code=303)
+    asked = request.query_params.get("page")
     async with request.app.state.pool.acquire() as conn:
-        posts = await news.list_news(conn, limit=3)
+        total = await news.count_news(conn)
+        pages = page_count(total, _NEWS_PAGE)
+        current = clamp_page(read_page(asked), pages)
+        posts = await news.list_news(conn, _NEWS_PAGE, (current - 1) * _NEWS_PAGE)
+    if asked is not None and asked != str(current):
+        return RedirectResponse(list_href("/news", current), status_code=303)
     return render(
         request,
         "public/news_index.html",
-        {"posts": posts, "public_page": request.state.user is None},
+        {
+            "posts": posts,
+            "public_page": request.state.user is None,
+            "pager_label": "Страницы новостей",
+            "pager_page": current,
+            "pager_pages": pages,
+            "pager_links": page_links(current, pages),
+            "pager_href": "/news?page=__PAGE__",
+        },
     )
 
 
@@ -172,9 +184,14 @@ async def about(request: Request) -> Response:
 async def news_page(request: Request, news_id: uuid.UUID) -> Response:
     async with request.app.state.pool.acquire() as conn:
         post = await news.get_news(conn, news_id)
+        earlier = [] if post is None else await news.earlier_news(conn, news_id)
     if post is None:
         return error_response(request, 404, note="Новость не найдена.")
-    return render(request, "public/news.html", {"post": post, "public_page": True})
+    return render(
+        request,
+        "public/news.html",
+        {"post": post, "earlier": earlier, "public_page": True},
+    )
 
 
 def _offered_game(request: Request, game: str | None) -> str | None:
@@ -260,6 +277,7 @@ async def create_game(request: Request) -> Response:
         "initial_position": str(form.get("initial_position") or "").strip() or None,
         "moves": [line.strip() for line in moves.splitlines() if line.strip()] or None,
         "durak_kind": str(form.get("durak_kind") or "podkidnoy"),
+        "nardy_kind": str(form.get("nardy_kind") or "long"),
         "pool": _int(form.get("pool"), 12),
         "stake": _int(form.get("stake"), 1),
         "board_size": _int(form.get("board_size"), 19),
@@ -802,7 +820,7 @@ async def _board_page(request: Request, game_id: uuid.UUID, *, analysis: bool) -
         if exc.status == 404:
             return error_response(request, 404, note=exc.message)
         raise
-    if analysis and state.get("game_type") == "domino":
+    if analysis and state.get("game_type") in {"domino", "nardy"}:
         return RedirectResponse(f"/games/{game_id}", status_code=303)
     prefs = await _prefs(request, user.id)
     return render(

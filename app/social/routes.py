@@ -33,6 +33,7 @@ _SEEK_SEATS = {
     "blackjack": (2, 6),
     "preferans": (3, 3),
     "domino": (2, 4),
+    "nardy": (2, 2),
 }
 ONLINE_FOR = timedelta(minutes=2)
 _OVERVIEW_GAMES = 8
@@ -559,13 +560,20 @@ _REASONS = {
     "empty_hand": "Карты кончились",
     "empty": "Кости кончились",
     "blocked": "Рыба",
+    "single": "Оин",
+    "oin": "Оин",
+    "gammon": "Гэммон",
+    "backgammon": "Бэкгэммон",
+    "mars": "Марс",
+    "cox": "Кокс",
+    "drop": "Куб не принят",
     "showdown": "Вскрытие",
     "fold": "Пас",
     "split": "Банк пополам",
     "other": "Без указанной причины",
 }
 _LEVELS = ("Новичок", "Любитель", "Опытный", "Сильный", "Мастер")
-_GAME_ORDER = ("chess", "checkers", "go", "domino", "uno", "poker", "durak", "blackjack", "preferans")
+_GAME_ORDER = ("chess", "checkers", "go", "domino", "nardy", "uno", "poker", "durak", "blackjack", "preferans")
 
 
 _RING = 263.89
@@ -858,6 +866,82 @@ def _overview_charts(
     }
 
 
+def _wins_word(count: int) -> str:
+    tail = count % 100
+    if 11 <= tail <= 14:
+        return "побед"
+    last = count % 10
+    if last == 1:
+        return "победа"
+    if last in {2, 3, 4}:
+        return "победы"
+    return "побед"
+
+
+def _leaderboard(guests: list[dict[str, object]]) -> dict[str, object]:
+    ranked: list[dict[str, object]] = []
+    for person in guests:
+        finished = int(person["finished"] or 0)
+        wins = int(person["wins"] or 0)
+        ranked.append(
+            {
+                **person,
+                "wins": wins,
+                "finished": finished,
+                "games": int(person["games"] or 0),
+                "balance": int(person["balance"] or 0),
+                "rate": 0 if finished <= 0 else round(100 * wins / finished),
+                "wins_word": _wins_word(wins),
+            }
+        )
+    ranked.sort(
+        key=lambda item: (
+            -int(item["wins"]),
+            -int(item["rate"]),
+            -int(item["games"]),
+            -int(item["balance"]),
+            str(item["username"]).casefold(),
+        )
+    )
+    for index, person in enumerate(ranked, start=1):
+        person["place"] = index
+
+    def named(rows: list[dict[str, object]], field: str) -> list[tuple[str, int]]:
+        return [(str(person["username"]), int(person[field])) for person in rows]
+
+    win_parts = named([person for person in ranked if int(person["wins"])], "wins")
+    if len(win_parts) > 6:
+        rest = sum(total for _, total in win_parts[5:])
+        win_parts = [*win_parts[:5], ("Остальные", rest)]
+    by_chips = sorted(
+        ranked,
+        key=lambda item: (-int(item["balance"]), -int(item["wins"]), str(item["username"]).casefold()),
+    )
+    steady = [person for person in ranked if int(person["finished"]) > 0]
+    by_rate = sorted(
+        steady,
+        key=lambda item: (-int(item["rate"]), -int(item["wins"]), str(item["username"]).casefold()),
+    )
+
+    def pick(field: str) -> dict[str, object] | None:
+        if not ranked:
+            return None
+        return max(ranked, key=lambda item: (int(item[field]), int(item["wins"]), str(item["username"])))
+
+    return {
+        "leaders": ranked,
+        "podium": ranked[:3],
+        "top_win_bars": _bars(named(ranked[:8], "wins")),
+        "top_chip_bars": _bars(named(by_chips[:8], "balance")),
+        "top_rate_bars": _bars(named(by_rate[:8], "rate")),
+        "top_win_donut": _donut(win_parts),
+        "top_champion": ranked[0] if ranked else None,
+        "top_busy": pick("games"),
+        "top_rich": pick("balance"),
+        "top_steady": by_rate[0] if by_rate else None,
+    }
+
+
 @router.post("/admin/overview/clear")
 async def admin_clear_games(request: Request) -> Response:
     user = _admin(request)
@@ -1127,6 +1211,7 @@ async def admin_overview(request: Request) -> Response:
         total = int(card["total"])
         card["bar"] = 0 if not total or not tallest else max(8, round(100 * total / tallest))
     charts = _overview_charts(numbers, game_cards, guests, strength, session_totals, session_users, session_devices)
+    board = _leaderboard(guests)
     people_frame = window(guests, read_page(request.query_params.get("people_page")), _OVERVIEW_PEOPLE)
     pages = {
         "games_page": games_page,
@@ -1190,6 +1275,7 @@ async def admin_overview(request: Request) -> Response:
             "referral_bars": _bars([(str(row["username"]), int(row["total"])) for row in invites]),
             "cleared": cleared,
             **charts,
+            **board,
         },
     )
 

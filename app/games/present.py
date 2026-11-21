@@ -555,6 +555,10 @@ def _project_cards(
         marks = _durak_marks(card)
     elif str(game["game_type"]) == "blackjack":
         marks = _blackjack_marks(card)
+    elif str(game["game_type"]) == "nardy":
+        picture = card.get("nardy") if isinstance(card.get("nardy"), dict) else {}
+        borne = picture.get("off") if isinstance(picture.get("off"), dict) else {}
+        marks = {key: f"снято {int(borne.get(key) or 0)}" for key in ("white", "black")}
     else:
         marks = (report.get("last") or {}) if report else {}
     for item in public_seats:
@@ -572,7 +576,7 @@ def _project_cards(
             rival = ordered[0]
         elif ordered:
             rival = ", ".join(ordered)
-    if not public_seats and str(game["game_type"]) in {"durak", "blackjack", "preferans", "domino"}:
+    if not public_seats and str(game["game_type"]) in {"durak", "blackjack", "preferans", "domino", "nardy"}:
         public_seats = _salon_faces(
             card,
             mode=mode,
@@ -586,6 +590,13 @@ def _project_cards(
         for item in public_seats:
             item["mark"] = marks.get(str(item["key"]), "")
             item["winner"] = bool(report and report.get("winner") == item["key"])
+    if str(game["game_type"]) == "nardy":
+        for item in public_seats:
+            key = str(item.get("key") or "")
+            if not item.get("login"):
+                item["login"] = str(named.get(f"{key}_login") or "")
+            if not item.get("avatar"):
+                item["avatar"] = str(named.get(f"{key}_avatar") or "")
     _stamp_preferans(public_seats, card, str(game["game_type"]))
     summary = None
     if stopped:
@@ -626,7 +637,7 @@ def _project_cards(
         "your_turn": your_turn,
         "watching": (seat is None and mode in {"online", "vs_computer"}) or stepped,
         "gallery": stepped and status == "active",
-        "black_at_bottom": False,
+        "black_at_bottom": str(game["game_type"]) == "nardy" and seat == "black" and mode in {"vs_computer", "online"},
         "cells": [],
         "legal_moves": card["actions"] if your_turn else [],
         "hand": card["hand"],
@@ -661,9 +672,13 @@ def _project_cards(
         "scored": bool(card.get("scored")),
         "note": str(card.get("note") or ""),
         "note_tone": str(card.get("note_tone") or ""),
+        "nardy": card.get("nardy") if isinstance(card.get("nardy"), dict) else None,
         "seats": public_seats
         if len(public_seats) > 2
-        or (str(game["game_type"]) in {"uno", "durak", "blackjack", "preferans", "domino"} and len(public_seats) >= 1)
+        or (
+            str(game["game_type"]) in {"uno", "durak", "blackjack", "preferans", "domino", "nardy"}
+            and len(public_seats) >= 1
+        )
         else [],
         "marks": marks,
         "said": [str(item) for item in (card.get("said") or [])],
@@ -677,7 +692,13 @@ def _project_cards(
         "result": game.get("result"),
         "result_reason": game.get("result_reason"),
         "result_message": finished,
-        "result_tone": "stop" if stopped else None,
+        "result_tone": (
+            "stop"
+            if stopped
+            else result_tone(_optional(game.get("result")), seat)
+            if status == "finished" and str(game["game_type"]) == "nardy"
+            else None
+        ),
         "status_line": line,
         "can_hint": False,
         "can_engine": user_may_request_engine(mode, status, seat, side, computer_turn=computer_turn),
@@ -928,7 +949,7 @@ def _parlor_summary(
         line = f"Дурак — {loser_name}."
     elif winner_name and kind != "durak":
         line = line or f"Победитель — {winner_name}."
-    titles = {"durak": "Дурак", "blackjack": "Блэкджек", "preferans": "Преферанс", "domino": "Домино"}
+    titles = {"durak": "Дурак", "blackjack": "Блэкджек", "preferans": "Преферанс", "domino": "Домино", "nardy": "Нарды"}
     return {
         "kind": "parlor",
         "game": kind,
@@ -979,7 +1000,7 @@ def _halted_card_summary(
         )
     counts = report.get("counts") if isinstance(report, dict) and isinstance(report.get("counts"), dict) else {}
     pot = int(report.get("pot") or 0) if isinstance(report, dict) else 0
-    parlor = kind in {"durak", "blackjack", "preferans", "domino"}
+    parlor = kind in {"durak", "blackjack", "preferans", "domino", "nardy"}
     return {
         "kind": "parlor" if parlor else ("uno" if kind == "uno" else "poker"),
         "winner": "",

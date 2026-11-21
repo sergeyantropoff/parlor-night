@@ -9,6 +9,7 @@
   "go": "news-go.webp",
   "beta": "news-beta.webp",
   "domino": "news-domino.webp",
+  "nardy": "news-nardy.webp",
 } %}
 {% set months = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"] %}
 <header class="mast">
@@ -40,7 +41,7 @@
     <div class="hero-copy">
       <p class="kicker">Закрытая гостиная настольных игр <i></i></p>
       <h1>Хороший вечер начинается с партии</h1>
-      <p>Играйте с друзьями в шахматы, русские шашки, го, домино, Уно, покер, дурака, блэкджек и преферанс. Нарды уже на подходе. Общайтесь в чате или включайте видеосвязь — как вам удобнее.</p>
+      <p>Играйте с друзьями в шахматы, русские шашки, го, нарды, домино, Уно, покер, дурака, блэкджек и преферанс. Общайтесь в чате или включайте видеосвязь — как вам удобнее.</p>
       <div class="hero-actions">
         {% if can_register %}
         <a class="button" href="/register">Регистрация</a>
@@ -114,8 +115,8 @@
         <img class="theme-dark" src="/static/parlor/dark/game-go.webp?v={{ asset_version }}" width="1440" height="1080" alt="" loading="lazy" />
       </div>
       <div class="shot-body">
-        <div><h3>Го</h3><p>С человеком или с компьютером.</p></div>
-        <a class="round tip-host" href="/login" data-tip="Го" data-tip-edge aria-label="Войти, чтобы играть в го"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        <div><h3>ГО</h3><p>С человеком или с компьютером.</p></div>
+        <a class="round tip-host" href="/login" data-tip="ГО" data-tip-edge aria-label="Войти, чтобы играть в ГО"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
       </div>
     </article>
     <article>
@@ -128,13 +129,14 @@
         <a class="round tip-host" href="/login" data-tip="Домино" data-tip-edge aria-label="Войти, чтобы играть в домино"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
       </div>
     </article>
-    <article class="is-soon">
+    <article>
       <div class="shot">
-        <img class="theme-light" src="/static/parlor/light/soon-backgammon.webp?v={{ asset_version }}" width="1448" height="1086" alt="Нарды скоро появятся в гостиной" loading="lazy" />
-        <img class="theme-dark" src="/static/parlor/dark/soon-backgammon.webp?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
+        <img class="theme-light" src="/static/parlor/light/game-nardy.webp?v={{ asset_version }}" width="768" height="576" alt="" loading="lazy" />
+        <img class="theme-dark" src="/static/parlor/dark/game-nardy.webp?v={{ asset_version }}" width="768" height="576" alt="" loading="lazy" />
       </div>
       <div class="shot-body">
-        <div><h3>Нарды</h3><p>Скоро в гостиной.</p></div>
+        <div><h3>Нарды</h3><p>Длинные и короткие, с человеком или с компьютером.</p></div>
+        <a class="round tip-host" href="/login" data-tip="Нарды" data-tip-edge aria-label="Войти, чтобы играть в нарды"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
       </div>
     </article>
     <article>

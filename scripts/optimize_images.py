@@ -38,8 +38,10 @@ def css_px(rel: str) -> int:
         return 200
     if name.startswith("go-stone"):
         return 88
-    if "pieces/" in rel:
+    if "pieces/" in rel or "/images/nardy/" in rel and not name.startswith("board"):
         return 180
+    if name.startswith("board") and "/nardy/" in rel:
+        return 1024
     if "images/games/" in rel:
         return 240
     if name.startswith("game-") and "/parlor/" in rel:

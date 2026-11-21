@@ -113,9 +113,6 @@ def main() -> None:
     photo("3bbbf4d8", STATIC / "images/tables/table-domino.webp", 1600)
     photo("def5b933", ROOT / "docs/images/games/domino.webp", 1600)
     photo("aa376922", STATIC / "parlor-ongoing/images/ongoing-domino-480.webp", 480, 320)
-    photo("3f608c3a", STATIC / "parlor/light/soon-backgammon.webp", 1448, 1086)
-    photo("3f608c3a", STATIC / "parlor/dark/soon-backgammon.webp", 1448, 1086)
-    photo("3f608c3a", ROOT / "docs/images/games/backgammon-soon.webp", 1448, 1086)
     tiles = STATIC / "images/dominoes"
     for hi in range(6, -1, -1):
         for lo in range(hi, -1, -1):

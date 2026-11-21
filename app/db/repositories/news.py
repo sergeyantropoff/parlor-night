@@ -26,6 +26,22 @@ async def list_news(conn: asyncpg.Connection, limit: int = 12, offset: int = 0) 
     )
 
 
+async def earlier_news(conn: asyncpg.Connection, news_id: uuid.UUID, limit: int = 3) -> list[asyncpg.Record]:
+    return await conn.fetch(
+        """
+        SELECT id, title, summary, body, kind, cover, published_on
+        FROM news_posts
+        WHERE (published_on, created_at) < (
+            SELECT published_on, created_at FROM news_posts WHERE id = $1
+        )
+        ORDER BY published_on DESC, created_at DESC
+        LIMIT $2
+        """,
+        news_id,
+        limit,
+    )
+
+
 async def get_news(conn: asyncpg.Connection, news_id: uuid.UUID) -> asyncpg.Record | None:
     return await conn.fetchrow(
         """

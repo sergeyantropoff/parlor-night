@@ -407,7 +407,7 @@ A new birth date without `"confirm": true` is 422. Empty day, month, and year do
 }
 ```
 
-`default_game`: `chess`, `checkers`, `go`, `domino`, `uno`, `poker`, `durak`, `blackjack`, `preferans`. Poker, blackjack, and Preferans are stored as the default only from age 18; otherwise the server keeps chess. The response is `{ "saved": true, "settings": {} }`.
+`default_game`: `chess`, `checkers`, `go`, `domino`, `nardy`, `uno`, `poker`, `durak`, `blackjack`, `preferans`. Poker, blackjack, and Preferans are stored as the default only from age 18; otherwise the server keeps chess. The response is `{ "saved": true, "settings": {} }`.
 
 `POST /api/v1/account/password`
 
@@ -557,7 +557,7 @@ Read a portrait with `GET /avatars/<file>` and the same Bearer token. Without si
 
 Under 18, adult games are hidden from `seekers`.
 
-`POST /api/v1/lobby/seek` — `{ "game_type": "uno", "seats": 4 }`. Chess, checkers, and Go are always 2 seats. UNO, poker, Durak, and blackjack are 2 to 6. Preferans is 3. Dominoes are 2 to 4. The response is `{ "seeking": true, "game_type": "uno", "seats": 4 }`. A person has one seek: a new one replaces the old one.
+`POST /api/v1/lobby/seek` — `{ "game_type": "uno", "seats": 4 }`. Chess, checkers, Go, and backgammon are always 2 seats. UNO, poker, Durak, and blackjack are 2 to 6. Preferans is 3. Dominoes are 2 to 4. The response is `{ "seeking": true, "game_type": "uno", "seats": 4 }`. A person has one seek: a new one replaces the old one.
 
 `POST /api/v1/lobby/cancel` returns `{ "seeking": false }`.
 
@@ -779,7 +779,7 @@ Modes:
 | `analysis` | Chess and checkers only | Study a position. Both sides are yours |
 | `lesson` | Chess and checkers only | The same, suited to a pasted record |
 
-Go and dominoes accept only `vs_computer` and `online`: `free`, `analysis`, and `lesson` are `422 bad_mode`. The other card games hide those three modes in the form. When cards are given `computers` and `open_seats`, the server sets `online` if a seat is open for a person, and `vs_computer` if none is.
+Go, dominoes, and backgammon accept only `vs_computer` and `online`: `free`, `analysis`, and `lesson` are `422 bad_mode`. The other card games hide those three modes in the form. When cards are given `computers` and `open_seats`, the server sets `online` if a seat is open for a person, and `vs_computer` if none is.
 
 Extra fields:
 
@@ -787,6 +787,7 @@ Extra fields:
 | --- | --- |
 | `board_size` | Go: `9`, `13`, or `19`. Empty means 19 |
 | `durak_kind` | `podkidnoy` or `perevodnoy`. Empty means podkidnoy |
+| `nardy_kind` | `long` or `short`. Empty means long. The doubling cube exists only in the short game |
 | `pool` | Preferans, a pool from 6 to 20 |
 | `computers` | Computers at a card table, 0 to 5. Preferans needs exactly two seats besides you, computers and open seats together. Blackjack allows at most five besides you. UNO, poker, and Durak need one to five seats besides you. Dominoes need one to three seats besides you, computers and open seats together |
 | `open_seats` | Seats for people, by code or Sit. The same limits |
@@ -806,7 +807,7 @@ These exist for the board and for cards.
 | Field | Meaning |
 | --- | --- |
 | `id`, `you` | The game and your user UUID |
-| `game_type` | `chess`, `checkers`, `go`, `domino`, `uno`, `poker`, `durak`, `blackjack`, `preferans` |
+| `game_type` | `chess`, `checkers`, `go`, `domino`, `nardy`, `uno`, `poker`, `durak`, `blackjack`, `preferans` |
 | `table` | `board`, `cards`, or `go` |
 | `variant`, `mode`, `status` | Kind, mode, and `waiting` / `active` / `finished`. During Go scoring, `status` is `scoring` |
 | `version` | The position number. Send it back with a move |
@@ -907,6 +908,7 @@ Then, by game:
 | `hole`, `board`, `stacks`, `committed` | Blackjack. `board` is the dealer's cards. `hole: true` means the dealer's second card is still hidden and is not in `board`. Bets are in `committed` |
 | `contract`, `contract_need`, `declarer`, `tricks`, `sheet`, `scored`, `note`, `talon`, `held` | Preferans. `contract` is the current bid in words. `contract_need` is the number of tricks in the contract, `0` for a miser, `null` for raspasy. `declarer` is the seat that ordered the game. `tricks` is how many tricks each seat already has. `sheet`: `pool`, `closed`, `seats`, `bullet`, `mountain`, `whists`, `total`. `board` is the trick. `held` is the previous trick, and it also stays on the table before the next lead |
 | `chain`, `deck`, `hand` | Dominoes. `hand` is your tiles, coded `6-1`. Other tiles are not sent, only `seats[].count`. `deck` is how many tiles remain in the boneyard. `chain` is the play order from the opening tile: `tile`, `spin` (a double lies across the line), `hi_left` (the higher half faces back toward the start). On the table a long line is drawn as one snake, horizontal then a vertical turn, but the `chain` order does not change. `phase` is `play` or `done`. A result reason `empty` means a hand ran out, `blocked` means the line is closed, `left` means an opponent left. `summary.kind` for dominoes is `parlor` |
+| `nardy` | Backgammon. `points` is 24 points, positive for white and negative for black. `bar` and `off` are the bar and the borne-off checkers. `dice` is the last roll and `remaining` is the dice still to play. `cube` and `cube_owner` are the doubling cube, only in the short game. `targets` lists the moves you may play: `from`, `die`, `to`, `hit`. A move is `["dice","roll"]`, `["dice","double"]`, `["dice","take"]`, `["dice","drop"]`, or `["move", point, die]`. The point `bar` re-enters. Ask `engine-move` with `steps: 1` so the dice and each checker arrive separately. `summary.kind` is `parlor` |
 
 `note` and `status_line` can be shown above the table. A Preferans `summary` also has `sheet`.
 

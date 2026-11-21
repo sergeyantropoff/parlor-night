@@ -96,12 +96,12 @@
 ![Домино](docs/images/games/domino.webp)
 ```
 
-### Нарды, скоро
+### Нарды
 
-![Нарды скоро](images/games/backgammon-soon.webp)
+![Нарды](images/games/nardy.webp)
 
 ```markdown
-![Нарды скоро](docs/images/games/backgammon-soon.webp)
+![Нарды](docs/images/games/nardy.webp)
 ```
 
 ### Техасский холдем

@@ -2,7 +2,7 @@
 
 ![Parlor Night cover](../images/banners/cover.webp)
 
-Parlor Night is a closed parlor for table games. One evening can hold chess, Russian checkers, Go, dominoes, UNO, Texas Hold'em, Durak, blackjack, and Preferans. Play uses chips. There is no money in the parlor.
+Parlor Night is a closed parlor for table games. One evening can hold chess, Russian checkers, Go, backgammon, dominoes, UNO, Texas Hold'em, Durak, blackjack, and Preferans. Play uses chips. There is no money in the parlor.
 
 Chess is calculated by Stockfish. Checkers and Go use the parlor's own search. A game does not call outside APIs and does not send telemetry. Picture and voice go between browsers. The server introduces the people seated at one table and, when the direct path is closed, gives them TURN.
 
@@ -119,13 +119,13 @@ Card games ask for computers and open seats instead of a side. The creator is al
 
 **Dominoes.** A double-six set, twenty-eight tiles, from blank to double six. Two to four sit down: two players draw seven tiles each, three or four draw five. The rest is the boneyard. The player with the highest double leads and must play it. If there is no double, the player with the highest tile leads. A later tile matches one open end. With no match, tiles are drawn until a play appears or the boneyard is empty, and then the turn is a pass. The first empty hand wins. If a pass goes all the way around, the hand is blocked: the lowest pip sum wins, and equal sums draw. Chips are awarded for a win and a draw. There is no pot. A tile is dragged to the end it matches. When only one end matches, a tap is enough. When the line reaches the edge, the next tile stands upright and the line comes back the other way: one continuous snake, not two separate rows. Opponents show a fan of tile backs on the table and a count on their card. The boneyard sits on the left, just above your tiles. Dominoes have no free board, analysis, or lesson: a game is only against a person or the computer. The computer uses the same five levels. There is no clock. The record downloads as text.
 
-![Backgammon, coming soon](../images/games/backgammon-soon.webp)
+![Backgammon](../images/games/nardy.webp)
 
-Backgammon is already announced in the catalog. It cannot be played yet.
+**Backgammon.** Long or short, chosen before the first roll. Two players, against a person or the computer. In the long game both move forward, one opposing checker closes a point, and only one checker may leave the head in a turn, or two on the opening turn. A full block of six points is illegal until the opponent has passed that quadrant. The scores are a single game, a gammon, and a backgammon. In the short game a blot is hit and must re-enter from the bar, and checkers bear off from home. If both dice can be played, both are played; otherwise the larger one is. Doubles are four moves. The doubling cube exists only in the short game. A gammon doubles the stake and a backgammon triples it. A checker is dragged, or the point and the landing are tapped. There is no free board, analysis, or lesson. The computer uses the same five levels. There is no clock.
 
 ![A multiplayer table](../images/features/multiplayer.webp)
 
-UNO, poker, and Durak seat several people and computers at one table. Blackjack seats players against the dealer. Preferans is always three. Dominoes seat two to four.
+UNO, poker, and Durak seat several people and computers at one table. Blackjack seats players against the dealer. Preferans is always three. Dominoes seat two to four. Backgammon is always two.
 
 ## At the table
 
@@ -265,6 +265,6 @@ A new game is added in `app/catalog.py`: a title and a rules module that deals, 
 
 ## For an app developer
 
-A mobile app signs in with the same username and password, receives a token pair, and then sends `Authorization: Bearer`. Registration, home, friends, the lobby, chats, news, chips, and all nine games are available as JSON. Video is a separate socket of the same table.
+A mobile app signs in with the same username and password, receives a token pair, and then sends `Authorization: Bearer`. Registration, home, friends, the lobby, chats, news, chips, and all ten games are available as JSON. Video is a separate socket of the same table.
 
 The full contract, error codes, and table fields: [API in English](api.md) and [API на русском](../mobile-api.md).

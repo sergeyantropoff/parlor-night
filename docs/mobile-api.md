@@ -407,7 +407,7 @@ https://app.example/callback?code=...&state=xyz
 }
 ```
 
-`default_game`: `chess`, `checkers`, `go`, `domino`, `uno`, `poker`, `durak`, `blackjack`, `preferans`. Покер, блэкджек и преферанс в качестве игры по умолчанию сохраняются только с 18 лет, иначе сервер оставляет шахматы. Ответ: `{ "saved": true, "settings": {} }`.
+`default_game`: `chess`, `checkers`, `go`, `domino`, `nardy`, `uno`, `poker`, `durak`, `blackjack`, `preferans`. Покер, блэкджек и преферанс в качестве игры по умолчанию сохраняются только с 18 лет, иначе сервер оставляет шахматы. Ответ: `{ "saved": true, "settings": {} }`.
 
 `POST /api/v1/account/password`
 
@@ -557,7 +557,7 @@ https://app.example/callback?code=...&state=xyz
 
 До 18 лет взрослые игры из `seekers` скрыты.
 
-`POST /api/v1/lobby/seek` — `{ "game_type": "uno", "seats": 4 }`. Для шахмат, шашек и го мест всегда 2. Уно, покер, дурак и блэкджек — от 2 до 6. Преферанс — 3. Домино — от 2 до 4. Ответ: `{ "seeking": true, "game_type": "uno", "seats": 4 }`. У человека одна заявка: новая заменяет старую.
+`POST /api/v1/lobby/seek` — `{ "game_type": "uno", "seats": 4 }`. Для шахмат, шашек, го и нард мест всегда 2. Уно, покер, дурак и блэкджек — от 2 до 6. Преферанс — 3. Домино — от 2 до 4. Ответ: `{ "seeking": true, "game_type": "uno", "seats": 4 }`. У человека одна заявка: новая заменяет старую.
 
 `POST /api/v1/lobby/cancel` — `{ "seeking": false }`.
 
@@ -777,7 +777,7 @@ https://app.example/callback?code=...&state=xyz
 | `analysis` | Только шахматы и шашки | Разбор позиции, обе стороны ваши |
 | `lesson` | Только шахматы и шашки | То же, удобно со своей стартовой записью |
 
-Го и домино принимают только `vs_computer` и `online`: `free`, `analysis` и `lesson` для них — `422 bad_mode`. У остальных карт эти три режима скрыты в форме. Если у карт заданы `computers` и `open_seats`, сервер сам ставит `online`, когда есть свободные места, и `vs_computer`, когда их нет.
+Го, домино и нарды принимают только `vs_computer` и `online`: `free`, `analysis` и `lesson` для них — `422 bad_mode`. У остальных карт эти три режима скрыты в форме. Если у карт заданы `computers` и `open_seats`, сервер сам ставит `online`, когда есть свободные места, и `vs_computer`, когда их нет.
 
 Дополнительные поля:
 
@@ -785,6 +785,7 @@ https://app.example/callback?code=...&state=xyz
 | --- | --- |
 | `board_size` | Го: `9`, `13` или `19`. Пустое значение — 19 |
 | `durak_kind` | `podkidnoy` или `perevodnoy`. Пустое — подкидной |
+| `nardy_kind` | `long` или `short`. Пустое — длинные. Куб удвоения есть только в коротких |
 | `pool` | Преферанс, пуля от 6 до 20 |
 | `stake` | Преферанс, цена одного очка расписки: `1`, `2`, `5` или `10`. Пустое значение — 1. На стол садится стек в 100 таких очков: 100, 200, 500 или 1 000 фишек. Если на счёте меньше, ответ `409 no_chips`: в долг партия не идёт. Остальные фишки остаются на счёте. Остановка возвращает стек. Расписка закрывается с пулей и не забирает больше стека |
 | `computers` | Компьютеры за карточным столом, от 0 до 5. В преферансе вместе со свободными местами ровно двое кроме вас. В блэкджеке вместе с ними не больше пяти. В уно, покере и дураке кроме вас от одного до пяти мест. В домино вместе со свободными местами от одного до трёх кроме вас |
@@ -805,7 +806,7 @@ https://app.example/callback?code=...&state=xyz
 | Поле | Смысл |
 | --- | --- |
 | `id`, `you` | Партия и UUID вашего пользователя |
-| `game_type` | `chess`, `checkers`, `go`, `domino`, `uno`, `poker`, `durak`, `blackjack`, `preferans` |
+| `game_type` | `chess`, `checkers`, `go`, `domino`, `nardy`, `uno`, `poker`, `durak`, `blackjack`, `preferans` |
 | `table` | `board`, `cards` или `go` |
 | `variant`, `mode`, `status` | Вид, режим и `waiting` / `active` / `finished`. У го во время подсчёта `status` равен `scoring` |
 | `version` | Номер позиции. Его нужно возвращать в ходе |
@@ -906,6 +907,7 @@ https://app.example/callback?code=...&state=xyz
 | `hole`, `board`, `stacks`, `committed` | Блэкджек. `board` — карты дилера. `hole: true` значит, вторая карта дилера ещё закрыта и в `board` её нет. Ставки в `committed` |
 | `contract`, `contract_need`, `declarer`, `tricks`, `sheet`, `scored`, `note`, `talon`, `held` | Преферанс. `contract` — текущий заказ словами. `contract_need` — число взяток в заказе, у мизера `0`, у распасов `null`. `declarer` — место, которое заказало игру. `tricks` — сколько взяток уже у каждого места. `sheet`: `pool`, `closed`, `seats`, `bullet`, `mountain`, `whists`, `total`. `board` — карты взятки. `held` — это прошлая взятка, её тоже держат на столе перед следующим заходом |
 | `chain`, `deck`, `hand` | Домино. `hand` — ваши кости, код `6-1`. Чужие кости не приходят, только `seats[].count`. `deck` — сколько костей в базаре. `chain` — порядок выкладки от первой кости: `tile`, `spin` (дубль поперёк линии), `hi_left` (старшая половина смотрит к началу линии). На столе длинная линия рисуется одной змейкой, горизонталь и вертикальный поворот, но порядок в `chain` от этого не меняется. `phase`: `play` или `done`. Итог `empty` — рука кончилась, `blocked` — рыба, `left` — соперник вышел. `summary.kind` для домино — `parlor` |
+| `nardy` | Нарды. `points` — 24 поля, плюс белые и минус чёрные. `bar` и `off` — бар и снятые. `dice` — последний бросок, `remaining` — ещё не сыгранные кости. `cube` и `cube_owner` — куб, только в коротких. `targets` — куда можно пойти в свой ход: `from`, `die`, `to`, `hit`. Ход: `["dice","roll"]`, `["dice","double"]`, `["dice","take"]`, `["dice","drop"]` или `["move", поле, кость]`. Поле `bar` — вход с бара. Чтобы кости и шашка шли по отдельности, `engine-move` просят с `steps: 1`. `summary.kind` — `parlor` |
 
 `note` и `status_line` можно показать как подпись над столом. В `summary` у преферанса тоже есть `sheet`.
 

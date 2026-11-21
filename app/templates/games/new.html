@@ -13,8 +13,9 @@
 {% set blackjack_on = not site or site.allows('blackjack') %}
 {% set preferans_on = not site or site.allows('preferans') %}
 {% set domino_on = not site or site.allows('domino') %}
+{% set nardy_on = not site or site.allows('nardy') %}
 {% set cards = game in ['uno', 'poker', 'durak', 'blackjack', 'preferans', 'domino'] %}
-{% set titles = {'chess': 'Шахматы', 'checkers': 'Русские шашки', 'go': 'Го', 'uno': 'Уно', 'poker': 'Покер', 'durak': 'Дурак', 'blackjack': 'Блэкджек', 'preferans': 'Преферанс', 'domino': 'Домино'} %}
+{% set titles = {'chess': 'Шахматы', 'checkers': 'Русские шашки', 'go': 'Го', 'uno': 'Уно', 'poker': 'Покер', 'durak': 'Дурак', 'blackjack': 'Блэкджек', 'preferans': 'Преферанс', 'domino': 'Домино', 'nardy': 'Нарды'} %}
 <section class="page">
   {% if not game %}
   <p class="lede">Выберите игру.</p>
@@ -69,15 +70,18 @@
         </span>
       </a>
       {% endif %}
-      <article class="choice is-soon">
+      {% if nardy_on %}
+      <a class="choice pick" href="/games/new/nardy">
         <span class="shot">
-          <img class="theme-light" src="/static/parlor/light/soon-backgammon.webp?v={{ asset_version }}" width="1448" height="1086" alt="Нарды скоро появятся в гостиной" />
-          <img class="theme-dark" src="/static/parlor/dark/soon-backgammon.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
+          <img class="theme-light" src="/static/parlor/light/game-nardy.webp?v={{ asset_version }}" width="768" height="576" alt="" />
+          <img class="theme-dark" src="/static/parlor/dark/game-nardy.webp?v={{ asset_version }}" width="768" height="576" alt="" />
         </span>
         <span class="shot-body">
-          <span><strong>Нарды</strong><small>Скоро в гостиной</small></span>
+          <span><strong>Нарды</strong><small>Длинные и короткие</small></span>
+          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
         </span>
-      </article>
+      </a>
+      {% endif %}
       {% if uno_on %}
       <a class="choice pick" href="/games/new/uno">
         <span class="shot">
@@ -203,6 +207,22 @@
       </div>
     </section>
 
+    <section class="panel" id="nardy-kind" {% if game != 'nardy' %}hidden="hidden"{% endif %}>
+      <h2 id="pick-nardy">Какие нарды</h2>
+      <div class="mode-grid" role="radiogroup" aria-labelledby="pick-nardy">
+        <label class="mode-choice pick">
+          <input type="radio" name="nardy_kind" value="long" data-title="Длинные" checked="checked" />
+          <strong>Длинные</strong>
+          <small>Оба идут вперёд, чужое поле закрыто</small>
+        </label>
+        <label class="mode-choice pick">
+          <input type="radio" name="nardy_kind" value="short" data-title="Короткие" />
+          <strong>Короткие</strong>
+          <small>Бой, бар и куб удвоения</small>
+        </label>
+      </div>
+    </section>
+
     <section class="panel" id="go-size" {% if game != 'go' %}hidden="hidden"{% endif %}>
       <h2 id="pick-size">Размер доски</h2>
       <div class="mode-grid" role="radiogroup" aria-labelledby="pick-size">
@@ -226,7 +246,7 @@
           ('analysis', 'Анализ', 'Подсказки по позиции', 'chart'),
           ('lesson', 'Разбор партии', 'Чужая запись, ход за ходом', 'book'),
         ) %}
-        {% if not (game == 'domino' and value in ['free', 'analysis', 'lesson']) %}
+        {% if not (game in ['domino', 'nardy'] and value in ['free', 'analysis', 'lesson']) %}
         <label class="mode-choice pick">
           <input type="radio" name="mode" value="{{ value }}" data-title="{{ title }}" {% if value == 'vs_computer' %}checked{% endif %} required="required" />
           <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-{{ icon }}"/></svg>
