@@ -2235,14 +2235,19 @@ function salonDock(discardMoves, bidMoves, selected) {
 }
 
 function renderCards() {
-  const box = document.querySelector("#card-table");
+  let box = document.querySelector("#card-table");
   if (!box) return;
   const poker = current.game_type === "poker";
   const salon = ["durak", "blackjack", "preferans"].includes(current.game_type);
   const clothName = poker || current.game_type === "blackjack" ? "table-poker.png" : "table-uno.png";
   box.classList.toggle("oval", poker || current.game_type === "blackjack");
   box.classList.toggle("felt", clothName === "table-uno.png");
-  box.replaceChildren();
+  const host = box;
+  const layer = document.createElement("div");
+  layer.className = "table-layer";
+  if (host.dataset.you) layer.dataset.you = host.dataset.you;
+  host.replaceChildren(layer);
+  box = layer;
   const cloth = document.createElement("img");
   cloth.className = "table-texture";
   cloth.alt = "";
@@ -2316,7 +2321,7 @@ function renderCards() {
     actions = document.createElement("div");
     actions.id = "table-actions";
     actions.className = "table-actions";
-    box.insertAdjacentElement("afterend", actions);
+    host.insertAdjacentElement("afterend", actions);
   }
   actions.replaceChildren();
   paintPreferansSheet();
