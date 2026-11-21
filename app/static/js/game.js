@@ -18,6 +18,22 @@ let moveChain = Promise.resolve();
 let skipClick = false;
 let cursor = 0;
 const board = document.querySelector("#board");
+
+function bindUnit(node) {
+  if (!node) return;
+  const apply = () => {
+    const width = node.clientWidth;
+    if (width <= 0) return;
+    const next = `${(width / 100).toFixed(4)}px`;
+    if (node.style.getPropertyValue("--u") !== next) node.style.setProperty("--u", next);
+  };
+  apply();
+  if (window.ResizeObserver) new ResizeObserver(apply).observe(node);
+  window.addEventListener("resize", apply);
+}
+bindUnit(document.querySelector(".table-core"));
+bindUnit(board);
+bindUnit(document.querySelector(".go-scene"));
 const status = document.querySelector("#status");
 const history = document.querySelector("#history");
 const lines = document.querySelector("#lines");
