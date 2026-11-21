@@ -2,7 +2,7 @@
 
 ![Parlor Night cover](../images/banners/cover.webp)
 
-Parlor Night is a closed parlor for table games. One evening can hold chess, Russian checkers, Go, UNO, Texas Hold'em, Durak, blackjack, and Preferans. Play uses chips. There is no money in the parlor.
+Parlor Night is a closed parlor for table games. One evening can hold chess, Russian checkers, Go, dominoes, UNO, Texas Hold'em, Durak, blackjack, and Preferans. Play uses chips. There is no money in the parlor.
 
 Chess is calculated by Stockfish. Checkers and Go use the parlor's own search. A game does not call outside APIs and does not send telemetry. Picture and voice go between browsers. The server introduces the people seated at one table and, when the direct path is closed, gives them TURN.
 
@@ -50,7 +50,7 @@ The chip count in the header opens the ledger.
 
 ![Catalog](../screenshots/new-game.png)
 
-The catalog offers eight games. Poker, blackjack, and Preferans carry an 18+ mark. If a game is switched off in the site settings, its card does not lead to a table.
+The catalog offers nine games. Poker, blackjack, and Preferans carry an 18+ mark. If a game is switched off in the site settings, its card does not lead to a table. A backgammon card is already in the catalog, but it cannot be sat at yet: it is only an announcement.
 
 ![Chess setup](../screenshots/chess-setup.png)
 
@@ -75,7 +75,7 @@ Side: random, white, or black. In chess and checkers white moves first and sits 
 
 Computer strength has five steps: beginner, amateur, experienced, strong, master. For a chess or checkers lesson you can set a starting position: FEN or PGN for chess, RCP and a move list for checkers.
 
-Card games ask for computers and open seats instead of a side. The creator is already seated. In UNO, poker, and Durak there are one to five seats besides the creator, six at the table in all. In blackjack the dealer plays the house, and the other seats are players at the same table, five at most. Preferans is always three: you and two more. If a seat is waiting for a person, the table waits and issues a code. If no seat is open, the computer plays.
+Card games ask for computers and open seats instead of a side. The creator is already seated. In UNO, poker, and Durak there are one to five seats besides the creator, six at the table in all. In blackjack the dealer plays the house, and the other seats are players at the same table, five at most. Preferans is always three: you and two more. Dominoes take one to three seats besides you, two to four at the table in all. If a seat is waiting for a person, the table waits and issues a code. If no seat is open, the computer plays.
 
 ## Games
 
@@ -115,9 +115,17 @@ Card games ask for computers and open seats instead of a side. The creator is al
 
 **Preferans.** Three players, bidding, whist, and tricks, from age 18. The pool is chosen at creation: 6, 10, 12, 16, or 20 points, or another number from 6 to 20. The price of a point is chosen then too: 1, 2, 5, or 10 chips. Everyone sits with a stack of 100 points at the chosen price: 100 chips at price 1, 200 at 2, 500 at 5, and 1,000 at 10. Only that stack leaves the account; the rest stays for other games. If the account has less than the stack, the game does not start: there is no play on credit. Stopping the game returns the stack. Chips stay put while the pool is open. When it closes, the score sheet turns the difference into chips, and never more than the stack. If the sheet is larger than the stack, it shows how much did not move. Nothing beyond the stack is taken from the account. This is not a tournament pool. A whist is answered with whist, half-whist, or pass. Beside the player who made the contract, a counter shows how many tricks are already taken out of the order, for example "2 of 6". It sits to the right of the upper-left and the bottom cards, and to the left of the upper-right card. On a miser it shows how many tricks are already taken, with the word miser. Under the table are the bullet, the mountain, the whists, and the chips.
 
+![Dominoes](../images/games/domino.webp)
+
+**Dominoes.** A double-six set, twenty-eight tiles, from blank to double six. Two to four sit down: two players draw seven tiles each, three or four draw five. The rest is the boneyard. The player with the highest double leads and must play it. If there is no double, the player with the highest tile leads. A later tile matches one open end. With no match, tiles are drawn until a play appears or the boneyard is empty, and then the turn is a pass. The first empty hand wins. If a pass goes all the way around, the hand is blocked: the lowest pip sum wins, and equal sums draw. Chips are awarded for a win and a draw. There is no pot. The computer uses the same five levels. There is no clock. The record downloads as text.
+
+![Backgammon, coming soon](../images/games/backgammon-soon.webp)
+
+Backgammon is already announced in the catalog. It cannot be played yet.
+
 ![A multiplayer table](../images/features/multiplayer.webp)
 
-UNO, poker, and Durak seat several people and computers at one table. Blackjack seats players against the dealer. Preferans is always three.
+UNO, poker, and Durak seat several people and computers at one table. Blackjack seats players against the dealer. Preferans is always three. Dominoes seat two to four.
 
 ## At the table
 
@@ -257,6 +265,6 @@ A new game is added in `app/catalog.py`: a title and a rules module that deals, 
 
 ## For an app developer
 
-A mobile app signs in with the same username and password, receives a token pair, and then sends `Authorization: Bearer`. Registration, home, friends, the lobby, chats, news, chips, and all eight games are available as JSON. Video is a separate socket of the same table.
+A mobile app signs in with the same username and password, receives a token pair, and then sends `Authorization: Bearer`. Registration, home, friends, the lobby, chats, news, chips, and all nine games are available as JSON. Video is a separate socket of the same table.
 
 The full contract, error codes, and table fields: [API in English](api.md) and [API на русском](../mobile-api.md).

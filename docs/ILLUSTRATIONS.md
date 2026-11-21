@@ -88,6 +88,22 @@
 ![Го](docs/images/games/go.webp)
 ```
 
+### Домино
+
+![Домино](images/games/domino.webp)
+
+```markdown
+![Домино](docs/images/games/domino.webp)
+```
+
+### Нарды, скоро
+
+![Нарды скоро](images/games/backgammon-soon.webp)
+
+```markdown
+![Нарды скоро](docs/images/games/backgammon-soon.webp)
+```
+
 ### Техасский холдем
 
 ![Техасский холдем](images/games/poker.webp)
