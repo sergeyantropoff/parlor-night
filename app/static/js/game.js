@@ -85,7 +85,7 @@ function pieceSrc(piece, color) {
   const name = current.game_type === "checkers"
     ? `checkers-${side}-${piece === "K" ? "king" : "man"}`
     : `chess-${side}-${String(piece).toLowerCase()}`;
-  const file = `/static/images/pieces/${name}.png`;
+  const file = `/static/images/pieces/${name}.webp`;
   return version ? `${file}?v=${version}` : file;
 }
 
@@ -983,7 +983,7 @@ function faceSrc(code) {
 }
 
 function backSrc() {
-  const name = current.game_type === "uno" ? "card-back-uno.png" : "card-back-poker.png";
+  const name = current.game_type === "uno" ? "card-back-uno.webp" : "card-back-poker.webp";
   return asset(`${TABLE}/${name}`);
 }
 
@@ -1216,7 +1216,7 @@ function salonPlatePlace(x, y, cards, you) {
   return pokerPlatePlace(x, y);
 }
 
-const CPU_FACE = "/static/images/computer-avatar.jpg";
+const CPU_FACE = "/static/images/computer-avatar.webp";
 
 function cpuAvatar() {
   const image = document.createElement("img");
@@ -1282,7 +1282,7 @@ function chipFile(amount) {
   const bands = [49, 99, 249, 499, 999, 1999, 3999, 7999, 14999, 29999, 59999];
   const index = bands.findIndex((hi) => value <= hi);
   const n = String((index < 0 ? 12 : index + 1)).padStart(2, "0");
-  return `chips-stack-${n}.png`;
+  return `chips-stack-${n}.webp`;
 }
 
 function purseSpot(cards, plate) {
@@ -2255,9 +2255,9 @@ function renderCards() {
   if (!box) return;
   const poker = current.game_type === "poker";
   const salon = ["durak", "blackjack", "preferans"].includes(current.game_type);
-  const clothName = poker || current.game_type === "blackjack" ? "table-poker.png" : "table-uno.png";
+  const clothName = poker || current.game_type === "blackjack" ? "table-poker.webp" : "table-uno.webp";
   box.classList.toggle("oval", poker || current.game_type === "blackjack");
-  box.classList.toggle("felt", clothName === "table-uno.png");
+  box.classList.toggle("felt", clothName === "table-uno.webp");
   const host = box;
   const layer = document.createElement("div");
   layer.className = "table-layer";

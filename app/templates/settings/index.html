@@ -205,12 +205,12 @@
         <div class="side-grid" role="radiogroup" aria-labelledby="pick-side">
           <label class="side-choice pick">
             <input type="radio" name="default_side" value="white" data-title="Белые" {% if prefs.default_side != "black" %}checked="checked"{% endif %} required="required" />
-            <span class="side-art light" aria-hidden="true"><img src="/static/images/pieces/chess-w-k.png?v={{ asset_version }}" alt="" /></span>
+            <span class="side-art light" aria-hidden="true"><img src="/static/images/pieces/chess-w-k.webp?v={{ asset_version }}" alt="" /></span>
             <span><strong>Белые</strong><small>Ходят первыми</small></span>
           </label>
           <label class="side-choice pick">
             <input type="radio" name="default_side" value="black" data-title="Чёрные" {% if prefs.default_side == "black" %}checked="checked"{% endif %} required="required" />
-            <span class="side-art dark" aria-hidden="true"><img src="/static/images/pieces/chess-b-k.png?v={{ asset_version }}" alt="" /></span>
+            <span class="side-art dark" aria-hidden="true"><img src="/static/images/pieces/chess-b-k.webp?v={{ asset_version }}" alt="" /></span>
             <span><strong>Чёрные</strong><small>Отвечают на ход</small></span>
           </label>
         </div>
@@ -234,8 +234,8 @@
         <label class="choice pick">
           <input type="radio" name="default_game" value="{{ key }}" data-title="{{ title }}" {% if chosen %}checked="checked"{% endif %} {% if not kept_adult %}required="required"{% endif %} />
           <span class="shot">
-            <img class="theme-light" src="/static/parlor/light/game-{{ key }}.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
-            <img class="theme-dark" src="/static/parlor/dark/game-{{ key }}.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
+            <img class="theme-light" src="/static/parlor/light/game-{{ key }}.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
+            <img class="theme-dark" src="/static/parlor/dark/game-{{ key }}.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
           </span>
           <span class="shot-body">
             <span><strong>{{ title }}</strong><small>{{ note }}</small></span>

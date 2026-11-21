@@ -138,10 +138,10 @@
             {% for game in recent_games %}
             <tr>
               <td>
-                <span class="glyph" aria-hidden="true"><img class="theme-light game-mark" src="/static/images/games/game-{{ game.game_type }}-light.png?v={{ asset_version }}" alt="" /><img class="theme-dark game-mark" src="/static/images/games/game-{{ game.game_type }}-dark.png?v={{ asset_version }}" alt="" /></span>
+                <span class="glyph" aria-hidden="true"><img class="theme-light game-mark" src="/static/images/games/game-{{ game.game_type }}-light.webp?v={{ asset_version }}" alt="" /><img class="theme-dark game-mark" src="/static/images/games/game-{{ game.game_type }}-dark.webp?v={{ asset_version }}" alt="" /></span>
                 {{ type_label[game.game_type] }}
               </td>
-              <td>{{ player_link(game.creator_name, game.creator_login, '', false, false, true) }}{% if game.opponent_name %} · {{ player_link(game.opponent_name, game.opponent_login, '', false, false, true) }}{% elif game.cpu_label %} · <span class="cpu-tag"><img src="/static/images/computer-avatar.jpg?v={{ asset_version }}" alt="" />{{ game.cpu_label }}</span>{% else %} · ждёт{% endif %}<br /><span class="quiet">{{ mode_label[game.mode] }}{% if game.audience == 'open' %} · открыт{% endif %}</span></td>
+              <td>{{ player_link(game.creator_name, game.creator_login, '', false, false, true) }}{% if game.opponent_name %} · {{ player_link(game.opponent_name, game.opponent_login, '', false, false, true) }}{% elif game.cpu_label %} · <span class="cpu-tag"><img src="/static/images/computer-avatar.webp?v={{ asset_version }}" alt="" />{{ game.cpu_label }}</span>{% else %} · ждёт{% endif %}<br /><span class="quiet">{{ mode_label[game.mode] }}{% if game.audience == 'open' %} · открыт{% endif %}</span></td>
               <td>{% if game.status == 'waiting' %}Ждёт соперника{% elif game.status == 'active' %}Идёт{% elif game.result %}{{ result_label[game.result] }}{% else %}Завершена{% endif %}</td>
               <td>{{ game.updated_at|when }}</td>
             </tr>
@@ -174,8 +174,8 @@
       {% for game in games %}
       <article class="panel insight">
         <span class="shot">
-          <img class="theme-light" src="/static/parlor/light/game-{{ game.key }}.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
-          <img class="theme-dark" src="/static/parlor/dark/game-{{ game.key }}.png?v={{ asset_version }}" width="1448" height="1086" alt="" />
+          <img class="theme-light" src="/static/parlor/light/game-{{ game.key }}.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
+          <img class="theme-dark" src="/static/parlor/dark/game-{{ game.key }}.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
           {% if game.key in ['poker', 'blackjack', 'preferans'] %}<span class="age">18+</span>{% endif %}
         </span>
         <div>

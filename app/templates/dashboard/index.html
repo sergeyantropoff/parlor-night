@@ -12,7 +12,7 @@
   <div class="action-row{% if not dashboard.continue_game %} two{% endif %}">
     {% if dashboard.continue_game %}
     <a class="action primary" href="/games/{{ dashboard.continue_game.id }}">
-      <span class="glyph" aria-hidden="true"><img class="theme-light game-mark" src="/static/images/games/game-{{ dashboard.continue_game.game_type }}-light.png?v={{ asset_version }}" alt="" /><img class="theme-dark game-mark" src="/static/images/games/game-{{ dashboard.continue_game.game_type }}-dark.png?v={{ asset_version }}" alt="" /></span>
+      <span class="glyph" aria-hidden="true"><img class="theme-light game-mark" src="/static/images/games/game-{{ dashboard.continue_game.game_type }}-light.webp?v={{ asset_version }}" alt="" /><img class="theme-dark game-mark" src="/static/images/games/game-{{ dashboard.continue_game.game_type }}-dark.webp?v={{ asset_version }}" alt="" /></span>
       <span>
         <strong>Продолжить</strong>
         <small>{{ type_label[dashboard.continue_game.game_type] }} · {% if dashboard.continue_game.status == "waiting" %}ждём игрока{% else %}партия идёт{% endif %}</small>
@@ -48,7 +48,7 @@
           <tr>
             <td>
               <a href="/games/{{ game.id }}">
-                <span class="glyph" aria-hidden="true"><img class="theme-light game-mark" src="/static/images/games/game-{{ game.game_type }}-light.png?v={{ asset_version }}" alt="" /><img class="theme-dark game-mark" src="/static/images/games/game-{{ game.game_type }}-dark.png?v={{ asset_version }}" alt="" /></span>
+                <span class="glyph" aria-hidden="true"><img class="theme-light game-mark" src="/static/images/games/game-{{ game.game_type }}-light.webp?v={{ asset_version }}" alt="" /><img class="theme-dark game-mark" src="/static/images/games/game-{{ game.game_type }}-dark.webp?v={{ asset_version }}" alt="" /></span>
                 {{ type_label[game.game_type] }}
               </a>
             </td>

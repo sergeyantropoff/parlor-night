@@ -21,8 +21,8 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <p class="seek-label">Во что сыграем?</p>
       <label class="seek-pick">
-        <img data-seek-mark class="theme-light game-mark" src="/static/images/games/game-chess-light.png?v={{ asset_version }}" alt="" />
-        <img data-seek-mark class="theme-dark game-mark" src="/static/images/games/game-chess-dark.png?v={{ asset_version }}" alt="" />
+        <img data-seek-mark class="theme-light game-mark" src="/static/images/games/game-chess-light.webp?v={{ asset_version }}" alt="" />
+        <img data-seek-mark class="theme-dark game-mark" src="/static/images/games/game-chess-dark.webp?v={{ asset_version }}" alt="" />
         <select id="seek-game" name="game_type" aria-label="Игра">
           {% set seat_bounds = {
             'chess': (2, 2),
@@ -86,8 +86,8 @@
             <span class="seek-live">(В сети)</span>
           </span>
           <span class="seek-game">
-            <img class="theme-light game-mark" src="/static/images/games/game-{{ row.game_type }}-light.png?v={{ asset_version }}" alt="" />
-            <img class="theme-dark game-mark" src="/static/images/games/game-{{ row.game_type }}-dark.png?v={{ asset_version }}" alt="" />
+            <img class="theme-light game-mark" src="/static/images/games/game-{{ row.game_type }}-light.webp?v={{ asset_version }}" alt="" />
+            <img class="theme-dark game-mark" src="/static/images/games/game-{{ row.game_type }}-dark.webp?v={{ asset_version }}" alt="" />
             <span>
               <strong>{{ type_label[row.game_type] }}</strong>
               {% set party = {2: 'на двоих', 3: 'на троих', 4: 'на четверых', 5: 'на пятерых', 6: 'на шестерых'} %}

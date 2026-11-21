@@ -71,7 +71,7 @@ function faceMark(file, name, cpu) {
     const image = document.createElement("img");
     image.className = "avatar";
     image.alt = "компьютер";
-    image.src = "/static/images/computer-avatar.jpg";
+    image.src = "/static/images/computer-avatar.webp";
     return image;
   }
   if (/^[0-9a-f]{32}\.(jpg|png|webp)$/.test(String(file || ""))) {
@@ -94,7 +94,7 @@ function paintPlayer(node, state, color) {
   const bowl = document.createElement("img");
   bowl.className = "go-bowl";
   bowl.alt = "";
-  bowl.src = asset(color === "black" ? "go-bowl-black.png" : "go-bowl-white.png");
+  bowl.src = asset(color === "black" ? "go-bowl-black.webp" : "go-bowl-white.webp");
   const text = document.createElement("div");
   const title = document.createElement("p");
   title.className = "go-name";
@@ -124,14 +124,14 @@ function paintBoard(state) {
   const layer = document.createElement("img");
   layer.className = "go-layer";
   layer.alt = `Доска го ${size} на ${size}`;
-  layer.src = asset(`go-board-${size}.png`);
+  layer.src = asset(`go-board-${size}.webp`);
   const points = document.createElement("div");
   points.className = "go-points";
   const dead = new Set((state.dead || []).map((point) => `${point[0]}:${point[1]}`));
   const legal = new Set((state.legal || []).map((point) => `${point[0]}:${point[1]}`));
   const territory = new Map((state.tally?.territory || []).map((point) => [`${point.col}:${point.row}`, point.owner]));
   const last = state.last?.kind === "move" ? state.last : null;
-  const ghost = state.your_turn ? (state.side_to_move === "white" ? "go-stone-white.png" : "go-stone-black.png") : "";
+  const ghost = state.your_turn ? (state.side_to_move === "white" ? "go-stone-white.webp" : "go-stone-black.webp") : "";
   for (let row = 0; row < size; row += 1) {
     for (let col = 0; col < size; col += 1) {
       const key = `${col}:${row}`;
@@ -153,7 +153,7 @@ function paintBoard(state) {
         const image = document.createElement("img");
         image.className = "go-stone";
         image.alt = "";
-        image.src = asset(stone === "1" ? "go-stone-black.png" : "go-stone-white.png");
+        image.src = asset(stone === "1" ? "go-stone-black.webp" : "go-stone-white.webp");
         button.append(image);
         button.setAttribute("aria-label", `${where}, ${stone === "1" ? "чёрный" : "белый"} камень${dead.has(key) ? ", мёртвая группа" : ""}`);
       } else {

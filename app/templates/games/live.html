@@ -74,8 +74,8 @@
         {{ og_icon('game-' ~ table.game_type, 'og-game-icon') }}
         {% else %}
         <span class="og-mark">
-          <img class="theme-light" src="/static/images/games/game-{{ table.game_type }}-light.png?v={{ asset_version }}" alt="" />
-          <img class="theme-dark" src="/static/images/games/game-{{ table.game_type }}-dark.png?v={{ asset_version }}" alt="" />
+          <img class="theme-light" src="/static/images/games/game-{{ table.game_type }}-light.webp?v={{ asset_version }}" alt="" />
+          <img class="theme-dark" src="/static/images/games/game-{{ table.game_type }}-dark.webp?v={{ asset_version }}" alt="" />
         </span>
         {% endif %}
         <span>
@@ -90,22 +90,17 @@
       </header>
       <div class="og-card-body">
         {% if art %}
-        <picture>
-          <source type="image/webp"
-            srcset="/static/parlor-ongoing/images/ongoing-{{ table.game_type }}-480.webp?v={{ asset_version }} 480w, /static/parlor-ongoing/images/ongoing-{{ table.game_type }}.webp?v={{ asset_version }} 1536w"
-            sizes="(max-width: 600px) 112px, (max-width: 1199px) 140px, 172px" />
-          <img class="og-thumb" src="/static/parlor-ongoing/images/ongoing-{{ table.game_type }}.png?v={{ asset_version }}" width="1536" height="1024" alt="" {% if loop.index > 2 %}loading="lazy"{% endif %} decoding="async" />
-        </picture>
+        <img class="og-thumb" src="/static/parlor-ongoing/images/ongoing-{{ table.game_type }}-480.webp?v={{ asset_version }}" width="480" height="320" alt="" {% if loop.index > 2 %}loading="lazy"{% endif %} decoding="async" />
         {% else %}
         <span class="og-thumb-frame">
-          <img class="og-thumb theme-light" src="/static/images/games/game-{{ table.game_type }}-light.png?v={{ asset_version }}" alt="" {% if loop.index > 2 %}loading="lazy"{% endif %} decoding="async" />
-          <img class="og-thumb theme-dark" src="/static/images/games/game-{{ table.game_type }}-dark.png?v={{ asset_version }}" alt="" {% if loop.index > 2 %}loading="lazy"{% endif %} decoding="async" />
+          <img class="og-thumb theme-light" src="/static/images/games/game-{{ table.game_type }}-light.webp?v={{ asset_version }}" alt="" {% if loop.index > 2 %}loading="lazy"{% endif %} decoding="async" />
+          <img class="og-thumb theme-dark" src="/static/images/games/game-{{ table.game_type }}-dark.webp?v={{ asset_version }}" alt="" {% if loop.index > 2 %}loading="lazy"{% endif %} decoding="async" />
         </span>
         {% endif %}
         <div class="og-people">
           {% if table.initial %}<span class="og-avatar" aria-hidden="true">{{ table.initial }}</span>{% endif %}
           <div>
-            <p class="og-player">{% if table.cpu_label %}{{ table.creator }} · <span class="cpu-tag"><img src="/static/images/computer-avatar.jpg?v={{ asset_version }}" alt="" />{{ table.cpu_label }}</span>{% else %}{{ table.players }}{% endif %}</p>
+            <p class="og-player">{% if table.cpu_label %}{{ table.creator }} · <span class="cpu-tag"><img src="/static/images/computer-avatar.webp?v={{ asset_version }}" alt="" />{{ table.cpu_label }}</span>{% else %}{{ table.players }}{% endif %}</p>
             {% if table.meta %}<p class="og-meta">{{ table.meta }}</p>{% endif %}
             {% if table.chips %}
             <p class="og-chips">{{ og_icon('chips') }} Только игровые фишки</p>

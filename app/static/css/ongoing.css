@@ -15,10 +15,7 @@ body:has(.og-page) main { background: var(--og-bg); }
 body:has(.og-page) main { padding: 0; }
 html[data-theme="dark"] body:has(.og-page) .sidebar {
   background-color: var(--og-sidebar);
-  background-image: linear-gradient(#30261F55, #30261F55), image-set(
-    url("/static/parlor-ongoing/images/sidebar-walnut.webp") type("image/webp"),
-    url("/static/parlor-ongoing/images/sidebar-walnut.png") type("image/png")
-  );
+  background-image: linear-gradient(#30261F55, #30261F55), url("/static/parlor-ongoing/images/sidebar-walnut.webp");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

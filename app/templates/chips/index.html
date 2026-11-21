@@ -21,7 +21,7 @@
               {% if event.game_id %}
               <a href="/games/{{ event.game_id }}">
                 {% if event.game_type %}
-                <span class="glyph" aria-hidden="true"><img class="theme-light game-mark" src="/static/images/games/game-{{ event.game_type }}-light.png?v={{ asset_version }}" alt="" /><img class="theme-dark game-mark" src="/static/images/games/game-{{ event.game_type }}-dark.png?v={{ asset_version }}" alt="" /></span>
+                <span class="glyph" aria-hidden="true"><img class="theme-light game-mark" src="/static/images/games/game-{{ event.game_type }}-light.webp?v={{ asset_version }}" alt="" /><img class="theme-dark game-mark" src="/static/images/games/game-{{ event.game_type }}-dark.webp?v={{ asset_version }}" alt="" /></span>
                 {{ type_label[event.game_type] }}
                 {% else %}Партия{% endif %}
               </a>
