@@ -46,6 +46,7 @@
     <symbol id="i-news" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h9l3 3v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M15 4v4h4M8 12h8M8 16h6"/></symbol>
     <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M5.8 5.8l1.4 1.4M16.8 16.8l1.4 1.4M18.2 5.8l-1.4 1.4M7.2 16.8l-1.4 1.4"/></symbol>
     <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19h14"/><path d="M8 19V9"/><path d="M12 19V5"/><path d="M16 19V12"/></symbol>
+    <symbol id="i-medal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="4.2"/><path d="M8.6 12.4 7 20.5 12 18l5 2.5-1.6-8.1"/></symbol>
     <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 7V5h9v14h-9v-2"/><path d="M4 12h10M11 8l4 4-4 4"/></symbol>
     <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/></symbol>
     <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3.5A7.5 7.5 0 1 0 20.5 14 6.2 6.2 0 0 1 16 3.5z"/></symbol>
@@ -97,6 +98,7 @@
           {{ nav_link('/join', 'Сесть за стол', 'code') }}
           {{ nav_link('/friends', 'Друзья', 'user', false, nav_requests) }}
           {{ nav_link('/chats', 'Беседы', 'chat', true, nav_chats) }}
+          {{ nav_link('/top', 'Топ игроков', 'medal') }}
           {{ nav_link('/settings', 'Настройки', 'gear') }}
         </nav>
         {% if user.is_admin %}

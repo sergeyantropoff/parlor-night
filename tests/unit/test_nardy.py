@@ -9,7 +9,7 @@ import pytest
 
 from app.errors import AppError
 from app.games.service import GameService
-from app.nardy.rules import apply, chronicle, deal, legal, replay, suggest
+from app.nardy.rules import apply, chronicle, deal, hint_mark, legal, replay, suggest
 
 
 def _play(state, path, dice=None):
@@ -142,7 +142,16 @@ def test_long_prime_is_illegal_and_mars_scores() -> None:
     assert race["score"] == 3
 
 
-def test_replay_and_computer_stay_legal() -> None:
+def test_hint_marks_the_best_landing() -> None:
+    state = deal(variant="short")
+    state = _play(state, ["dice", "roll"], dice=(6, 1))
+    choice = suggest(state, 5)
+    assert choice
+    mark = hint_mark(state, choice)
+    assert mark["seat"] == "white"
+    assert mark["to"]
+    again = hint_mark(state, choice)
+    assert again == mark
     state = deal(variant="short")
     initial = __import__("json").dumps(state)
     payloads = []

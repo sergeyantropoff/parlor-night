@@ -700,7 +700,7 @@ def _project_cards(
             else None
         ),
         "status_line": line,
-        "can_hint": False,
+        "can_hint": str(game["game_type"]) == "nardy" and can_hint(user.role) and status == "active",
         "can_engine": user_may_request_engine(mode, status, seat, side, computer_turn=computer_turn),
         "can_undo": False,
         "can_stop": str(user.id) == creator_id and status in {"waiting", "active"},

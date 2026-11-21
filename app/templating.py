@@ -133,6 +133,7 @@ def player_link(
     blank: bool = False,
     handle: bool = False,
     plain: bool = False,
+    linked: bool = True,
 ) -> Markup:
     label = str(name or username or "").strip()
     login = str(username or "").strip().lower()
@@ -141,7 +142,7 @@ def player_link(
     if handle and login:
         text += f'<span class="handle">@{escape(login)}</span>'
     inner = f'{_chip(label or login, avatar)}<span class="person-copy">{text}</span>'
-    if not _LOGIN.fullmatch(login):
+    if not linked or not _LOGIN.fullmatch(login):
         return Markup(f'<span class="person-link">{inner}</span>')
     target = ' target="_blank" rel="noopener"' if blank else ""
     return Markup(f'<a class="person-link" href="/players/{escape(login)}"{target}>{inner}</a>')
@@ -176,7 +177,7 @@ def render(request: Request, name: str, context: dict[str, object] | None = None
     payload = dict(context or {})
     user = getattr(request.state, "user", None)
     saved = getattr(request.state, "theme", None)
-    payload.setdefault("theme", saved if saved in {"light", "dark", "system"} else "system")
+    payload.setdefault("theme", saved if saved in {"light", "dark", "system"} else "dark")
     payload.setdefault("age_block", "")
     html = TEMPLATES.get_template(name).render(
         {

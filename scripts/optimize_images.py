@@ -44,6 +44,10 @@ def css_px(rel: str) -> int:
         return 1024
     if "images/games/" in rel:
         return 240
+    if "images/podium/" in rel:
+        return 460
+    if "images/table-tools/" in rel:
+        return 64
     if name.startswith("game-") and "/parlor/" in rel:
         return 720
     if name.startswith("news-"):
@@ -70,7 +74,7 @@ def css_px(rel: str) -> int:
 
 
 def quality(rel: str) -> int:
-    if any(part in rel for part in ("/pieces/", "logo-", "card-back", "chips-stack", "chip-coin", "go-stone")):
+    if any(part in rel for part in ("/pieces/", "logo-", "card-back", "chips-stack", "chip-coin", "go-stone", "table-tools/")):
         return 88
     return 82
 

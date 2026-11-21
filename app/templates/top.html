@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Топ игроков — Parlor Night{% endblock %}
+{% block topbar_lead %}
+<div class="topbar-lead"><h1>Топ игроков</h1></div>
+{% endblock %}
+{% block content %}
+<section class="page" id="top-page">
+  {% set linked = true %}
+  {% set titled = false %}
+  {% include "_podium.html" %}
+  {% if rest %}
+  <section class="panel">
+    <div class="recent-head">
+      <h2>Остальные гости</h2>
+      <p class="quiet">С четвёртого места</p>
+    </div>
+    <div class="table-wrap">
+      <table class="data top-table">
+        <thead>
+          <tr><th>Место</th><th>Гость</th><th>Партий</th><th>Побед</th><th>Завершено</th><th>Побед, %</th><th>Фишки</th></tr>
+        </thead>
+        <tbody>
+          {% for person in rest %}
+          <tr>
+            <td><span class="place-mark">{{ person.place }}</span></td>
+            <td>{{ player_link(person.username, person.login, person.avatar) }}</td>
+            <td>{{ person.games }}</td>
+            <td>{{ person.wins }}</td>
+            <td>{{ person.finished }}</td>
+            <td>{{ person.rate }}%</td>
+            <td>{{ person.balance|grouped }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% elif podium %}
+  <p class="quiet">Кроме первых трёх, гостей пока нет.</p>
+  {% else %}
+  <p class="quiet">Гостей ещё нет.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -6,6 +6,10 @@
 </div>
 {% endblock %}
 {% block content %}
+{% macro tool_icon(name) %}
+<img class="theme-light tool-glyph" src="/static/images/table-tools/light/{{ name }}.webp?v={{ asset_version }}" alt="" />
+<img class="theme-dark tool-glyph" src="/static/images/table-tools/dark/{{ name }}.webp?v={{ asset_version }}" alt="" />
+{% endmacro %}
 {% macro invite_strip(label) %}
 <p class="invite-bar" id="invite"{% if not state.join_code %} hidden="hidden"{% endif %}>
   <span class="invite-code">{{ label }} <strong id="join-code">{{ state.join_code or "" }}</strong></span>
@@ -105,34 +109,34 @@
     <div class="table-stage">
       <div class="tool-col{% if state.watching and state.table != 'board' %} is-quiet{% endif %}" role="toolbar" aria-label="За столом">
         <span class="icon-tool"{% if state.watching or state.game_type == "go" or state.table == "cards" or state.mode == "online" %} hidden="hidden"{% endif %}>
-          <button type="button" id="undo" aria-label="Отменить"{% if state.watching or state.game_type == "go" or state.table == "cards" or state.mode == "online" %} hidden{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-undo"/></svg></button>
+          <button type="button" id="undo" aria-label="Отменить"{% if state.watching or state.game_type == "go" or state.table == "cards" or state.mode == "online" %} hidden{% endif %}>{{ tool_icon("undo") }}</button>
           <span class="tip" role="tooltip">Отменить</span>
         </span>
         <span class="icon-tool"{% if state.game_type == "go" %} hidden="hidden"{% endif %}>
-          <button type="button" id="flip" aria-label="Повернуть"{% if state.table == "cards" %} hidden{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-flip"/></svg></button>
+          <button type="button" id="flip" aria-label="Повернуть"{% if state.table == "cards" %} hidden{% endif %}>{{ tool_icon("flip") }}</button>
           <span class="tip" role="tooltip">Повернуть</span>
         </span>
         <span class="icon-tool" hidden="hidden">
-          <button type="button" id="save" aria-label="Сохранить" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-save"/></svg></button>
+          <button type="button" id="save" aria-label="Сохранить" hidden>{{ tool_icon("save") }}</button>
           <span class="tip" role="tooltip">Сохранить</span>
         </span>
         <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
-          <button type="button" id="open-notes" data-drawer-open="notes" aria-label="Ходы" aria-expanded="false" aria-controls="table-notes"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-book"/></svg></button>
+          <button type="button" id="open-notes" data-drawer-open="notes" aria-label="Ходы" aria-expanded="false" aria-controls="table-notes">{{ tool_icon("book") }}</button>
           <span class="tip" role="tooltip">Ходы</span>
         </span>
         {% if state.mode != "vs_computer" %}
         <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
-          <button type="button" id="open-salon" data-salon-open aria-expanded="false" aria-controls="table-salon" aria-label="{% if state.in_call %}Чат и видео{% else %}Чат стола{% endif %}"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="{% if state.in_call %}#i-video{% else %}#i-chat{% endif %}"/></svg></button>
+          <button type="button" id="open-salon" data-salon-open aria-expanded="false" aria-controls="table-salon" aria-label="{% if state.in_call %}Чат и видео{% else %}Чат стола{% endif %}">{{ tool_icon("video" if state.in_call else "chat") }}</button>
           <span class="tip" role="tooltip">{% if state.in_call %}Чат и видео{% else %}Чат стола{% endif %}</span>
         </span>
         {% endif %}
         <span class="icon-tool" hidden="hidden">
-          <button type="button" id="continue" aria-label="К позиции" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></button>
+          <button type="button" id="continue" aria-label="К позиции" hidden>{{ tool_icon("check") }}</button>
           <span class="tip" role="tooltip">К позиции</span>
         </span>
         {% if state.mode not in ["online", "vs_computer"] %}
         <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
-          <button type="button" id="engine-move" aria-label="Ход компьютера"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-dice"/></svg></button>
+          <button type="button" id="engine-move" aria-label="Ход компьютера">{{ tool_icon("dice") }}</button>
           <span class="tip" role="tooltip">Ход компьютера</span>
         </span>
         {% endif %}
@@ -171,46 +175,48 @@
       </div>
       <div class="tool-col is-end{% if state.watching %} is-quiet{% endif %}" role="toolbar" aria-label="Дальше">
         {% if user.is_admin %}
-        <span class="icon-tool"{% if state.table != "board" or not state.can_hint or state.watching %} hidden="hidden"{% endif %}>
-          <button type="button" id="hint" aria-label="Подсказка"{% if state.table != "board" or not state.can_hint or state.watching %} hidden{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bulb"/></svg></button>
+        {% set nardy_hint = state.game_type == "nardy" and state.can_hint %}
+        {% set board_hint = state.table == "board" and state.can_hint and not state.watching %}
+        <span class="icon-tool"{% if not nardy_hint and not board_hint %} hidden="hidden"{% endif %}>
+          <button type="button" id="hint" aria-label="Подсказка"{% if not nardy_hint and not board_hint %} hidden{% endif %}>{{ tool_icon("bulb") }}</button>
           <span class="tip" role="tooltip">Подсказка</span>
         </span>
         {% endif %}
         {% if not analysis and state.can_stop and not state.watching %}
         <span class="icon-tool">
-          <button type="button" id="stop-game" class="is-quiet" aria-label="Остановить"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-stop"/></svg></button>
+          <button type="button" id="stop-game" class="is-quiet" aria-label="Остановить">{{ tool_icon("stop") }}</button>
           <span class="tip" role="tooltip">Остановить</span>
         </span>
         {% endif %}
         {% if not analysis and not state.watching and state.status == "active" and state.game_type != "go" %}
         <span class="icon-tool">
-          <button type="button" id="end-game" class="is-danger" aria-label="{% if state.table == 'cards' %}Выйти{% else %}Сдаться{% endif %}"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-flag"/></svg></button>
+          <button type="button" id="end-game" class="is-danger" aria-label="{% if state.table == 'cards' %}Выйти{% else %}Сдаться{% endif %}">{{ tool_icon("flag") }}</button>
           <span class="tip" role="tooltip">{% if state.table == "cards" %}Выйти{% else %}Сдаться{% endif %}</span>
         </span>
         {% endif %}
         {% if analysis %}
         <span class="icon-tool" hidden="hidden">
-          <a id="new-game" href="/games/new" aria-label="Новая партия" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-add"/></svg></a>
+          <a id="new-game" href="/games/new" aria-label="Новая партия" hidden>{{ tool_icon("add") }}</a>
           <span class="tip" role="tooltip">Новая партия</span>
         </span>
         <span class="icon-tool">
-          <a href="/games/{{ state.id }}" aria-label="К партии"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+          <a href="/games/{{ state.id }}" aria-label="К партии">{{ tool_icon("chevron") }}</a>
           <span class="tip" role="tooltip">К партии</span>
         </span>
         {% else %}
         {% set review = state.table != "cards" and state.game_type != "go" and (state.mode != "online" or state.status in ["finished", "scoring"]) %}
         {% if state.game_type != "go" and not state.watching %}
         <span class="icon-tool"{% if not review %} hidden="hidden"{% endif %}>
-          <a id="open-analysis" href="/games/{{ state.id }}/analysis" aria-label="Анализ"{% if not review %} hidden{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chart"/></svg></a>
+          <a id="open-analysis" href="/games/{{ state.id }}/analysis" aria-label="Анализ"{% if not review %} hidden{% endif %}>{{ tool_icon("chart") }}</a>
           <span class="tip" role="tooltip">Анализ</span>
         </span>
         {% endif %}
         <span class="icon-tool" hidden="hidden">
-          <a id="new-game" href="/games/new" aria-label="Новая партия" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-add"/></svg></a>
+          <a id="new-game" href="/games/new" aria-label="Новая партия" hidden>{{ tool_icon("add") }}</a>
           <span class="tip" role="tooltip">Новая партия</span>
         </span>
         <span class="icon-tool"{% if state.watching %} hidden="hidden"{% endif %}>
-          <button type="button" id="rematch" aria-label="Реванш!" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-again"/></svg></button>
+          <button type="button" id="rematch" aria-label="Реванш!" hidden>{{ tool_icon("again") }}</button>
           <span class="tip" role="tooltip">Реванш!</span>
         </span>
         {% endif %}

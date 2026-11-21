@@ -1,0 +1,29 @@
+{% if podium %}
+<div class="pn-top">
+  {% if titled|default(true) %}
+  <h2>Топ игроков</h2>
+  {% endif %}
+  {% if caption|default(true) %}
+  <p>Первые трое по победам.</p>
+  {% endif %}
+  <ol class="players">
+    {% set place_title = {1: 'Первое место', 2: 'Второе место', 3: 'Третье место'} %}
+    {% set cup = {1: 'gold', 2: 'silver', 3: 'bronze'} %}
+    {% for person in podium %}
+    <li class="player is-{{ person.place }}">
+      <img class="cup" src="/static/images/podium/{{ cup[person.place] }}.webp?v={{ asset_version }}" alt="" />
+      <span class="place">{{ place_title[person.place] }}</span>
+      <div class="who">
+        {{ player_link(person.username, person.login, person.avatar, false, false, false, linked|default(true)) }}
+      </div>
+      <div class="wins"><strong>{{ person.wins }}</strong><span>{{ person.wins_word }}</span></div>
+      <dl>
+        <div><dt>Партий</dt><dd>{{ person.games }}</dd></div>
+        <div><dt>Доля побед</dt><dd>{{ person.rate }}%</dd></div>
+        <div><dt>Фишки</dt><dd>{{ person.balance|grouped }}</dd></div>
+      </dl>
+    </li>
+    {% endfor %}
+  </ol>
+</div>
+{% endif %}

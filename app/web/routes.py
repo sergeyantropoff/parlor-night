@@ -30,6 +30,7 @@ from app.games.present import computer_names
 from app.games.schemas import SettingsBody
 from app.games.service import _summarize
 from app.greeting import greeting
+from app.leaderboard import fetch_people, rank
 from app.names import called, parse_full_name, shown, split_full_name
 from app.news_images import image_file, media_type
 from app.paging import clamp_page, list_href, page_count, page_links, read_page
@@ -398,6 +399,16 @@ async def live_sit(request: Request, game_id: uuid.UUID) -> Response:
     return RedirectResponse(f"/games/{seated}", status_code=303)
 
 
+@router.get("/top")
+async def top_players(request: Request) -> Response:
+    user = _user_or_login(request)
+    if isinstance(user, Response):
+        return user
+    async with request.app.state.pool.acquire() as conn:
+        guests = rank(await fetch_people(conn))
+    return render(request, "top.html", {"podium": guests[:3], "rest": guests[3:]})
+
+
 @router.get("/settings")
 async def settings_page(request: Request) -> Response:
     user = _user_or_login(request)
@@ -435,7 +446,7 @@ async def settings_save(request: Request) -> Response:
             name=posted_name,
         )
     body = SettingsBody(
-        theme=str(form.get("theme") or "system"),  # type: ignore[arg-type]
+        theme=str(form.get("theme") or "dark"),  # type: ignore[arg-type]
         board_style=str(form.get("board_style") or "classic"),  # type: ignore[arg-type]
         default_game=str(form.get("default_game") or "chess"),  # type: ignore[arg-type]
         default_side=str(form.get("default_side") or "white"),  # type: ignore[arg-type]
@@ -1128,7 +1139,12 @@ async def _store_settings(request: Request, user_id: object, body: SettingsBody)
 async def _landing(request: Request) -> Response:
     async with request.app.state.pool.acquire() as conn:
         posts = await news.list_news(conn, limit=3)
-    response = render(request, "public/home.html", {"posts": posts, "public_page": True})
+        guests = rank(await fetch_people(conn))
+    response = render(
+        request,
+        "public/home.html",
+        {"posts": posts, "podium": guests[:3], "public_page": True},
+    )
     code = request.query_params.get("ref", "")
     if _REFERRAL.fullmatch(code):
         response.set_cookie(

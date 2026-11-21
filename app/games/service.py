@@ -1248,7 +1248,7 @@ class GameService:
         if game["game_type"] == "go":
             raise AppError(409, "engine_rejected", "В го нет подсказок компьютера.")
         if game["game_type"] in CARD_GAMES:
-            return self._card_line(game, payloads)
+            return self._card_line(game, payloads, hint=hint)
         if game["game_type"] == "chess":
             return await self._analyse_chess(game, payloads, preferences, hint=hint)
         return await self._analyse_checkers(game, payloads, preferences, hint=hint)
@@ -1988,11 +1988,13 @@ class GameService:
             "charges": charges,
         }
 
-    def _card_line(self, game: dict[str, Any], payloads: list[dict[str, Any]]) -> dict[str, Any]:
+    def _card_line(self, game: dict[str, Any], payloads: list[dict[str, Any]], *, hint: bool = False) -> dict[str, Any]:
         module = card_module(str(game["game_type"]))
         state = _card_state(module, game, payloads)
-        path = module.suggest(state, int(game["engine_level"])) or []
+        level = 5 if hint and str(game["game_type"]) == "nardy" else int(game["engine_level"])
+        path = module.suggest(state, level) or []
         notation = next((item["notation"] for item in module.legal(state) if list(item["path"]) == list(path)), "")
+        mark = module.hint_mark(state, path) if hint and hasattr(module, "hint_mark") else {}
         line = {
             "notation": notation,
             "path": path,
@@ -2001,6 +2003,9 @@ class GameService:
             "mate": None,
             "pv": [],
             "depth": 1,
+            "landing": str(mark.get("to") or ""),
+            "hit": bool(mark.get("hit")),
+            "seat": str(mark.get("seat") or ""),
         }
         return {"engine": str(game["game_type"]), "nodes": 1, "path": path, "promotion": None, "lines": [line]}
 

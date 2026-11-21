@@ -24,6 +24,7 @@
       <a href="#features">Возможности</a>
       <a href="#games">Игры</a>
       <a href="#news">Новости</a>
+      <a href="#leaders">Топ игроков</a>
       <a href="#about">О проекте</a>
     </nav>
     <div class="mast-actions">
@@ -265,6 +266,14 @@
   <p class="quiet">Скоро здесь появятся вечера, обновления и акции.</p>
   {% endif %}
 </section>
+{% if podium %}
+<section class="landing band" id="leaders">
+  <div class="title-row"><h2>Топ игроков</h2><i></i></div>
+  {% set linked = false %}
+  {% set titled = false %}
+  {% include "_podium.html" %}
+</section>
+{% endif %}
 <section class="landing band" id="about">
   <div class="join-grid">
     <article>

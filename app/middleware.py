@@ -240,7 +240,7 @@ class RequestMiddleware:
             "SELECT theme FROM user_settings WHERE user_id = $1",
             user.id,
         )
-        request.state.theme = theme if theme in {"light", "dark", "system"} else "system"
+        request.state.theme = theme if theme in {"light", "dark", "system"} else "dark"
         request.state.user = user
 
     async def _pace(self, request: Request) -> Response | None:
@@ -348,7 +348,7 @@ async def _too_large(scope: Scope, send: Send, request_id: str) -> None:
         request = Request(scope)
         request.state.request_id = request_id
         request.state.user = None
-        request.state.theme = "system"
+        request.state.theme = "dark"
         page = error_response(request, 413)
         body = page.body
         content_type = b"text/html; charset=utf-8"

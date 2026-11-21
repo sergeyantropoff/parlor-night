@@ -86,24 +86,9 @@
 
   <div data-panel="top">
     {% if leaders %}
-    <div class="podium">
-      {% set place_title = {1: 'Первое место', 2: 'Второе место', 3: 'Третье место'} %}
-      {% for person in podium %}
-      <article class="podium-card is-{{ person.place }}">
-        <header class="podium-rank">
-          <span class="podium-medal" aria-hidden="true">{{ person.place }}</span>
-          <span>{{ place_title[person.place] }}</span>
-        </header>
-        {{ player_link(person.username, person.login, person.avatar) }}
-        <p class="podium-score"><strong>{{ person.wins }}</strong><span>{{ person.wins_word }}</span></p>
-        <dl class="podium-stats">
-          <div><dt>Партий</dt><dd>{{ person.games }}</dd></div>
-          <div><dt>Процент</dt><dd>{{ person.rate }}%</dd></div>
-          <div><dt>Фишки</dt><dd>{{ person.balance|grouped }}</dd></div>
-        </dl>
-      </article>
-      {% endfor %}
-    </div>
+    {% set titled = false %}
+    {% set caption = false %}
+    {% include "_podium.html" %}
     <div class="kpi">
       <article><span>Больше побед</span><strong>{{ top_champion.wins }}</strong><span>{{ top_champion.username }}</span></article>
       <article><span>Больше партий</span><strong>{{ top_busy.games }}</strong><span>{{ top_busy.username }}</span></article>

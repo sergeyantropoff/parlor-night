@@ -103,12 +103,12 @@ def main() -> None:
         piece(token, f"cube-{face}.webp")
     piece("74cef9b5", "checker-light.webp")
     piece("1affcfe6", "checker-dark.webp")
-    scene("214db232", 768, 576, STATIC / "parlor/light/game-nardy.webp", DOCS / "nardy.webp")
-    scene("61f3a485", 768, 576, STATIC / "parlor/dark/game-nardy.webp")
-    scene("214db232", 1024, 576, STATIC / "parlor/light/news-nardy.webp")
-    scene("61f3a485", 1024, 576, STATIC / "parlor/dark/news-nardy.webp")
-    scene("214db232", 480, 360, STATIC / "images/games/game-nardy-light.webp")
-    scene("61f3a485", 480, 360, STATIC / "images/games/game-nardy-dark.webp")
+    scene("61f3a485", 768, 576, STATIC / "parlor/light/game-nardy.webp", DOCS / "nardy.webp")
+    scene("214db232", 768, 576, STATIC / "parlor/dark/game-nardy.webp")
+    scene("61f3a485", 1024, 576, STATIC / "parlor/light/news-nardy.webp")
+    scene("214db232", 1024, 576, STATIC / "parlor/dark/news-nardy.webp")
+    scene("61f3a485", 480, 360, STATIC / "images/games/game-nardy-light.webp")
+    scene("214db232", 480, 360, STATIC / "images/games/game-nardy-dark.webp")
 
 
 if __name__ == "__main__":

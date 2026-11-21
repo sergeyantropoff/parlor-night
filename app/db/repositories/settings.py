@@ -38,7 +38,7 @@ async def get_settings(conn: asyncpg.Connection, user_id: uuid.UUID) -> asyncpg.
         user_id,
     )
     if row is None:
-        await conn.execute("INSERT INTO user_settings (user_id) VALUES ($1)", user_id)
+        await conn.execute("INSERT INTO user_settings (user_id, theme) VALUES ($1, 'dark')", user_id)
         row = await conn.fetchrow(
             """
             SELECT theme, board_style, default_game, default_side, analysis_preferences

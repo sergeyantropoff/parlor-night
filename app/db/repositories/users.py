@@ -95,7 +95,7 @@ async def create_user(
                 raise
     assert row is not None
     await conn.execute(
-        "INSERT INTO user_settings (user_id) VALUES ($1)",
+        "INSERT INTO user_settings (user_id, theme) VALUES ($1, 'dark')",
         user_id,
     )
     await conn.execute(

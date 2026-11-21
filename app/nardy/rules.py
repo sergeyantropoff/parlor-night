@@ -238,6 +238,26 @@ def suggest(state: dict[str, Any], level: int = 3) -> list[str] | None:
     return ["move", _token(src), str(die)]
 
 
+def hint_mark(state: dict[str, Any], path: list[str]) -> dict[str, Any]:
+    seat = str(state.get("to_move") or "")
+    if len(path) < 3 or path[0] != "move":
+        return {"seat": seat, "to": "", "hit": False}
+    src = _parse_src(path[1])
+    die = int(path[2])
+    for seq in _sequences(state):
+        if not seq:
+            continue
+        move = seq[0]
+        if move[0] == src and int(move[1]) == die:
+            dest = move[2]
+            return {
+                "seat": seat,
+                "to": "off" if dest == "off" else _token(dest),
+                "hit": bool(move[3]),
+            }
+    return {"seat": seat, "to": "", "hit": False}
+
+
 def leave(state: dict[str, Any], seat: str) -> dict[str, Any]:
     nxt = _copy(state)
     if nxt.get("result"):

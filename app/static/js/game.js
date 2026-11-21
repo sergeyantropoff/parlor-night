@@ -2,12 +2,13 @@ import { pokerFace, svgDataUrl, unoFace } from "./cards.mjs";
 import { mountEmoji } from "./emoji.js";
 import { attachPager } from "./pager.js";
 import { bindGo, paintGo } from "./go.js";
-import { bindNardy, paintNardy } from "./nardy.js";
+import { bindNardy, paintNardy } from "./nardy.js?v=20261122";
 
 const source = document.querySelector("#game-state");
 let current = JSON.parse(source.textContent);
 let prefix = [];
 let hintPath = [];
+let hintMark = null;
 let preview = null;
 let captureFocus = null;
 let busy = false;
@@ -325,7 +326,7 @@ function paintChrome() {
   const nardy = current.game_type === "nardy";
   const flip = document.querySelector("#flip");
   if (flip) flip.hidden = go || (cards && !nardy);
-  showTool("hint", current.table === "board" && Boolean(current.can_hint) && !current.watching);
+  showTool("hint", (current.game_type === "nardy" && Boolean(current.can_hint)) || (current.table === "board" && Boolean(current.can_hint) && !current.watching));
   const invite = document.querySelector("#invite");
   if (invite) invite.hidden = inviteDismissed() || !current.join_code;
   paintSeats();
@@ -503,6 +504,7 @@ function summaryPiece(code) {
 function fillSummary(dialog) {
   const data = current.summary || {};
   dialog.classList.toggle("is-board", data.kind === "board");
+  dialog.classList.toggle("is-domino", current.game_type === "domino");
   const finish = dialog.querySelector("#summary-finish");
   if (finish) finish.textContent = "Остановить";
   if (data.kind === "board") fillBoardSummary(dialog, data);
@@ -3324,6 +3326,7 @@ async function sendMove(move) {
     busy = false;
     prefix = [];
     hintPath = [];
+    hintMark = null;
     captureFocus = null;
     render();
     if (note) say(note);
@@ -3360,6 +3363,7 @@ async function present(next) {
   if (changed) {
     prefix = [];
     hintPath = [];
+    hintMark = null;
     preview = null;
     captureFocus = null;
     wildOpen = false;
@@ -3396,6 +3400,14 @@ async function act(path, body, key) {
         return;
       }
       hintPath = (data.lines?.[0]?.path || []).map(String);
+      hintMark = current.game_type === "nardy"
+        ? {
+          path: hintPath,
+          to: String(data.lines?.[0]?.landing || ""),
+          hit: Boolean(data.lines?.[0]?.hit),
+          seat: String(data.lines?.[0]?.seat || ""),
+        }
+        : null;
       const spoken = (data.lines || []).map((line) => line.notation).filter(Boolean);
       if (spoken.length) note = `Подсказка: ${spoken.join(" · ")}`;
       const box = document.querySelector("#lines");
@@ -3682,6 +3694,7 @@ board.addEventListener("keydown", (event) => {
   if (key === "Escape") {
     prefix = [];
     hintPath = [];
+    hintMark = null;
     captureFocus = null;
     render();
     return;
@@ -4795,7 +4808,7 @@ function maybeEngine() {
   if (!auto) return;
   const gallery = Boolean(current.gallery);
   const nardy = current.game_type === "nardy";
-  const delay = gallery ? 1600 : nardy ? 720 : current.game_type === "domino" ? 680 : 480;
+  const delay = gallery ? 1600 : nardy ? 1600 : current.game_type === "domino" ? 680 : 480;
   window.setTimeout(() => {
     if (ticket !== engineTicket || busy || !current.can_engine) return;
     const still = current.table === "go" && current.status === "scoring";
@@ -4887,6 +4900,7 @@ bindNardy({
   fillPersonName,
   getState: () => current,
   getBusy: () => busy,
+  getHint: () => hintMark,
   setBusy(value) {
     busy = value;
   },

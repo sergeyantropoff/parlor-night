@@ -47,9 +47,44 @@ export function paintNardy(state) {
   if (picked && !(picture.targets || []).some((item) => item.from === picked)) picked = "";
   box.classList.remove("oval");
   box.classList.add("is-nardy");
-  const stage = document.createElement("div");
-  stage.className = "nardy-stage";
+  let stage = box.querySelector(":scope > .nardy-stage");
+  if (!stage || stage.dataset.game !== String(state.id || "")) {
+    stage = document.createElement("div");
+    stage.className = "nardy-stage";
+    stage.dataset.game = String(state.id || "");
+    box.replaceChildren(stage);
+  }
+  const board = ensureBoard(stage);
+  const layer = board.querySelector(".nardy-layer");
+  layer.className = `nardy-layer${state.black_at_bottom ? " is-flipped" : ""}`;
   const far = seatNode(state, picture, true);
+  const near = seatNode(state, picture, false);
+  const actions = actionRow(state);
+  layoutStage(stage, far, board, actions, near);
+  syncCheckers(layer, assign(picture), picture, fresh);
+  syncPips(layer, picture);
+  syncHud(board.querySelector(".nardy-hud"), state, picture, fresh);
+  paintHint(picture);
+  paintBadge(state, picture);
+}
+
+function layoutStage(stage, far, board, actions, near) {
+  const farNow = stage.querySelector(":scope > .nardy-seat.is-far");
+  if (farNow) farNow.replaceWith(far);
+  else stage.prepend(far);
+  if (board.parentElement !== stage) far.after(board);
+  const actionsNow = stage.querySelector(":scope > .nardy-actions");
+  if (actions) {
+    if (actionsNow) actionsNow.replaceWith(actions);
+    else board.after(actions);
+  } else if (actionsNow) actionsNow.remove();
+  const nearNow = stage.querySelector(":scope > .nardy-seat.is-near");
+  if (nearNow) nearNow.replaceWith(near);
+  else stage.append(near);
+}
+function ensureBoard(stage) {
+  const found = stage.querySelector(".nardy-board");
+  if (found) return found;
   const board = document.createElement("div");
   board.className = "nardy-board";
   const cloth = document.createElement("img");
@@ -58,24 +93,106 @@ export function paintNardy(state) {
   cloth.draggable = false;
   cloth.src = api.asset("/static/images/nardy/board.webp");
   const layer = document.createElement("div");
-  layer.className = `nardy-layer${state.black_at_bottom ? " is-flipped" : ""}`;
-  const slots = assign(picture);
-  for (const slot of slots) layer.append(checkerNode(slot, picture, fresh));
-  for (const target of targets(picture)) layer.append(pipNode(target, picture));
+  layer.className = "nardy-layer";
   const hud = document.createElement("div");
   hud.className = "nardy-hud";
-  const offer = rollButton(state);
-  if (offer) hud.append(offer);
-  else hud.append(diceNode(picture, fresh, state.version));
-  hud.append(cubeNode(state, picture));
   board.append(cloth, layer, hud);
-  const near = seatNode(state, picture, false);
-  const actions = actionRow(state);
-  stage.append(far, board);
-  if (actions) stage.append(actions);
-  stage.append(near);
-  box.replaceChildren(stage);
-  paintBadge(state, picture);
+  return board;
+}
+
+function syncCheckers(layer, slots, picture, fresh) {
+  const live = new Map([...layer.querySelectorAll(".nardy-checker")].map((node) => [node.dataset.id, node]));
+  const keep = new Set();
+  for (const slot of slots) {
+    const id = `${slot.seat[0]}${slot.id}`;
+    keep.add(id);
+    const at = position(slot, picture.variant, picture);
+    let node = live.get(id);
+    if (!node) {
+      node = checkerNode(slot, picture);
+      node.style.left = at.x;
+      node.style.top = at.y;
+      layer.append(node);
+      spots.set(id, at);
+      continue;
+    }
+    dressChecker(node, slot, picture);
+    const prev = spots.get(id);
+    const shifted = Boolean(fresh && prev && (prev.x !== at.x || prev.y !== at.y));
+    node.style.left = at.x;
+    node.style.top = at.y;
+    if (shifted) glideChecker(node, prev, at);
+    spots.set(id, at);
+  }
+  for (const [id, node] of live) if (!keep.has(id)) node.remove();
+}
+
+function glideChecker(node, from, to) {
+  const board = node.closest(".nardy-board");
+  const width = board instanceof HTMLElement ? board.clientWidth : 0;
+  const height = board instanceof HTMLElement ? board.clientHeight : 0;
+  if (!width || !height) return;
+  const dx = ((parseFloat(from.x) - parseFloat(to.x)) / 100) * width;
+  const dy = ((parseFloat(from.y) - parseFloat(to.y)) / 100) * height;
+  if (Math.hypot(dx, dy) < 1) return;
+  node.getAnimations().forEach((item) => item.cancel());
+  node.classList.add("is-gliding");
+  const animation = node.animate(
+    [
+      { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))` },
+      { transform: "translate(-50%, -50%)" },
+    ],
+    { duration: 1200, easing: "cubic-bezier(.33, .05, .18, 1)", fill: "none" },
+  );
+  const done = () => node.classList.remove("is-gliding");
+  animation.onfinish = done;
+  animation.oncancel = done;
+}
+
+function paintHint(picture) {
+  const hint = api.getHint?.();
+  const path = hint?.path || [];
+  if (!path.length) return;
+  if (path[0] === "dice") {
+    document.querySelector(`#card-table [data-nardy="${path[1]}"]`)?.classList.add("is-hint");
+    return;
+  }
+  if (path[0] !== "move") return;
+  const from = String(path[1]);
+  const matches = [...document.querySelectorAll("#card-table .nardy-checker")].filter((node) => {
+    const slot = node.dataset.slot || "";
+    return from === "bar" ? slot.startsWith("bar:") : slot.startsWith(`p${from}:`);
+  });
+  const top = matches.sort((left, right) => Number(right.style.getPropertyValue("--stack")) - Number(left.style.getPropertyValue("--stack")))[0];
+  top?.classList.add("is-hint");
+  const layer = document.querySelector("#card-table .nardy-layer");
+  if (!layer || !hint.to) return;
+  const marker = document.createElement("span");
+  marker.className = "nardy-hint";
+  const at = hint.to === "off"
+    ? offPoint(hint.seat, Number(picture.off?.[hint.seat] || 0), picture.variant, picture, Number(picture.off?.[hint.seat] || 0) + 1)
+    : hintLanding(hint, picture);
+  marker.style.left = at.x;
+  marker.style.top = at.y;
+  layer.append(marker);
+}
+
+function hintLanding(hint, picture) {
+  const point = Number(hint.to);
+  const count = Math.abs(Number(picture.points?.[point] || 0));
+  const depth = hint.hit || count === 0 ? 0 : count;
+  return pointAt(point, depth, hint.hit ? 1 : Math.max(count + 1, 1));
+}
+
+function syncPips(layer, picture) {
+  layer.querySelectorAll(".nardy-pip").forEach((node) => node.remove());
+  for (const target of targets(picture)) layer.append(pipNode(target, picture));
+}
+
+function syncHud(hud, state, picture, fresh) {
+  const offer = rollButton(state);
+  const dice = offer ? null : diceNode(picture, fresh, state.version);
+  hud.replaceChildren(...[offer, dice, cubeNode(state, picture)].filter(Boolean));
 }
 
 function seatNode(state, picture, far) {
@@ -109,25 +226,31 @@ function seatNode(state, picture, far) {
   return wrap;
 }
 
-function checkerNode(slot, picture, fresh) {
+function checkerNode(slot, picture) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = `nardy-checker is-${slot.seat}`;
   button.dataset.nardy = "checker";
   button.dataset.id = `${slot.seat[0]}${slot.id}`;
-  button.dataset.from = slot.where === "point" ? String(slot.point) : "bar";
-  const playable = (picture.targets || []).some((item) => item.from === button.dataset.from);
-  button.classList.toggle("is-playable", playable);
-  button.classList.toggle("is-picked", picked === button.dataset.from && slot.depth === slot.count - 1);
-  button.disabled = !playable || api.getBusy();
-  button.setAttribute("aria-label", labelOf(slot));
   const image = document.createElement("img");
   image.alt = "";
   image.draggable = false;
   image.src = api.asset(`/static/images/nardy/checker-${slot.seat === "white" ? "light" : "dark"}.webp`);
   button.append(image);
-  moveNode(button, position(slot, picture.variant), fresh);
+  dressChecker(button, slot, picture);
   return button;
+}
+
+function dressChecker(node, slot, picture) {
+  const from = slot.where === "point" ? String(slot.point) : "bar";
+  node.dataset.from = from;
+  node.dataset.slot = slotKey(slot);
+  node.style.setProperty("--stack", String(slot.depth));
+  const playable = (picture.targets || []).some((item) => item.from === from);
+  node.classList.toggle("is-playable", playable);
+  node.classList.toggle("is-picked", picked === from && slot.depth === slot.count - 1);
+  node.disabled = !playable || api.getBusy();
+  node.setAttribute("aria-label", labelOf(slot));
 }
 
 function pipNode(target, picture) {
@@ -137,7 +260,9 @@ function pipNode(target, picture) {
   button.dataset.nardy = "pip";
   button.dataset.from = target.from;
   button.dataset.to = target.to;
-  const at = target.to === "off" ? offPoint(target.seat, 0, 1, picture.variant) : pointAt(Number(target.to), 0, 1);
+  const at = target.to === "off"
+    ? offPoint(target.seat, Number(picture.off?.[target.seat] || 0), picture.variant, picture, Number(picture.off?.[target.seat] || 0) + 1)
+    : landingAt(target, picture);
   button.style.left = at.x;
   button.style.top = at.y;
   button.setAttribute("aria-label", target.to === "off" ? "Снять шашку" : `Поле ${Number(target.to) + 1}`);
@@ -160,19 +285,9 @@ function rollButton(state) {
   button.dataset.nardy = "roll";
   button.disabled = api.getBusy();
   button.setAttribute("aria-label", "Бросить кости");
-  const pair = document.createElement("span");
-  pair.className = "nardy-roll-pair";
-  for (const face of [5, 3]) {
-    const image = document.createElement("img");
-    image.className = "nardy-die";
-    image.alt = "";
-    image.draggable = false;
-    image.src = dieSrc(face);
-    pair.append(image);
-  }
   const label = document.createElement("span");
   label.textContent = "Бросить";
-  button.append(pair, label);
+  button.append(label);
   return button;
 }
 
@@ -188,25 +303,25 @@ function diceNode(picture, fresh, version) {
   }
   const tumbling = fresh && picture.motion?.kind === "dice" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const shown = Number(dice[0]) === Number(dice[1]) ? [dice[0], dice[0], dice[0], dice[0]] : dice;
+  const span = tumbling ? boardSpan() : 0;
   if (tumbling) {
     row.classList.add("is-rolling");
     row.dataset.version = String(version);
   }
   shown.forEach((value, index) => {
     const image = document.createElement("img");
-    image.className = tumbling ? "nardy-die is-roll" : "nardy-die";
+    image.className = "nardy-die";
     image.alt = `Кость ${value}`;
     image.draggable = false;
-    image.style.animationDelay = `${index * 90}ms`;
-    image.src = dieSrc(tumbling ? 1 + Math.floor(Math.random() * 6) : value);
-    if (tumbling) spinFace(image, value, index);
+    image.src = dieSrc(tumbling ? ((Number(value) % 6) + 1) : value);
+    if (tumbling) armThrow(image, value, index, span);
     row.append(image);
   });
   if (tumbling) {
     const last = row.querySelector(".nardy-die:last-child");
     const stop = () => row.classList.remove("is-rolling");
     last?.addEventListener("animationend", stop, { once: true });
-    window.setTimeout(stop, 1600);
+    window.setTimeout(stop, 3400);
   }
   if (picture.motion?.pass) {
     const note = document.createElement("span");
@@ -217,21 +332,34 @@ function diceNode(picture, fresh, version) {
   return row;
 }
 
-function spinFace(image, finalFace, index) {
-  const steps = 10;
+function boardSpan() {
+  const board = document.querySelector(".nardy-board");
+  return board instanceof HTMLElement ? board.clientWidth : 760;
+}
+
+function armThrow(image, finalFace, index, span) {
+  const track = [
+    { x: 0.36, y: -0.01, spin: 420 },
+    { x: 0.42, y: 0.012, spin: 320 },
+    { x: 0.32, y: -0.014, spin: 480 },
+    { x: 0.46, y: 0.016, spin: 280 },
+  ][index] || { x: 0.38, y: 0, spin: 360 };
+  image.style.animationDelay = `${index * 150}ms`;
+  image.style.setProperty("--from-x", `${Math.round(span * track.x)}px`);
+  image.style.setProperty("--from-y", `${Math.round(span * track.y)}px`);
+  image.style.setProperty("--spin", `${track.spin}deg`);
+  image.classList.add("is-roll");
+  const order = [1, 3, 5, 2, 4, 6].filter((face) => face !== Number(finalFace));
   let step = 0;
   const timer = window.setInterval(() => {
-    step += 1;
-    if (!image.isConnected || step >= steps) {
+    if (!image.isConnected || step >= order.length) {
       window.clearInterval(timer);
       image.src = dieSrc(finalFace);
       return;
     }
-    let face = 1 + Math.floor(Math.random() * 6);
-    if (String(face) === image.dataset.face) face = (face % 6) + 1;
-    image.dataset.face = String(face);
-    image.src = dieSrc(face);
-  }, 78 + index * 12);
+    image.src = dieSrc(order[step]);
+    step += 1;
+  }, 200);
 }
 
 function paintBadge(state, picture) {
@@ -261,16 +389,7 @@ function paintBadge(state, picture) {
     note.textContent = "Хода нет";
     badge.append(note);
   }
-  const roll = rollMove(state);
-  if (roll) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.dataset.nardy = "roll";
-    button.textContent = "Бросить";
-    button.disabled = api.getBusy();
-    badge.append(button);
-  }
-  badge.hidden = picture.phase === "waiting" || (picture.phase === "done" && !dice.length);
+  badge.hidden = !dice.length && !picture.motion?.pass;
 }
 
 function cubeNode(state, picture) {
@@ -322,17 +441,19 @@ function targets(picture) {
   return found;
 }
 
-function choose(from) {
-  const state = api.getState();
-  const picture = state.nardy || {};
+function playFrom(from) {
+  const picture = api.getState().nardy || {};
   const options = (picture.targets || []).filter((item) => item.from === from);
   if (!options.length || api.getBusy()) return;
-  if (options.length === 1) {
-    send(["move", from, String(options[0].die)]);
+  const places = [...new Set(options.map((item) => item.to))];
+  if (places.length === 1) {
+    const die = options.slice().sort((left, right) => right.die - left.die)[0].die;
+    picked = "";
+    send(["move", from, String(die)]);
     return;
   }
   picked = picked === from ? "" : from;
-  paintNardy(state);
+  paintNardy(api.getState());
 }
 
 function land(from, to) {
@@ -350,15 +471,23 @@ function drag(checker, event) {
   const options = (picture.targets || []).filter((item) => item.from === from);
   if (!options.length) return;
   event.preventDefault();
-  const shown = options.length > 1 && picked === from;
-  if (options.length > 1 && picked !== from) {
+  const places = [...new Set(options.map((item) => item.to))];
+  const justPicked = places.length > 1 && picked !== from;
+  if (justPicked) {
     picked = from;
     paintNardy(api.getState());
   }
   const origin = { x: event.clientX, y: event.clientY };
   let moved = false;
   const ghost = checker.querySelector("img")?.cloneNode(true);
-  if (!(ghost instanceof HTMLImageElement)) return;
+  if (!(ghost instanceof HTMLImageElement)) {
+    if (places.length === 1) playFrom(from);
+    else if (!justPicked && places.length > 1) {
+      picked = "";
+      paintNardy(api.getState());
+    }
+    return;
+  }
   ghost.className = "nardy-ghost";
   ghost.hidden = true;
   document.body.append(ghost);
@@ -373,8 +502,8 @@ function drag(checker, event) {
     window.removeEventListener("pointermove", moveGhost);
     window.removeEventListener("pointerup", finish);
     if (!moved) {
-      if (options.length === 1) send(["move", from, String(options[0].die)]);
-      else if (shown) {
+      if (places.length === 1) playFrom(from);
+      else if (!justPicked) {
         picked = "";
         paintNardy(api.getState());
       }
@@ -383,6 +512,7 @@ function drag(checker, event) {
     const hit = document.elementFromPoint(point.clientX, point.clientY);
     const pip = hit instanceof Element ? hit.closest(".nardy-pip") : null;
     if (pip instanceof HTMLElement) land(from, pip.dataset.to || "");
+    else if (places.length === 1) playFrom(from);
   };
   window.addEventListener("pointermove", moveGhost);
   window.addEventListener("pointerup", finish);
@@ -401,6 +531,8 @@ async function send(path) {
     await api.refresh();
   } finally {
     api.setBusy(false);
+    const state = api.getState();
+    if (state?.game_type === "nardy") paintNardy(state);
     api.onSettled();
   }
 }
@@ -434,9 +566,33 @@ function assign(picture) {
       next[id] = slotKey(mine[index]);
       mine[index].id = id;
     }
+    const orphans = [];
+    for (let id = 0; id < prev.length; id += 1) if (prev[id] && !next[id]) orphans.push(id);
+    const open = [];
+    for (let index = 0; index < mine.length; index += 1) if (!used.has(index)) open.push(index);
+    const variant = picture.variant;
+    while (orphans.length && open.length) {
+      let bestId = orphans[0];
+      let bestAt = 0;
+      let bestDist = Infinity;
+      for (const id of orphans) {
+        const from = spots.get(`${seat[0]}${id}`);
+        for (let cursor = 0; cursor < open.length; cursor += 1) {
+          const dist = from ? pointDistance(from, position(mine[open[cursor]], variant, picture)) : 0;
+          if (dist < bestDist) {
+            bestDist = dist;
+            bestId = id;
+            bestAt = cursor;
+          }
+        }
+      }
+      const index = open.splice(bestAt, 1)[0];
+      orphans.splice(orphans.indexOf(bestId), 1);
+      next[bestId] = slotKey(mine[index]);
+      mine[index].id = bestId;
+    }
     let cursor = 0;
-    for (let index = 0; index < mine.length; index += 1) {
-      if (used.has(index)) continue;
+    for (const index of open) {
       while (cursor < 15 && next[cursor]) cursor += 1;
       next[cursor] = slotKey(mine[index]);
       mine[index].id = cursor;
@@ -451,39 +607,41 @@ function slotKey(slot) {
   return slot.where === "point" ? `p${slot.point}:${slot.depth}` : `${slot.where}:${slot.depth}`;
 }
 
-function moveNode(node, at, fresh) {
-  const id = node.dataset.id;
-  const prev = spots.get(id);
-  node.style.left = at.x;
-  node.style.top = at.y;
-  if (fresh && prev && (prev.x !== at.x || prev.y !== at.y)) {
-    node.style.transition = "none";
-    node.style.left = prev.x;
-    node.style.top = prev.y;
-    requestAnimationFrame(() => {
-      node.style.transition = "";
-      node.style.left = at.x;
-      node.style.top = at.y;
-    });
-  }
-  spots.set(id, at);
+function pointDistance(from, to) {
+  const dx = (parseFloat(from.x) - parseFloat(to.x)) * (1024 / 682);
+  const dy = parseFloat(from.y) - parseFloat(to.y);
+  return dx * dx + dy * dy;
 }
 
-function position(slot, variant) {
+function position(slot, variant, picture) {
   if (slot.where === "bar") return barPoint(slot.seat, slot.depth);
-  if (slot.where === "off") return offPoint(slot.seat, slot.depth, slot.count, variant);
+  if (slot.where === "off") return offPoint(slot.seat, slot.depth, variant, picture, slot.count);
   return pointAt(slot.point, slot.depth, slot.count);
 }
+
+const CHECKER_H = 0.054 * (1024 / 682);
 
 function pointAt(point, depth, count) {
   const top = point >= 12;
   const column = (top ? TOP : BOTTOM).indexOf(point);
-  const base = top ? 26 / 682 : 653 / 682;
-  const tip = top ? 278 / 682 : 391 / 682;
-  const span = Math.abs(tip - base);
-  const step = Math.min(0.024, (span - 0.03) / Math.max(count - 1, 1));
-  const y = base + (top ? 1 : -1) * (0.02 + depth * step);
+  const base = top ? 32 / 682 : 650 / 682;
+  const tip = top ? 274 / 682 : 408 / 682;
+  const dir = top ? 1 : -1;
+  const radius = CHECKER_H / 2;
+  const start = base + dir * radius;
+  const end = tip - dir * radius;
+  const room = Math.abs(end - start);
+  const touch = CHECKER_H * 1.04;
+  const step = count <= 1 ? 0 : Math.min(touch, room / (count - 1));
+  const y = start + dir * depth * step;
   return { x: `${XS[column] * 100}%`, y: `${y * 100}%` };
+}
+
+function landingAt(target, picture) {
+  const point = Number(target.to);
+  const count = Math.abs(Number(picture.points?.[point] || 0));
+  const depth = target.hit || count === 0 ? 0 : count;
+  return pointAt(point, depth, target.hit ? 1 : count + 1);
 }
 
 function barPoint(seat, depth) {
@@ -491,12 +649,22 @@ function barPoint(seat, depth) {
   return { x: "49.9%", y: `${y * 100}%` };
 }
 
-function offPoint(seat, depth, count, variant) {
+function offPoint(seat, depth, variant, picture, total) {
   const left = variant === "long" && seat === "black";
   const fromTop = (variant === "short" && seat === "black") || (variant === "long" && seat === "white");
-  const step = Math.min(0.016, 0.22 / Math.max(count, 1));
-  const y = fromTop ? 0.12 + depth * step : 0.88 - depth * step;
-  return { x: left ? "4.4%" : "95.6%", y: `${y * 100}%` };
+  const mine = Math.max(1, Number(total || picture?.off?.[seat] || 1));
+  const other = variant === "short" ? Number(picture?.off?.[seat === "white" ? "black" : "white"] || 0) : 0;
+  const radius = CHECKER_H / 2;
+  const touch = CHECKER_H * 1.06;
+  const gap = CHECKER_H * 0.4;
+  const inner = (650 - 30) / 682 - CHECKER_H;
+  const natural = (count) => (count <= 0 ? 0 : count === 1 ? CHECKER_H : CHECKER_H + (count - 1) * touch);
+  const need = natural(mine) + natural(other) + (other ? gap : 0);
+  const share = other <= 0 ? Math.min(inner, natural(mine)) : need <= inner ? natural(mine) : (inner - gap) * (mine / (mine + other));
+  const step = mine <= 1 ? 0 : Math.max(0, (share - CHECKER_H) / (mine - 1));
+  const dir = fromTop ? 1 : -1;
+  const start = (fromTop ? 30 : 650) / 682 + dir * radius;
+  return { x: left ? "5.4%" : "94.7%", y: `${(start + dir * depth * step) * 100}%` };
 }
 
 function labelOf(slot) {
