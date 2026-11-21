@@ -8,6 +8,7 @@
   "card-games": "news-card-games.webp",
   "go": "news-go.webp",
   "beta": "news-beta.webp",
+  "domino": "news-domino.webp",
 } %}
 {% set months = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"] %}
 <header class="mast">
@@ -73,7 +74,7 @@
   </div>
 </section>
 <ul class="landing stat-row">
-  <li><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-dice"/></svg><span>8 игр</span></li>
+  <li><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-dice"/></svg><span>9 игр</span></li>
   <li><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chat"/></svg><span>Чаты и беседы</span></li>
   <li><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-video"/></svg><span>Созвон до 6 игроков</span></li>
   <li class="stat-safe">
@@ -84,7 +85,7 @@
 </ul>
 <section class="landing band" id="games">
   <div class="title-row"><h2>Выберите игру на вечер</h2><i></i></div>
-  <p class="lede only-light">Восемь классических игр в одной гостиной. Соберите партию, пригласите друзей и играйте в привычном, уютном формате.</p>
+  <p class="lede only-light">Девять классических игр в одной гостиной. Соберите партию, пригласите друзей и играйте в привычном, уютном формате.</p>
   <p class="lede only-dark">В гостиной собраны любимые настольные игры — для спокойных партий, дружеских турниров и вечерних разговоров.</p>
   <div class="game-cards">
     <article>
@@ -170,6 +171,25 @@
         <a class="round tip-host" href="/login" data-tip="Преферанс" data-tip-edge aria-label="Войти, чтобы играть в преферанс"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
       </div>
     </article>
+    <article>
+      <div class="shot">
+        <img class="theme-light" src="/static/parlor/light/game-domino.webp?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
+        <img class="theme-dark" src="/static/parlor/dark/game-domino.webp?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
+      </div>
+      <div class="shot-body">
+        <div><h3>Домино</h3><p>Кости в линию, от двух до четырёх.</p></div>
+        <a class="round tip-host" href="/login" data-tip="Домино" data-tip-edge aria-label="Войти, чтобы играть в домино"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+      </div>
+    </article>
+    <article class="is-soon">
+      <div class="shot">
+        <img class="theme-light" src="/static/parlor/light/soon-backgammon.webp?v={{ asset_version }}" width="1448" height="1086" alt="Нарды скоро появятся в гостиной" loading="lazy" />
+        <img class="theme-dark" src="/static/parlor/dark/soon-backgammon.webp?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
+      </div>
+      <div class="shot-body">
+        <div><h3>Нарды</h3><p>Скоро в гостиной.</p></div>
+      </div>
+    </article>
   </div>
   <p class="mid-note"><i></i><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-coins"/></svg> Фишки начисляются за победу и ничью. Денег в игре нет. <i></i></p>
 </section>
@@ -251,6 +271,10 @@
       <p class="about-copy">Ставок на деньги нет. Фишки остаются внутри гостиной: их получают за партии и за друга, который пришёл по вашей ссылке. Дом открывают своим, поэтому вечер не превращается в шумное место.</p>
       <img class="still theme-light" src="/static/parlor/light/footer-still-life.webp?v={{ asset_version }}" width="1456" height="728" alt="" />
       <img class="still theme-dark" src="/static/parlor/dark/footer-still-life.webp?v={{ asset_version }}" width="1456" height="728" alt="" />
+      <figure class="soon-parlor">
+        <img src="/static/parlor/light/soon-backgammon.webp?v={{ asset_version }}" width="1448" height="1086" alt="Нарды скоро появятся в гостиной" />
+        <figcaption>Нарды уже собирают. Скоро их поставят рядом с домино.</figcaption>
+      </figure>
     </article>
     <article>
       <h3>Как попасть в гостиную</h3>

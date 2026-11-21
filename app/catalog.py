@@ -24,6 +24,13 @@ GAMES: dict[str, GameSpec] = {
     "chess": GameSpec("chess", "Шахматы", "board", False, "Классическая партия и разбор."),
     "checkers": GameSpec("checkers", "Русские шашки", "board", False, "Шашки 8×8, обязательное взятие."),
     "go": GameSpec("go", "Го", "board", False, "Стратегия чёрных и белых камней. С человеком или с компьютером."),
+    "domino": GameSpec(
+        "domino",
+        "Домино",
+        "cards",
+        False,
+        "Кости в линию, от двух до четырёх. С человеком или с компьютером.",
+    ),
     "uno": GameSpec("uno", "Уно", "cards", False, "Цвета, цифры и дикие карты. Без денег."),
     "poker": GameSpec(
         "poker",

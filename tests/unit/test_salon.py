@@ -193,7 +193,9 @@ def test_preferans_reaches_a_score() -> None:
     assert shown["sheet"]["bullet"] == state["bullet"]
     assert shown["sheet"]["mountain"] == state["mountain"]
     assert set(shown["sheet"]["total"]) == set(state["order"])
-    assert shown["board"] == []
+    assert shown["held"] is True
+    assert shown["board"] == list(state["last_trick"])
+    assert len(shown["board"]) == 3
     for seat in state["order"]:
         state["bullet"][seat] = int(state["pool"])
     finish_preferans(state)
@@ -249,7 +251,9 @@ def test_preferans_names_who_took_the_trick_and_what_was_written() -> None:
     assert state["last_write"]["p0"] == "bullet"
     shown = view_preferans(state, "p0")
     assert shown["writes"]["p0"] == "bullet"
-    assert shown["held"] is False
+    assert shown["held"] is True
+    assert shown["board"] == ["7H", "8H", "9H"]
+    assert shown["trick_winner"] == "p2"
     assert shown["previous"]["winner"] == "p2"
     state, _charges = play_preferans(state, ["bid", "pass"])
     assert view_preferans(state, "p0")["writes"] == {}
@@ -275,6 +279,124 @@ def test_preferans_keeps_the_previous_trick_while_the_next_one_starts() -> None:
     assert shown["board"] == ["7S"]
     assert shown["previous"]["winner"] == "p2"
     assert shown["previous"]["cards"] == ["7H", "8H", "9H"]
+
+
+def _durak_taking(variant: str = "podkidnoy") -> dict:
+    state = deal_durak(["p0", "p1", "p2"], variant)
+    state["trump"] = "H"
+    state["trump_card"] = "AH"
+    state["deck"] = ["KH"]
+    state["hands"] = {"p0": ["8D", "8C", "9C"], "p1": ["6C"], "p2": ["8S", "QD", "7D"]}
+    state["table"] = [{"attack": "8H", "defense": ""}]
+    state["attacker"] = "p0"
+    state["opener"] = "p0"
+    state["defender"] = "p1"
+    state["to_move"] = "p1"
+    state["phase"] = "defend"
+    state["passed"] = []
+    state["taking"] = False
+    state["out"] = []
+    state["result"] = None
+    return state
+
+
+def test_durak_old_games_take_without_extra_cards() -> None:
+    state = _durak_taking()
+    state["add_after_take"] = False
+    state = play_durak(state, ["act", "take"])
+    assert state["phase"] == "attack"
+    assert state["taking"] is False
+    assert "8H" in state["hands"]["p1"]
+
+
+def test_durak_lets_players_add_cards_after_a_take() -> None:
+    state = play_durak(_durak_taking(), ["act", "take"])
+    assert state["phase"] == "throw"
+    assert state["taking"] is True
+    assert state["to_move"] == "p0"
+    assert state["table"] == [{"attack": "8H", "defense": ""}]
+    assert "8H" not in state["hands"]["p1"]
+    paths = [item["path"] for item in legal_durak(state)]
+    assert ["play", "8D"] in paths
+    assert ["play", "9C"] not in paths
+    assert ["act", "pass"] in paths
+    assert legal_durak(state)[-1]["notation"] == "Хватит"
+    state = play_durak(state, ["play", "8D"])
+    assert state["to_move"] == "p0"
+    assert state["taking"] is True
+    state = play_durak(state, ["play", "8C"])
+    assert state["to_move"] == "p2"
+    state = play_durak(state, ["play", "8S"])
+    assert state["phase"] == "attack"
+    assert state["taking"] is False
+    assert state["last_bout"] == {"kind": "take", "seat": "p1"}
+    assert state["hands"]["p1"] == ["6C", "8H", "8D", "8C", "8S"]
+    assert "KH" in state["hands"]["p0"]
+
+
+def test_durak_take_stops_at_six_foreign_cards_of_every_rank() -> None:
+    state = _durak_taking()
+    state["deck"] = []
+    state["hands"] = {
+        "p0": ["9C", "7C", "6D", "TS", "JC", "QC"],
+        "p1": ["KH"],
+        "p2": ["9D", "QD"],
+    }
+    state["table"] = [
+        {"attack": "9S", "defense": "QH"},
+        {"attack": "7S", "defense": ""},
+    ]
+    state = play_durak(state, ["act", "take"])
+    assert state["to_move"] == "p0"
+    offered = {item["path"][1] for item in legal_durak(state) if item["path"][0] == "play"}
+    assert offered == {"9C", "7C", "QC"}
+    state = play_durak(state, ["play", "9C"])
+    state = play_durak(state, ["play", "7C"])
+    state = play_durak(state, ["play", "QC"])
+    assert state["to_move"] == "p2"
+    assert len(state["table"]) == 5
+    state = play_durak(state, ["play", "9D"])
+    assert state["phase"] == "attack"
+    assert state["taking"] is False
+    assert len(state["last_table"]) == 6
+    assert "QD" in state["hands"]["p2"]
+    assert state["hands"]["p1"].count("QH") == 1
+    assert sum(1 for card in state["hands"]["p1"] if card not in {"KH", "QH"}) == 6
+
+
+def test_durak_take_asks_the_first_attacker_before_the_others() -> None:
+    state = _durak_taking("perevodnoy")
+    state["attacker"] = "p1"
+    state["opener"] = "p0"
+    state["defender"] = "p2"
+    state["to_move"] = "p2"
+    state["hands"] = {"p0": ["8D"], "p1": ["8C", "6D"], "p2": ["6C"]}
+    state = play_durak(state, ["act", "take"])
+    assert state["to_move"] == "p0"
+    state = play_durak(state, ["act", "pass"])
+    assert state["to_move"] == "p1"
+    assert ["play", "8C"] in [item["path"] for item in legal_durak(state)]
+    state = play_durak(state, ["act", "pass"])
+    assert state["phase"] == "attack"
+    assert state["hands"]["p2"] == ["6C", "8H"]
+
+
+def test_perevodnoy_adds_only_the_attacker_until_someone_takes() -> None:
+    state = _durak_taking("perevodnoy")
+    state["hands"] = {"p0": ["8D", "8C"], "p1": ["9D", "6C"], "p2": ["8S"]}
+    state["table"] = []
+    state["phase"] = "attack"
+    state["to_move"] = "p0"
+    state["deck"] = []
+    state = play_durak(state, ["play", "8D"])
+    state = play_durak(state, ["play", "9D"])
+    assert state["phase"] == "throw"
+    assert state["taking"] is False
+    assert state["to_move"] == "p0"
+    state = play_durak(state, ["act", "pass"])
+    assert state["phase"] == "attack"
+    assert state["last_bout"]["kind"] == "bito"
+    assert "8S" in state["hands"]["p2"]
 
 
 def test_durak_shows_who_finished_the_bout() -> None:

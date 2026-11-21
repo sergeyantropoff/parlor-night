@@ -18,7 +18,7 @@ class ErrorResponse(BaseModel):
 
 
 class CreateGameBody(BaseModel):
-    game_type: Literal["chess", "checkers", "go", "poker", "uno", "durak", "blackjack", "preferans"]
+    game_type: Literal["chess", "checkers", "go", "poker", "uno", "durak", "blackjack", "preferans", "domino"]
     board_size: int | None = Field(default=None, ge=9, le=19)
     durak_kind: Literal["podkidnoy", "perevodnoy"] | None = None
     pool: int | None = Field(default=None, ge=6, le=20)
@@ -73,7 +73,7 @@ class InviteBody(BaseModel):
 class SettingsBody(BaseModel):
     theme: Literal["system", "light", "dark"]
     board_style: Literal["classic", "contrast"]
-    default_game: Literal["chess", "checkers", "go", "uno", "poker", "durak", "blackjack", "preferans"]
+    default_game: Literal["chess", "checkers", "go", "uno", "poker", "durak", "blackjack", "preferans", "domino"]
     default_side: Literal["white", "black"]
     chess_depth: int = Field(default=12, ge=1, le=30)
     chess_time_ms: int = Field(default=1000, ge=100, le=10000)

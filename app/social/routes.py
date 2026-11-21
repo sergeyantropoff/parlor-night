@@ -32,6 +32,7 @@ _SEEK_SEATS = {
     "durak": (2, 6),
     "blackjack": (2, 6),
     "preferans": (3, 3),
+    "domino": (2, 4),
 }
 ONLINE_FOR = timedelta(minutes=2)
 _OVERVIEW_GAMES = 8
@@ -556,13 +557,15 @@ _REASONS = {
     "left": "Выход из-за стола",
     "stopped": "Остановлена",
     "empty_hand": "Карты кончились",
+    "empty": "Кости кончились",
+    "blocked": "Рыба",
     "showdown": "Вскрытие",
     "fold": "Пас",
     "split": "Банк пополам",
     "other": "Без указанной причины",
 }
 _LEVELS = ("Новичок", "Любитель", "Опытный", "Сильный", "Мастер")
-_GAME_ORDER = ("chess", "checkers", "go", "uno", "poker", "durak", "blackjack", "preferans")
+_GAME_ORDER = ("chess", "checkers", "go", "domino", "uno", "poker", "durak", "blackjack", "preferans")
 
 
 _RING = 263.89

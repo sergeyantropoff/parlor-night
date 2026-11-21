@@ -43,6 +43,14 @@ _MESSAGES = {
     ("preferans", "score", "draw"): "Пуля закрыта. Расписка ничья.",
     ("preferans", "left", "white_win"): "Соперник вышел из-за стола.",
     ("preferans", "left", "black_win"): "Соперник вышел из-за стола.",
+    ("domino", "empty", "white_win"): "Кости кончились. Победа белых.",
+    ("domino", "empty", "black_win"): "Кости кончились. Победа чёрных.",
+    ("domino", "blocked", "white_win"): "Рыба. У белых меньше очков.",
+    ("domino", "blocked", "black_win"): "Рыба. У чёрных меньше очков.",
+    ("domino", "blocked", "draw"): "Рыба. Одинаковая сумма очков.",
+    ("domino", "left", "white_win"): "Чёрные вышли из-за стола. Победа белых.",
+    ("domino", "left", "black_win"): "Белые вышли из-за стола. Победа чёрных.",
+    ("domino", "left", "draw"): "Игрок вышел из-за стола. Ничья.",
 }
 
 
@@ -70,7 +78,16 @@ def result_tone(result: str | None, seat: str | None) -> str | None:
 def result_message(game_type: str, result: str | None, reason: str | None) -> str | None:
     if result is None:
         return None
-    return _MESSAGES.get(
-        (game_type, reason or "", result),
-        "Партия завершена." if result == "draw" else "Партия завершена победой.",
-    )
+    found = _MESSAGES.get((game_type, reason or "", result))
+    if found:
+        return found
+    if game_type == "domino":
+        if result == "draw":
+            return "Рыба. Одинаковая сумма очков." if reason == "blocked" else "Ничья."
+        if reason == "empty":
+            return "Кости кончились."
+        if reason == "blocked":
+            return "Рыба. Победа у того, у кого меньше очков."
+        if reason == "left":
+            return "Соперник вышел из-за стола."
+    return "Партия завершена." if result == "draw" else "Партия завершена победой."

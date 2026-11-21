@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.cards import blackjack, durak, poker, preferans, uno
+from app.cards import blackjack, domino, durak, poker, preferans, uno
 
-CARD_GAMES = frozenset({"poker", "uno", "durak", "blackjack", "preferans"})
+CARD_GAMES = frozenset({"poker", "uno", "durak", "blackjack", "preferans", "domino"})
 ADULT_GAMES = frozenset({"poker", "blackjack", "preferans"})
 CHIP_GAMES = frozenset({"poker", "blackjack", "preferans"})
 
@@ -16,6 +16,7 @@ _MODULES = {
     "durak": durak,
     "blackjack": blackjack,
     "preferans": preferans,
+    "domino": domino,
 }
 
 

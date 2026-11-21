@@ -11,7 +11,7 @@ from starlette.requests import Request
 
 from app.errors import AppError
 
-_GAMES = ("chess", "checkers", "go", "uno", "poker", "durak", "blackjack", "preferans")
+_GAMES = ("chess", "checkers", "go", "uno", "poker", "durak", "blackjack", "preferans", "domino")
 _MODES = ("closed", "referral", "open")
 _REFERRAL = re.compile(r"^[a-z0-9]{6,12}$")
 
@@ -37,6 +37,7 @@ class SitePolicy:
     durak: bool
     blackjack: bool
     preferans: bool
+    domino: bool
     notice: str
     maintenance: bool
 
@@ -79,6 +80,7 @@ def defaults() -> SitePolicy:
         durak=True,
         blackjack=True,
         preferans=True,
+        domino=True,
         notice="",
         maintenance=False,
     )
@@ -154,6 +156,7 @@ def normalize(data: dict[str, object], *, local: bool) -> SitePolicy:
         durak=chosen["durak"],
         blackjack=chosen["blackjack"],
         preferans=chosen["preferans"],
+        domino=chosen["domino"],
         notice=notice,
         maintenance=_flag(data.get("maintenance")),
     )
@@ -180,6 +183,7 @@ def from_row(row: asyncpg.Record) -> SitePolicy:
         durak=bool(row["durak_open"]),
         blackjack=bool(row["blackjack_open"]),
         preferans=bool(row["preferans_open"]),
+        domino=bool(row["domino_open"]),
         notice=str(row["notice"] or ""),
         maintenance=bool(row["maintenance"]),
     )
@@ -227,6 +231,7 @@ async def save_policy(conn: asyncpg.Connection, policy: SitePolicy) -> None:
             maintenance = $20,
             registration_mode = $21,
             go_open = $22,
+            domino_open = $23,
             updated_at = now()
         WHERE id = TRUE
         """,
@@ -252,6 +257,7 @@ async def save_policy(conn: asyncpg.Connection, policy: SitePolicy) -> None:
         policy.maintenance,
         policy.registration_mode,
         policy.go,
+        policy.domino,
     )
 
 

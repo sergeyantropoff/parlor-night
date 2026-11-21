@@ -2366,7 +2366,8 @@ html[data-theme="dark"] .pulya td.is-minus { color: #e0a090; }
 }
 #card-table .table-row { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: max(0.35rem, calc(var(--u) * 0.7)) max(0.2rem, calc(var(--u) * 0.4)); max-width: 78%; }
 #card-table .throw-stack { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; max-width: 86%; }
-#card-table .throw-tools { display: flex; align-items: center; justify-content: center; gap: 0.55rem; max-width: 100%; }
+#card-table .throw-tools { display: flex; align-items: center; justify-content: center; max-width: 100%; }
+#card-table .throw-stack > .clear-table { margin-top: 0.15rem; }
 #card-table .clear-table {
   position: relative;
   z-index: 6;
@@ -4957,3 +4958,61 @@ button.toast-x svg { width: 14px; height: 14px; }
   from { transform: scaleX(1); }
   to { transform: scaleX(0); }
 }
+.play-domino .seat-line { display: none; }
+#card-table.is-domino .table-layer { --bone: clamp(28px, 6.5cqw, 48px); }
+#card-table.is-domino .domino-board {
+  position: absolute;
+  inset: 6% 4% 5%;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.domino-yard, .domino-empty {
+  margin: 0;
+  color: #f4efe5;
+  text-shadow: 0 1px 2px #1a1612aa;
+}
+.domino-line, .domino-hand, .domino-people, .domino-dock {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+.domino-people { gap: 12px; color: #f4efe5; }
+.domino-people .is-turn { color: #f3d48a; }
+.domino-dock:empty { display: none; }
+.bone {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  flex: 0 0 auto;
+}
+button.bone { cursor: pointer; }
+button.bone:disabled, .bone:not(button) { cursor: default; }
+.bone.is-up { width: var(--bone); height: calc(var(--bone) * 2); }
+.bone.is-flat { width: calc(var(--bone) * 2); height: var(--bone); }
+.bone img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--bone);
+  height: calc(var(--bone) * 2);
+  max-width: none;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.bone.is-flat img { transform: translate(-50%, -50%) rotate(90deg); }
+.bone.is-flat.is-flip img { transform: translate(-50%, -50%) rotate(-90deg); }
+.bone.is-on { filter: drop-shadow(0 0 0 #f3d48a); outline: 2px solid #f3d48a; outline-offset: 3px; border-radius: 10px; }
+.game-cards .is-soon, .setup-games .is-soon { cursor: default; }
+.soon-parlor { margin: 1.4rem 0 0; }
+.soon-parlor img { width: 100%; height: auto; border-radius: 18px; }
+.soon-parlor figcaption { margin-top: 0.6rem; color: var(--muted, #6d675e); }

@@ -38,7 +38,7 @@ _NEWS_DONE = {
 }
 _BODY_LIMIT = 20000
 _NEWS_PAGE = 4
-_COVERS = {"light-theme", "uno-evening", "welcome", "card-games", "go", "beta"}
+_COVERS = {"light-theme", "uno-evening", "welcome", "card-games", "go", "beta", "domino"}
 
 
 def _admin(request: Request) -> Response | object:

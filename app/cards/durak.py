@@ -77,8 +77,11 @@ def deal(order: list[str] | None = None, variant: str = "podkidnoy", purses: dic
     }
     attacker = _first_attacker(state)
     state["attacker"] = attacker
+    state["opener"] = attacker
     state["defender"] = _next_seat(state, attacker)
     state["to_move"] = attacker
+    state["taking"] = False
+    state["add_after_take"] = True
     return state
 
 
@@ -144,19 +147,24 @@ def _unbeaten(state: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _room(state: dict[str, Any]) -> bool:
+    if len(state.get("table") or []) >= 6:
+        return False
+    if state.get("taking"):
+        return bool(state.get("table"))
     defender = state.get("defender")
     if not defender:
         return False
     hand = len(state["hands"].get(defender, []))
-    unbeaten = len(_unbeaten(state))
-    return unbeaten < hand and len(state["table"]) < 6
+    return len(_unbeaten(state)) < hand
 
 
 def _throwers(state: dict[str, Any]) -> list[str]:
     defender = state["defender"]
-    if state["variant"] == "perevodnoy":
-        return [state["attacker"]] if state["attacker"] != defender else []
-    return [seat for seat in state["order"] if seat != defender and seat not in set(state.get("out") or [])]
+    gone = set(state.get("out") or [])
+    if state.get("taking") or state["variant"] != "perevodnoy":
+        return [seat for seat in state["order"] if seat != defender and seat not in gone]
+    attacker = state["attacker"]
+    return [attacker] if attacker != defender else []
 
 
 def legal(state: dict[str, Any]) -> list[dict[str, Any]]:
@@ -191,7 +199,8 @@ def legal(state: dict[str, Any]) -> list[dict[str, Any]]:
         for card in dict.fromkeys(hand):
             if card[0] in ranks:
                 actions.append({"path": ["play", card], "notation": f"Подкидываю {label(card)}", "promotion": None})
-    actions.append({"path": ["act", "pass"], "notation": "Бито", "promotion": None})
+    done = "Хватит" if state.get("taking") else "Бито"
+    actions.append({"path": ["act", "pass"], "notation": done, "promotion": None})
     return actions
 
 
@@ -225,6 +234,7 @@ def apply(state: dict[str, Any], path: list[str]) -> dict[str, Any]:
     card = path[1]
     nxt["hands"][seat].remove(card)
     if nxt["phase"] == "attack":
+        nxt["opener"] = nxt.get("opener") or seat
         nxt["table"] = [{"attack": card, "defense": ""}]
         nxt["phase"] = "defend"
         nxt["to_move"] = nxt["defender"]
@@ -232,6 +242,9 @@ def apply(state: dict[str, Any], path: list[str]) -> dict[str, Any]:
         return nxt
     if nxt["phase"] == "throw":
         nxt["table"].append({"attack": card, "defense": ""})
+        if nxt.get("taking"):
+            _after_take_throw(nxt, seat)
+            return nxt
         nxt["phase"] = "defend"
         nxt["to_move"] = nxt["defender"]
         nxt["passed"] = []
@@ -267,32 +280,85 @@ def _someone_can_throw(state: dict[str, Any]) -> bool:
     return False
 
 
-def _first_thrower(state: dict[str, Any]) -> str:
-    ranks = _ranks_on_table(state)
-    start = state["attacker"]
+def _throw_ring(state: dict[str, Any]) -> list[str]:
     order = _throwers(state)
+    start = (state.get("opener") or state.get("attacker")) if state.get("taking") else state.get("attacker")
     if start in order:
-        ordered = order[order.index(start) :] + order[: order.index(start)]
-    else:
-        ordered = order
+        index = order.index(start)
+        return order[index:] + order[:index]
+    return order
+
+
+def _seat_can_throw(state: dict[str, Any], seat: str) -> bool:
+    if seat not in _throwers(state) or not _room(state):
+        return False
+    ranks = _ranks_on_table(state)
+    return any(card[0] in ranks for card in state["hands"].get(seat, []))
+
+
+def _first_thrower(state: dict[str, Any]) -> str:
+    ordered = _throw_ring(state)
     for seat in ordered:
-        if any(card[0] in ranks for card in state["hands"].get(seat, [])):
+        if _seat_can_throw(state, seat):
             return seat
-    return ordered[0]
+    return ordered[0] if ordered else str(state.get("attacker") or state["order"][0])
+
+
+def _finish_throw(state: dict[str, Any]) -> None:
+    if state.get("taking"):
+        _collect_take(state)
+        return
+    _bito(state)
+
+
+def _offer_next_throw(state: dict[str, Any], after: str) -> None:
+    ring = _throw_ring(state)
+    if after in ring:
+        start = ring.index(after)
+        ring = ring[start + 1 :] + ring[:start]
+    passed = list(state.get("passed") or [])
+    for seat in ring:
+        if seat in passed:
+            continue
+        if _seat_can_throw(state, seat):
+            state["passed"] = passed
+            state["to_move"] = seat
+            state["phase"] = "throw"
+            return
+        passed.append(seat)
+    state["passed"] = passed
+    _finish_throw(state)
+
+
+def _after_take_throw(state: dict[str, Any], seat: str) -> None:
+    state["phase"] = "throw"
+    state["taking"] = True
+    if len(state["table"]) >= 6 or not _someone_can_throw(state):
+        _collect_take(state)
+        return
+    if _seat_can_throw(state, seat):
+        state["to_move"] = seat
+        return
+    _offer_next_throw(state, seat)
 
 
 def _pass(state: dict[str, Any]) -> None:
     passed = list(state.get("passed") or [])
-    passed.append(state["to_move"])
-    state["passed"] = passed
-    ranks = _ranks_on_table(state)
-    for seat in _throwers(state):
-        if seat in passed:
-            continue
-        if any(card[0] in ranks for card in state["hands"].get(seat, [])):
-            state["to_move"] = seat
-            return
+    seat = state["to_move"]
+    if seat not in passed:
         passed.append(seat)
+    state["passed"] = passed
+    if state.get("taking"):
+        _offer_next_throw(state, seat)
+        return
+    ranks = _ranks_on_table(state)
+    for nxt in _throwers(state):
+        if nxt in passed:
+            continue
+        if any(card[0] in ranks for card in state["hands"].get(nxt, [])):
+            state["to_move"] = nxt
+            return
+        passed.append(nxt)
         state["passed"] = passed
     _bito(state)
 
@@ -304,6 +370,17 @@ def _keep_table(state: dict[str, Any]) -> None:
 
 
 def _take(state: dict[str, Any]) -> None:
+    state["passed"] = []
+    if state.get("add_after_take") and len(state["table"]) < 6:
+        state["taking"] = True
+        if _someone_can_throw(state):
+            state["phase"] = "throw"
+            state["to_move"] = _first_thrower(state)
+            return
+    _collect_take(state)
+
+
+def _collect_take(state: dict[str, Any]) -> None:
     defender = state["defender"]
     taken: list[str] = []
     _keep_table(state)
@@ -314,6 +391,8 @@ def _take(state: dict[str, Any]) -> None:
     state["hands"][defender].extend(taken)
     state["last_bout"] = {"kind": "take", "seat": str(defender)}
     state["table"] = []
+    state["taking"] = False
+    state["passed"] = []
     _refill(state, defender_last=True)
     if state.get("result"):
         return
@@ -345,11 +424,13 @@ def _open_attack(state: dict[str, Any], attacker: str) -> None:
         _finish(state)
         return
     state["attacker"] = attacker
+    state["opener"] = attacker
     state["defender"] = defender
     state["to_move"] = attacker
     state["phase"] = "attack"
     state["passed"] = []
     state["table"] = []
+    state["taking"] = False
 
 
 def _refill(state: dict[str, Any], *, defender_last: bool) -> None:
@@ -435,6 +516,13 @@ def suggest(state: dict[str, Any], level: int = 3) -> list[str] | None:
             return list(transfers[0]["path"])
         return ["act", "take"]
     adds = [item for item in actions if item["path"][0] == "play"]
+    if state.get("taking"):
+        plain = [item for item in adds if item["path"][1][1] != trump]
+        pool = plain or (adds if level >= 4 else [])
+        if pool:
+            pool.sort(key=lambda item: _rank(item["path"][1]))
+            return list(pool[0]["path"])
+        return ["act", "pass"]
     if adds and (level >= 3 or len(state["table"]) < 3):
         adds.sort(key=lambda item: _rank(item["path"][1]) + (20 if item["path"][1][1] == trump else 0))
         if adds[0]["path"][1][1] != trump or level >= 5:
@@ -513,6 +601,8 @@ def view(state: dict[str, Any], seat: str | None) -> dict[str, Any]:
         message = f"{title}. Козырь — {SUIT_NAME.get(state.get('trump', ''), '')}. Ходите картой."
     elif phase == "defend":
         message = f"{title}. Побейте карту, переведите или заберите."
+    elif state.get("taking"):
+        message = f"{title}. Карты берут. Подкиньте достоинство со стола или скажите «хватит»."
     else:
         message = f"{title}. Подкиньте достоинство со стола или скажите «бито»."
     roster = []

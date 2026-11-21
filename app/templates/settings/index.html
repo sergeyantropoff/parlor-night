@@ -228,6 +228,7 @@
           ('go', 'Го', 'С человеком или с компьютером'),
           ('uno', 'Уно', 'Цвета, цифры и дикие карты'),
           ('durak', 'Дурак', 'Подкидной или переводной'),
+          ('domino', 'Домино', 'Кости в линию, от двух до четырёх'),
         ) %}
         {% if not site or site.allows(key) %}
         {% set chosen = prefs.default_game == key or (not kept_adult and prefs.default_game in ('poker', 'blackjack', 'preferans') and not ns.picked) %}

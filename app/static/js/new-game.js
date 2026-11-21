@@ -62,11 +62,12 @@ if (form) {
   function sync(openLesson, announceStake) {
     const game = checked("game_type") || form.querySelector('input[name="game_type"]');
     const gameValue = game?.value || "chess";
-    const cards = ["uno", "poker", "durak", "blackjack", "preferans"].includes(gameValue);
+    const cards = ["uno", "poker", "durak", "blackjack", "preferans", "domino"].includes(gameValue);
     const poker = gameValue === "poker";
     const durak = gameValue === "durak";
     const blackjack = gameValue === "blackjack";
     const preferans = gameValue === "preferans";
+    const domino = gameValue === "domino";
     const grown = poker || blackjack || preferans;
     const checkers = gameValue === "checkers";
     const go = gameValue === "go";
@@ -93,7 +94,7 @@ if (form) {
     const computerInput = form.querySelector("#computers");
     const openInput = form.querySelector("#open-seats");
     const seatFloor = preferans ? 2 : blackjack ? 0 : 1;
-    const seatCap = preferans ? 2 : 5;
+    const seatCap = preferans ? 2 : domino ? 3 : 5;
     if (cards && computerInput && openInput && form.dataset.seatGame !== gameValue) {
       form.dataset.seatGame = gameValue;
       if (preferans) {
@@ -121,7 +122,21 @@ if (form) {
       const picked = form.querySelector(`input[name="mode"][value="${wanted}"]`);
       if (picked) picked.checked = true;
       const total = computers + openSeats;
-      const room = preferans ? "В преферансе трое: вы и ещё двое." : blackjack ? "Дилер играет за дом. Другие места — игроки за тем же столом." : `Свободных для людей — не больше ${openMax}: вместе с вами стол на шесть.`;
+      const room = preferans
+        ? "В преферансе трое: вы и ещё двое."
+        : blackjack
+          ? "Дилер играет за дом. Другие места — игроки за тем же столом."
+          : domino
+            ? "В домино от двух до четырёх: вы и ещё до трёх мест."
+            : `Свободных для людей — не больше ${openMax}: вместе с вами стол на шесть.`;
+      const seatRoom = byId("#seat-room");
+      if (seatRoom) {
+        seatRoom.textContent = domino
+          ? "Вы уже сидите. Вместе с вами за столом четыре места."
+          : preferans
+            ? "Вы уже сидите. В преферансе за столом трое."
+            : "Вы уже сидите. Вместе с вами за столом шесть мест: компьютеры и свободные стулья делят оставшиеся пять.";
+      }
       const limit = room;
       if (seatNote) {
         const missing = seatFloor - total;

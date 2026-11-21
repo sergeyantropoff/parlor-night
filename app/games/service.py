@@ -227,6 +227,7 @@ class GameService:
             "uno": "classic",
             "blackjack": "classic",
             "preferans": "classic",
+            "domino": "draw",
         }
         if data["game_type"] == "durak":
             variant = self._salon_variant(data)
@@ -838,6 +839,7 @@ class GameService:
             "preferans": str(row["variant"]) if str(row["variant"]).startswith("pool-") else "pool-12",
             "durak": str(row["variant"]) if row["game_type"] == "durak" else "podkidnoy",
             "go": str(row["variant"]),
+            "domino": "draw",
         }
         return await games_repo.insert_game(
             conn,
@@ -1425,6 +1427,9 @@ class GameService:
             elif data["game_type"] == "blackjack":
                 if computers < 0 or opens < 0 or computers > 5 or opens > 5 or total > 5:
                     raise AppError(422, "bad_seats", "Кроме вас за блэкджеком не больше пяти мест.")
+            elif data["game_type"] == "domino":
+                if computers < 0 or opens < 0 or computers > 3 or opens > 3 or not 1 <= total <= 3:
+                    raise AppError(422, "bad_seats", "В домино за столом от двух до четырёх.")
             elif computers < 0 or opens < 0 or computers > 5 or opens > 5 or not 1 <= total <= 5:
                 raise AppError(
                     422,
@@ -2373,6 +2378,7 @@ def _summarize(rows: list[Any], user_id: uuid.UUID) -> dict[str, dict[str, int]]
         "durak": {"total": 0, "active": 0, "wins": 0, "losses": 0, "draws": 0},
         "blackjack": {"total": 0, "active": 0, "wins": 0, "losses": 0, "draws": 0},
         "preferans": {"total": 0, "active": 0, "wins": 0, "losses": 0, "draws": 0},
+        "domino": {"total": 0, "active": 0, "wins": 0, "losses": 0, "draws": 0},
     }
     for row in rows:
         bucket = summary.setdefault(

@@ -979,15 +979,14 @@ def view(state: dict[str, Any], seat: str | None) -> dict[str, Any]:
     live = list(state.get("trick") or [])
     held = False
     board = live
-    show_last = phase == "play" or (phase == "bid" and not state.get("contract") and not scored)
-    if show_last and not live:
-        board = [str(card) for card in (state.get("last_trick") or [])]
-        held = bool(board)
     order = [str(item) for item in state.get("order") or []]
     bidding = state.get("bidding") or {}
     fresh = phase == "bid" and not state.get("contract") and all(
         str(bidding.get(seat) or "open") == "open" for seat in order
     )
+    if not live and (phase in {"play", "done"} or fresh):
+        board = [str(card) for card in (state.get("last_trick") or [])]
+        held = bool(board)
     writes = state.get("last_write") if fresh or phase == "done" else {}
     return {
         "hand": hand,

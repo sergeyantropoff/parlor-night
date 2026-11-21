@@ -572,7 +572,7 @@ def _project_cards(
             rival = ordered[0]
         elif ordered:
             rival = ", ".join(ordered)
-    if not public_seats and str(game["game_type"]) in {"durak", "blackjack", "preferans"}:
+    if not public_seats and str(game["game_type"]) in {"durak", "blackjack", "preferans", "domino"}:
         public_seats = _salon_faces(
             card,
             mode=mode,
@@ -641,6 +641,7 @@ def _project_cards(
         "top": card.get("top") or "",
         "color": card.get("color"),
         "deck": int(card.get("deck") or 0),
+        "chain": card.get("chain") or [],
         "shown": card.get("shown") or {},
         "pairs": card.get("pairs") or [],
         "trump": card.get("trump") or "",
@@ -662,7 +663,7 @@ def _project_cards(
         "note_tone": str(card.get("note_tone") or ""),
         "seats": public_seats
         if len(public_seats) > 2
-        or (str(game["game_type"]) in {"uno", "durak", "blackjack", "preferans"} and len(public_seats) >= 1)
+        or (str(game["game_type"]) in {"uno", "durak", "blackjack", "preferans", "domino"} and len(public_seats) >= 1)
         else [],
         "marks": marks,
         "said": [str(item) for item in (card.get("said") or [])],
@@ -927,7 +928,7 @@ def _parlor_summary(
         line = f"Дурак — {loser_name}."
     elif winner_name and kind != "durak":
         line = line or f"Победитель — {winner_name}."
-    titles = {"durak": "Дурак", "blackjack": "Блэкджек", "preferans": "Преферанс"}
+    titles = {"durak": "Дурак", "blackjack": "Блэкджек", "preferans": "Преферанс", "domino": "Домино"}
     return {
         "kind": "parlor",
         "game": kind,
@@ -978,8 +979,9 @@ def _halted_card_summary(
         )
     counts = report.get("counts") if isinstance(report, dict) and isinstance(report.get("counts"), dict) else {}
     pot = int(report.get("pot") or 0) if isinstance(report, dict) else 0
+    parlor = kind in {"durak", "blackjack", "preferans", "domino"}
     return {
-        "kind": "parlor" if kind in {"durak", "blackjack", "preferans"} else ("uno" if kind == "uno" else "poker"),
+        "kind": "parlor" if parlor else ("uno" if kind == "uno" else "poker"),
         "winner": "",
         "winner_name": "",
         "winner_label": "",

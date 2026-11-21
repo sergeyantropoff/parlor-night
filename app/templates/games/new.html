@@ -12,8 +12,9 @@
 {% set durak_on = not site or site.allows('durak') %}
 {% set blackjack_on = not site or site.allows('blackjack') %}
 {% set preferans_on = not site or site.allows('preferans') %}
-{% set cards = game in ['uno', 'poker', 'durak', 'blackjack', 'preferans'] %}
-{% set titles = {'chess': 'Шахматы', 'checkers': 'Русские шашки', 'go': 'Го', 'uno': 'Уно', 'poker': 'Покер', 'durak': 'Дурак', 'blackjack': 'Блэкджек', 'preferans': 'Преферанс'} %}
+{% set domino_on = not site or site.allows('domino') %}
+{% set cards = game in ['uno', 'poker', 'durak', 'blackjack', 'preferans', 'domino'] %}
+{% set titles = {'chess': 'Шахматы', 'checkers': 'Русские шашки', 'go': 'Го', 'uno': 'Уно', 'poker': 'Покер', 'durak': 'Дурак', 'blackjack': 'Блэкджек', 'preferans': 'Преферанс', 'domino': 'Домино'} %}
 <section class="page">
   {% if not game %}
   <p class="lede">Выберите игру.</p>
@@ -119,6 +120,27 @@
         </span>
       </a>
       {% endif %}
+      {% if domino_on %}
+      <a class="choice pick" href="/games/new/domino">
+        <span class="shot">
+          <img class="theme-light" src="/static/parlor/light/game-domino.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
+          <img class="theme-dark" src="/static/parlor/dark/game-domino.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
+        </span>
+        <span class="shot-body">
+          <span><strong>Домино</strong><small>Кости в линию, от двух до четырёх</small></span>
+          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
+        </span>
+      </a>
+      {% endif %}
+      <article class="choice is-soon">
+        <span class="shot">
+          <img class="theme-light" src="/static/parlor/light/soon-backgammon.webp?v={{ asset_version }}" width="1448" height="1086" alt="Нарды скоро появятся в гостиной" />
+          <img class="theme-dark" src="/static/parlor/dark/soon-backgammon.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
+        </span>
+        <span class="shot-body">
+          <span><strong>Нарды</strong><small>Скоро в гостиной</small></span>
+        </span>
+      </article>
     </div>
   </div>
   {% else %}
@@ -267,7 +289,7 @@
       </section>
       <section class="panel" id="card-seats" {% if not cards %}hidden="hidden"{% endif %}>
         <h2>Места за столом</h2>
-        <p class="quiet">Вы уже сидите. Вместе с вами за столом шесть мест: компьютеры и свободные стулья делят оставшиеся пять.</p>
+        <p class="quiet" id="seat-room">Вы уже сидите. Вместе с вами за столом шесть мест: компьютеры и свободные стулья делят оставшиеся пять.</p>
         <div class="seat-picks">
           <label>Компьютеры
             <input id="computers" name="computers" type="number" min="0" max="5" value="1" inputmode="numeric" />
