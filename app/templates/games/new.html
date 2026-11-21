@@ -57,6 +57,27 @@
         </span>
       </a>
       {% endif %}
+      {% if domino_on %}
+      <a class="choice pick" href="/games/new/domino">
+        <span class="shot">
+          <img class="theme-light" src="/static/parlor/light/game-domino.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
+          <img class="theme-dark" src="/static/parlor/dark/game-domino.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
+        </span>
+        <span class="shot-body">
+          <span><strong>Домино</strong><small>Кости в линию, от двух до четырёх</small></span>
+          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
+        </span>
+      </a>
+      {% endif %}
+      <article class="choice is-soon">
+        <span class="shot">
+          <img class="theme-light" src="/static/parlor/light/soon-backgammon.webp?v={{ asset_version }}" width="1448" height="1086" alt="Нарды скоро появятся в гостиной" />
+          <img class="theme-dark" src="/static/parlor/dark/soon-backgammon.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
+        </span>
+        <span class="shot-body">
+          <span><strong>Нарды</strong><small>Скоро в гостиной</small></span>
+        </span>
+      </article>
       {% if uno_on %}
       <a class="choice pick" href="/games/new/uno">
         <span class="shot">
@@ -120,27 +141,6 @@
         </span>
       </a>
       {% endif %}
-      {% if domino_on %}
-      <a class="choice pick" href="/games/new/domino">
-        <span class="shot">
-          <img class="theme-light" src="/static/parlor/light/game-domino.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
-          <img class="theme-dark" src="/static/parlor/dark/game-domino.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
-        </span>
-        <span class="shot-body">
-          <span><strong>Домино</strong><small>Кости в линию, от двух до четырёх</small></span>
-          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
-        </span>
-      </a>
-      {% endif %}
-      <article class="choice is-soon">
-        <span class="shot">
-          <img class="theme-light" src="/static/parlor/light/soon-backgammon.webp?v={{ asset_version }}" width="1448" height="1086" alt="Нарды скоро появятся в гостиной" />
-          <img class="theme-dark" src="/static/parlor/dark/soon-backgammon.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
-        </span>
-        <span class="shot-body">
-          <span><strong>Нарды</strong><small>Скоро в гостиной</small></span>
-        </span>
-      </article>
     </div>
   </div>
   {% else %}

@@ -482,6 +482,16 @@ function summaryCard(code) {
   return img;
 }
 
+function summaryPiece(code) {
+  if (current.game_type === "domino") {
+    const img = document.createElement("img");
+    img.alt = String(code).replace("-", "–");
+    img.src = asset(`/static/images/dominoes/${code}.webp`);
+    return img;
+  }
+  return summaryCard(code);
+}
+
 function fillSummary(dialog) {
   const data = current.summary || {};
   dialog.classList.toggle("is-board", data.kind === "board");
@@ -681,7 +691,7 @@ function fillParlorSummary(dialog, data) {
   if (line) line.textContent = data.headline ? (data.detail || "") : (data.line || "");
   if (board) {
     board.replaceChildren();
-    for (const card of data.board || []) board.append(summaryCard(card));
+    for (const card of data.board || []) board.append(summaryPiece(card));
     board.hidden = !(data.board || []).length;
   }
   if (stats) {
@@ -715,7 +725,7 @@ function fillParlorSummary(dialog, data) {
   who.append(playerFace(seat), id);
       const cards = document.createElement("div");
       cards.className = "summary-cards";
-      for (const card of seat.cards || []) cards.append(summaryCard(card));
+      for (const card of seat.cards || []) cards.append(summaryPiece(card));
       item.append(who, cards);
       list.append(item);
     }
@@ -2313,12 +2323,47 @@ function salonDock(discardMoves, bidMoves, selected) {
   return dock;
 }
 
+function bonesWord(count) {
+  const tens = count % 100;
+  const ones = count % 10;
+  if (ones === 1 && tens !== 11) return "кость";
+  if (ones >= 2 && ones <= 4 && (tens < 12 || tens > 14)) return "кости";
+  return "костей";
+}
+
+function dominoPips(tile) {
+  const [hi, lo] = String(tile).split("-").map(Number);
+  return { hi, lo };
+}
+
+function chainMouth(chain) {
+  if (!chain.length) return null;
+  const pip = (item, side) => {
+    const { hi, lo } = dominoPips(item.tile);
+    if (item.spin || hi === lo) return hi;
+    if (side === "left") return item.hi_left ? hi : lo;
+    return item.hi_left ? lo : hi;
+  };
+  return { L: pip(chain[0], "left"), R: pip(chain[chain.length - 1], "right") };
+}
+
+function dominoPose(tile, end, chain) {
+  const { hi, lo } = dominoPips(tile);
+  if (hi === lo) return { spin: true, hiLeft: false };
+  const mouth = chainMouth(chain);
+  const touch = mouth ? mouth[end] : hi;
+  const highTouches = hi === touch;
+  if (end === "L") return { spin: false, hiLeft: !highTouches };
+  return { spin: false, hiLeft: highTouches };
+}
+
 function dominoBone(tile, options) {
   const node = document.createElement(options.playable ? "button" : "span");
   node.className = "bone";
   if (options.playable) node.type = "button";
+  if (tile) node.dataset.bone = String(tile);
   const img = document.createElement("img");
-  img.alt = String(tile).replace("-", "–");
+  img.alt = options.back ? "Кость рубашкой" : String(tile).replace("-", "–");
   img.draggable = false;
   img.src = asset(`/static/images/dominoes/${options.back ? "back" : tile}.webp`);
   node.append(img);
@@ -2328,10 +2373,253 @@ function dominoBone(tile, options) {
     if (options.hiLeft) node.classList.add("is-flip");
   }
   if (options.picked) node.classList.add("is-on");
+  if (options.playable) node.classList.add("is-live");
+  if (options.ghost) node.classList.add("is-ghost");
   return node;
 }
 
+let dominoSpots = new Map();
+let dominoGhost = null;
+
+function hideDominoGhost() {
+  dominoGhost?.remove();
+  dominoGhost = null;
+}
+
+function showDominoGhost(tile, x, y) {
+  if (!dominoGhost) {
+    dominoGhost = dominoBone(tile, { spin: true, ghost: true });
+    dominoGhost.classList.add("is-float");
+    document.body.append(dominoGhost);
+  }
+  dominoGhost.style.left = `${x}px`;
+  dominoGhost.style.top = `${y}px`;
+}
+
+function rememberDomino() {
+  const next = new Map();
+  for (const node of document.querySelectorAll("#card-table [data-bone]")) {
+    if (node.classList.contains("is-ghost") || next.has(node.dataset.bone)) continue;
+    next.set(node.dataset.bone, node.getBoundingClientRect());
+  }
+  const yard = document.querySelector("#card-table .domino-yard");
+  if (yard) next.set("yard", yard.getBoundingClientRect());
+  dominoSpots = next;
+}
+
+function flyDomino() {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  for (const node of document.querySelectorAll("#card-table [data-bone]")) {
+    if (node.classList.contains("is-ghost")) continue;
+    const next = node.getBoundingClientRect();
+    const prev = dominoSpots.get(node.dataset.bone);
+    const from = prev || (node.closest(".domino-hand") ? dominoSpots.get("yard") : null);
+    if (!from || (Math.abs(from.left - next.left) < 2 && Math.abs(from.top - next.top) < 2)) {
+      if (!from) node.classList.add("is-arrive");
+      continue;
+    }
+    const dx = from.left - next.left;
+    const dy = from.top - next.top;
+    node.style.transition = "none";
+    node.style.transform = `translate(${dx}px, ${dy}px)`;
+    requestAnimationFrame(() => {
+      node.style.transition = "transform 460ms cubic-bezier(.2,.75,.2,1)";
+      node.style.transform = "";
+    });
+  }
+}
+
+function dominoPlate(seat) {
+  const won = current.result === `${seat.key}_win`;
+  const node = document.createElement("div");
+  node.className = "plate";
+  if (seat.turn && current.status === "active") node.classList.add("is-active");
+  if (won) node.classList.add("is-win");
+  const face = plateFace(seat, Boolean(seat.cpu || seat.kind === "computer"));
+  const copy = document.createElement("span");
+  copy.className = "plate-copy";
+  const title = document.createElement("span");
+  title.className = "plate-name";
+  fillPersonName(title, { name: seat.you ? `${seat.name} · вы` : seat.name, login: seat.login });
+  const count = Number(seat.you ? (current.hand || []).length : seat.count || 0);
+  const left = document.createElement("span");
+  left.className = "plate-stack";
+  left.textContent = `${count} ${bonesWord(count)}`;
+  copy.append(title, left);
+  node.append(face, copy);
+  return node;
+}
+
+function dominoFan(count) {
+  const row = document.createElement("div");
+  row.className = "domino-fan";
+  row.setAttribute("aria-hidden", "true");
+  const shown = Math.min(count, 7);
+  const angles = fanAngles(shown);
+  for (let index = 0; index < shown; index += 1) {
+    const back = document.createElement("img");
+    back.alt = "";
+    back.draggable = false;
+    back.src = asset("/static/images/dominoes/back.webp");
+    back.style.setProperty("--angle", `${angles[index]}deg`);
+    back.style.zIndex = String(index + 1);
+    row.append(back);
+  }
+  return row;
+}
+
+function dominoPieces(line) {
+  if (line.classList.contains("is-snake")) return [...line.querySelectorAll(":scope > .domino-row > *")];
+  return [...line.children];
+}
+
+function layoutDominoSnake(line) {
+  const pieces = dominoPieces(line);
+  if (!pieces.length || pieces[0].classList.contains("domino-empty")) return;
+  line.classList.remove("is-snake");
+  line.replaceChildren(...pieces);
+  const layer = line.closest(".table-layer");
+  const limit = Math.max(0, (layer?.clientWidth || line.clientWidth) - 8);
+  if (!limit) return;
+  const rows = [];
+  let row = [];
+  let width = 0;
+  for (const piece of pieces) {
+    const pieceWidth = piece.getBoundingClientRect().width;
+    const next = row.length ? width + 2 + pieceWidth : pieceWidth;
+    if (row.length && next > limit - 1) {
+      rows.push(row);
+      row = [piece];
+      width = pieceWidth;
+    } else {
+      row.push(piece);
+      width = next;
+    }
+  }
+  if (row.length) rows.push(row);
+  if (rows.length < 2) return;
+  line.classList.add("is-snake");
+  line.replaceChildren();
+  rows.forEach((items, index) => {
+    const strip = document.createElement("div");
+    strip.className = index % 2 ? "domino-row is-back" : "domino-row";
+    items.forEach((item) => strip.append(item));
+    line.append(strip);
+  });
+}
+
+function fitDominoLine(line) {
+  layoutDominoSnake(line);
+  const layer = line.closest(".table-layer");
+  const top = layer?.querySelector(".domino-top")?.offsetHeight || 0;
+  const bottom = layer?.querySelector(".domino-bottom")?.offsetHeight || 0;
+  const room = (layer?.clientHeight || 0) - top - bottom - 28;
+  const need = line.scrollHeight;
+  if (room < 80 || need <= room + 6) return;
+  const bone = parseFloat(getComputedStyle(layer).getPropertyValue("--bone")) || 32;
+  const next = Math.max(15, bone * (room / need));
+  if (next >= bone - 0.5) return;
+  layer.style.setProperty("--bone", `${next.toFixed(1)}px`);
+  layoutDominoSnake(line);
+}
+
+function fitDominoHand(hand) {
+  const limit = hand.clientWidth;
+  const need = hand.scrollWidth;
+  if (!limit || need <= limit + 1) return;
+  const bone = parseFloat(getComputedStyle(hand).getPropertyValue("--bone")) || 32;
+  hand.style.setProperty("--bone", `${Math.max(16, (bone * limit) / need).toFixed(1)}px`);
+}
+
+function dominoEnd(move, chain) {
+  const end = move.path[2];
+  const pose = dominoPose(move.path[1], end, chain);
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `domino-end is-${end === "L" ? "left" : "right"}`;
+  button.dataset.end = end;
+  button.setAttribute("aria-label", end === "L" ? "Положить к левому концу" : "Положить к правому концу");
+  button.append(dominoBone(move.path[1], { ...pose, ghost: true }));
+  button.addEventListener("click", () => submit(move));
+  return button;
+}
+
+function bindDominoTile(button, options) {
+  let startX = 0;
+  let startY = 0;
+  let moved = false;
+  let pointer = -1;
+  const clearAim = () => {
+    document.querySelectorAll("#card-table .bone.is-aim").forEach((node) => node.classList.remove("is-aim"));
+  };
+  const aim = (x, y) => {
+    clearAim();
+    if (options.length === 1) return options[0].path[2];
+    const bones = [...document.querySelectorAll("#card-table .domino-line .bone:not(.is-ghost)")];
+    const first = bones[0];
+    const last = bones[bones.length - 1];
+    const dist = (node) => {
+      if (!node) return Infinity;
+      const rect = node.getBoundingClientRect();
+      return Math.hypot(x - (rect.left + rect.width / 2), y - (rect.top + rect.height / 2));
+    };
+    const end = dist(first) <= dist(last) ? "L" : "R";
+    const legal = options.some((move) => move.path[2] === end) ? end : "";
+    (legal === "L" ? first : last)?.classList.toggle("is-aim", Boolean(legal));
+    return legal;
+  };
+  button.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    pointer = event.pointerId;
+    startX = event.clientX;
+    startY = event.clientY;
+    moved = false;
+    button.setPointerCapture(pointer);
+  });
+  button.addEventListener("pointermove", (event) => {
+    if (event.pointerId !== pointer) return;
+    if (!moved && Math.hypot(event.clientX - startX, event.clientY - startY) < 8) return;
+    moved = true;
+    button.dataset.dragged = "1";
+    showDominoGhost(button.dataset.bone, event.clientX, event.clientY);
+    aim(event.clientX, event.clientY);
+  });
+  button.addEventListener("pointerup", (event) => {
+    if (event.pointerId !== pointer) return;
+    pointer = -1;
+    const legal = moved ? aim(event.clientX, event.clientY) : "";
+    hideDominoGhost();
+    clearAim();
+    if (!moved) return;
+    const move = options.find((item) => item.path[2] === legal) || (options.length === 1 ? options[0] : null);
+    if (move) submit(move);
+    else if (options.length > 1) {
+      dominoPick = button.dataset.bone;
+      render();
+    }
+  });
+  button.addEventListener("pointercancel", () => {
+    pointer = -1;
+    hideDominoGhost();
+    clearAim();
+  });
+  button.addEventListener("click", () => {
+    if (button.dataset.dragged === "1") {
+      button.dataset.dragged = "";
+      return;
+    }
+    if (options.length === 1) {
+      submit(options[0]);
+      return;
+    }
+    dominoPick = dominoPick === button.dataset.bone ? "" : button.dataset.bone;
+    render();
+  });
+}
+
 function renderDomino() {
+  rememberDomino();
+  hideDominoGhost();
   const box = document.querySelector("#card-table");
   if (!box) return;
   box.classList.remove("oval");
@@ -2345,63 +2633,93 @@ function renderDomino() {
   cloth.src = asset("/static/images/tables/table-domino.webp");
   layer.append(cloth);
 
-  const board = document.createElement("div");
-  board.className = "domino-board";
-  const yard = document.createElement("p");
-  yard.className = "domino-yard";
-  yard.textContent = `Базар · ${current.deck || 0}`;
+  const seats = dominoSeats(box.dataset.you || "Вы");
+  const you = seats.find((seat) => seat.you) || null;
+  const others = seats.filter((seat) => seat !== you);
+  const top = document.createElement("div");
+  top.className = "domino-top";
+  others.forEach((seat) => {
+    const place = document.createElement("div");
+    place.className = "domino-seat";
+    place.append(dominoPlate(seat));
+    const count = Number(seat.count || 0);
+    if (count > 0) place.append(dominoFan(count));
+    top.append(place);
+  });
+  layer.append(top);
+
+  const chain = current.chain || [];
+  const plays = (current.legal_moves || []).filter((move) => move.path[0] === "play");
+  if (dominoPick && !plays.some((move) => move.path[1] === dominoPick)) dominoPick = "";
+  const chosen = plays.filter((move) => move.path[1] === dominoPick);
+
   const line = document.createElement("div");
   line.className = "domino-line";
   line.setAttribute("aria-label", "Линия");
-  for (const item of current.chain || []) {
-    line.append(dominoBone(item.tile, { spin: item.spin, hiLeft: item.hi_left }));
+  if (chosen.length > 1) {
+    const left = chosen.find((move) => move.path[2] === "L");
+    if (left) line.append(dominoEnd(left, chain));
   }
-  if (!(current.chain || []).length) {
+  for (const item of chain) line.append(dominoBone(item.tile, { spin: item.spin, hiLeft: item.hi_left }));
+  if (!chain.length && chosen.length < 2) {
     const empty = document.createElement("p");
     empty.className = "domino-empty";
-    empty.textContent = "Линия ещё пуста";
+    empty.textContent = current.your_turn ? "Перетащите кость на стол" : "Линия ещё пуста";
     line.append(empty);
   }
+  if (chosen.length > 1) {
+    const right = chosen.find((move) => move.path[2] === "R");
+    if (right) line.append(dominoEnd(right, chain));
+  }
+  layer.append(line);
 
-  const plays = (current.legal_moves || []).filter((move) => move.path[0] === "play");
-  if (dominoPick && !plays.some((move) => move.path[1] === dominoPick)) dominoPick = "";
+  const draw = (current.legal_moves || []).find((move) => move.path[0] === "draw");
+  const pass = (current.legal_moves || []).find((move) => move.path[0] === "pass");
+  const yard = document.createElement(draw || pass ? "button" : "div");
+  yard.className = "domino-yard";
+  if (draw || pass) yard.type = "button";
+  const stack = document.createElement("span");
+  stack.className = "domino-stack";
+  const piled = Math.min(Number(current.deck || 0), 3);
+  for (let index = 0; index < piled; index += 1) {
+    const back = document.createElement("img");
+    back.alt = "";
+    back.src = asset("/static/images/dominoes/back.webp");
+    stack.append(back);
+  }
+  const caption = document.createElement("span");
+  caption.textContent = pass ? "Пас" : `Базар · ${current.deck || 0}`;
+  yard.append(stack, caption);
+  if (draw) yard.addEventListener("click", () => submit(draw));
+  if (pass) yard.addEventListener("click", () => submit(pass));
+  const bottom = document.createElement("div");
+  bottom.className = "domino-bottom";
+  bottom.append(yard);
+  const yours = document.createElement("div");
+  yours.className = "domino-you";
+  if (you) yours.append(dominoPlate(you));
   const hand = document.createElement("div");
   hand.className = "domino-hand";
   hand.setAttribute("aria-label", "Ваши кости");
   for (const tile of current.hand || []) {
     const options = plays.filter((move) => move.path[1] === tile);
     const button = dominoBone(tile, { spin: true, playable: options.length > 0, picked: dominoPick === tile });
-    if (options.length === 1) button.addEventListener("click", () => submit(options[0]));
-    if (options.length > 1) {
-      button.addEventListener("click", () => {
-        dominoPick = dominoPick === tile ? "" : tile;
-        render();
-      });
-    }
+    if (options.length) bindDominoTile(button, options);
     hand.append(button);
   }
+  yours.append(hand);
+  bottom.append(yours);
+  layer.append(bottom);
 
-  const people = document.createElement("div");
-  people.className = "domino-people";
-  for (const seat of current.seats || []) {
-    const person = document.createElement("p");
-    person.className = seat.turn ? "is-turn" : "";
-    person.textContent = `${seat.name} · ${seat.count}`;
-    people.append(person);
-  }
-
-  const dock = document.createElement("div");
-  dock.className = "domino-dock";
-  if (dominoPick) {
-    for (const move of plays.filter((item) => item.path[1] === dominoPick)) dock.append(actionButton(move));
-  }
-  for (const move of current.legal_moves || []) {
-    if (move.path[0] === "draw" || move.path[0] === "pass") dock.append(actionButton(move));
-  }
-
-  board.append(yard, line, people, hand, dock);
-  layer.append(board);
   box.replaceChildren(layer);
+  fitDominoLine(line);
+  fitDominoHand(hand);
+  flyDomino();
+}
+
+function dominoSeats(youName) {
+  if (Array.isArray(current.seats) && current.seats.length) return current.seats;
+  return unoRoster(youName);
 }
 
 function renderCards() {

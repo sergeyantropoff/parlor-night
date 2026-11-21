@@ -50,7 +50,7 @@ The chip count in the header opens the ledger.
 
 ![Catalog](../screenshots/new-game.png)
 
-The catalog offers nine games. Poker, blackjack, and Preferans carry an 18+ mark. If a game is switched off in the site settings, its card does not lead to a table. A backgammon card is already in the catalog, but it cannot be sat at yet: it is only an announcement.
+The catalog offers ten games. Poker, blackjack, and Preferans carry an 18+ mark. If a game is switched off in the site settings, its card does not lead to a table. A backgammon card is already in the catalog, but it cannot be sat at yet: it is only an announcement.
 
 ![Chess setup](../screenshots/chess-setup.png)
 
@@ -117,7 +117,7 @@ Card games ask for computers and open seats instead of a side. The creator is al
 
 ![Dominoes](../images/games/domino.webp)
 
-**Dominoes.** A double-six set, twenty-eight tiles, from blank to double six. Two to four sit down: two players draw seven tiles each, three or four draw five. The rest is the boneyard. The player with the highest double leads and must play it. If there is no double, the player with the highest tile leads. A later tile matches one open end. With no match, tiles are drawn until a play appears or the boneyard is empty, and then the turn is a pass. The first empty hand wins. If a pass goes all the way around, the hand is blocked: the lowest pip sum wins, and equal sums draw. Chips are awarded for a win and a draw. There is no pot. The computer uses the same five levels. There is no clock. The record downloads as text.
+**Dominoes.** A double-six set, twenty-eight tiles, from blank to double six. Two to four sit down: two players draw seven tiles each, three or four draw five. The rest is the boneyard. The player with the highest double leads and must play it. If there is no double, the player with the highest tile leads. A later tile matches one open end. With no match, tiles are drawn until a play appears or the boneyard is empty, and then the turn is a pass. The first empty hand wins. If a pass goes all the way around, the hand is blocked: the lowest pip sum wins, and equal sums draw. Chips are awarded for a win and a draw. There is no pot. A tile is dragged to the end it matches. When only one end matches, a tap is enough. The computer uses the same five levels. There is no clock. The record downloads as text.
 
 ![Backgammon, coming soon](../images/games/backgammon-soon.webp)
 
