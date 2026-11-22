@@ -24,7 +24,6 @@ function drawPager(nav, page, pages, choose) {
     } else {
       const jump = document.createElement("button");
       jump.type = "button";
-      jump.className = "pager-step";
       jump.textContent = String(number);
       jump.addEventListener("click", () => choose(number));
       item.append(jump);

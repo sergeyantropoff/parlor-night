@@ -49,6 +49,13 @@ class Settings(BaseSettings):
     avatar_dir: str = "/var/lib/parlor/news/avatars"
     avatar_bytes: int = 10_485_760
     allow_registration: bool = False
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_tls: bool = True
+    smtp_ssl: bool = False
     log_level: str = "INFO"
     argon_time_cost: int = 2
     argon_memory_cost: int = 32_768

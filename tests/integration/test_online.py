@@ -142,12 +142,11 @@ async def _login(client: AsyncClient, username: str, password: str) -> str:
     return _csrf_from(home.text)
 
 
-async def _signup_fields(client, page_text: str) -> dict[str, str]:
+async def _signup_fields(client, page_text: str, password: str) -> dict[str, str]:
     payload = await _captcha(client, "/register/captcha")
     return {
-        "born_day": "16",
-        "born_month": "11",
-        "born_year": "1990",
+        "email": f"u{uuid.uuid4().hex[:12]}@example.com",
+        "password_repeat": password,
         "captcha": payload,
         "csrf_token": _login_token(page_text),
     }
@@ -416,7 +415,13 @@ async def test_admin_configures_site(clients) -> None:
     assert register_page.status_code == 200
     bare = await admin.post(
         "/register",
-        data={"username": "bare", "password": "bare-pass-1", "csrf_token": _login_token(register_page.text)},
+        data={
+            "username": "bare",
+            "password": "bare-pass-1",
+            "password_repeat": "bare-pass-1",
+            "email": "bare@example.com",
+            "csrf_token": _login_token(register_page.text),
+        },
     )
     assert bare.status_code == 422
     assert "не робот" in bare.text
@@ -425,16 +430,18 @@ async def test_admin_configures_site(clients) -> None:
         data={
             "username": "newbie",
             "password": "newbie-pass-1",
-            **await _signup_fields(admin, bare.text),
+            **await _signup_fields(admin, bare.text, "newbie-pass-1"),
         },
     )
     assert created.status_code == 303
+    entered = await admin.get("/")
+    await admin.post("/logout", data={"csrf_token": _csrf_from(entered.text)})
     newbie_csrf = await _login(admin, "newbie", "newbie-pass-1")
     await admin.post("/logout", data={"csrf_token": newbie_csrf})
     short = await admin.get("/register")
     rejected = await admin.post(
         "/register",
-        data={"username": "shorty", "password": "short1", **await _signup_fields(admin, short.text)},
+        data={"username": "shorty", "password": "short1", **await _signup_fields(admin, short.text, "short1")},
     )
     assert rejected.status_code == 422
 
@@ -492,7 +499,7 @@ async def test_referral_registration_remembers_who_invited(clients) -> None:
     assert page.status_code == 200
     created = await guest.post(
         "/register",
-        data={"username": "invited", "password": "invited-pass-1", **await _signup_fields(guest, page.text)},
+        data={"username": "invited", "password": "invited-pass-1", **await _signup_fields(guest, page.text, "invited-pass-1")},
     )
     assert created.status_code == 303
     who = await database["conn"].fetchval("SELECT referred_by FROM users WHERE username = 'invited'")
@@ -526,11 +533,11 @@ async def test_landing_news_and_referral(clients) -> None:
     page = await guest.get("/register")
     created = await guest.post(
         "/register",
-        data={"username": "friend", "password": "friend-pass-1", **await _signup_fields(guest, page.text)},
+        data={"username": "friend", "password": "friend-pass-1", **await _signup_fields(guest, page.text, "friend-pass-1")},
     )
     assert created.status_code == 303
     born = await database["conn"].fetchval("SELECT born_on FROM users WHERE username = 'friend'")
-    assert str(born) == "1990-11-16"
+    assert born is None
     inviter = await database["conn"].fetchval("SELECT referred_by FROM users WHERE username = 'friend'")
     assert inviter == database["admin_id"]
     balance = await database["conn"].fetchval(
@@ -552,6 +559,8 @@ async def test_landing_news_and_referral(clients) -> None:
     )
     assert posted.status_code == 200
     assert "Вечер открыт" in posted.text
+    entered = await guest.get("/")
+    await guest.post("/logout", data={"csrf_token": _csrf_from(entered.text)})
     public = await guest.get("/")
     assert "Вечер открыт" in public.text
     found = re.search(r'href="(/news/[^"]+)"', public.text)

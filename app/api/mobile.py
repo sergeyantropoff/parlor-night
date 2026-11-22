@@ -362,6 +362,8 @@ async def api_account_save(request: Request, body: AccountBody) -> JSONResponse:
         if posted is not None and posted != stored and not body.confirm:
             raise AppError(422, "bad_date", "Подтвердите, что дата указана верно.")
         if posted is not None and posted != stored:
+            if not user.is_admin:
+                raise AppError(403, "forbidden", "Дату рождения меняет администратор.")
             async with request.app.state.pool.acquire() as conn:
                 await conn.execute(
                     "UPDATE users SET born_on = $2, updated_at = now() WHERE id = $1",

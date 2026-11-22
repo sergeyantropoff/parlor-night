@@ -14,11 +14,12 @@
       <a href="/#about">О проекте</a>
     </nav>
     <div class="mast-actions">
+      {% if can_register %}<a class="button" href="/register">Регистрация</a>{% endif %}
+      <a class="button{% if can_register %} secondary{% endif %}" href="/login">Войти</a>
       <div class="theme-switch" role="group" aria-label="Тема">
         <button type="button" class="tip-host" data-theme-value="light" data-tip="Светлая" data-tip-below aria-pressed="false" aria-label="Светлая"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sun"/></svg></button>
         <button type="button" class="tip-host" data-theme-value="dark" data-tip="Тёмная" data-tip-below data-tip-edge aria-pressed="false" aria-label="Тёмная"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-moon"/></svg></button>
       </div>
-      <a class="button" href="/login">Войти</a>
     </div>
   </div>
 </header>

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -13,6 +13,7 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
 from app.clock import current_zone
+from app.names import split_full_name
 from app.news_html import sanitize_news
 from app.news_images import cover_kind
 
@@ -179,6 +180,24 @@ def render(request: Request, name: str, context: dict[str, object] | None = None
     saved = getattr(request.state, "theme", None)
     payload.setdefault("theme", saved if saved in {"light", "dark", "system"} else "dark")
     payload.setdefault("age_block", "")
+    payload.setdefault("year_now", date.today().year)
+    payload.setdefault("intake_error", "")
+    if user is not None:
+        family, given, patronymic = split_full_name(getattr(user, "full_name", ""))
+        born = getattr(user, "born_on", None)
+        payload.setdefault("intake_family", family)
+        payload.setdefault("intake_given", given)
+        payload.setdefault("intake_patronymic", patronymic)
+        payload.setdefault("intake_day", str(born.day) if isinstance(born, date) else "")
+        payload.setdefault("intake_month", str(born.month) if isinstance(born, date) else "")
+        payload.setdefault("intake_year", str(born.year) if isinstance(born, date) else "")
+    else:
+        payload.setdefault("intake_family", "")
+        payload.setdefault("intake_given", "")
+        payload.setdefault("intake_patronymic", "")
+        payload.setdefault("intake_day", "")
+        payload.setdefault("intake_month", "")
+        payload.setdefault("intake_year", "")
     html = TEMPLATES.get_template(name).render(
         {
             **payload,

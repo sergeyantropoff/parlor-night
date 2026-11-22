@@ -925,7 +925,7 @@ async def admin_overview(request: Request) -> Response:
     if isinstance(user, Response):
         return user
     async with request.app.state.pool.acquire() as conn:
-        people = await fetch_people(conn)
+        people = await fetch_people(conn, include_blocked=True)
         totals = await conn.fetchrow(
             """
             SELECT
@@ -1146,8 +1146,9 @@ async def admin_overview(request: Request) -> Response:
     for card in game_cards:
         total = int(card["total"])
         card["bar"] = 0 if not total or not tallest else max(8, round(100 * total / tallest))
-    charts = _overview_charts(numbers, game_cards, guests, strength, session_totals, session_users, session_devices)
-    board = _leaderboard(guests)
+    playing = [person for person in guests if person.get("is_active") is not False]
+    charts = _overview_charts(numbers, game_cards, playing, strength, session_totals, session_users, session_devices)
+    board = _leaderboard(playing)
     people_frame = window(guests, read_page(request.query_params.get("people_page")), _OVERVIEW_PEOPLE)
     pages = {
         "games_page": games_page,

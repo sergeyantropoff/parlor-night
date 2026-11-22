@@ -72,7 +72,9 @@ if (form) {
 
   function paintAge() {
     const status = document.querySelector("#age-status");
-    const day = Number(document.querySelector("#born-day")?.value);
+    const dayField = document.querySelector("#born-day");
+    if (!(dayField instanceof HTMLSelectElement)) return "";
+    const day = Number(dayField.value);
     const month = Number(document.querySelector("#born-month")?.value);
     const year = Number(document.querySelector("#born-year")?.value);
     if (!status) return "";

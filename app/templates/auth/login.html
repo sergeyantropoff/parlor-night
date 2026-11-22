@@ -3,8 +3,10 @@
 {% block content %}
 <section class="login">
   <div class="login-brand">
-    <img class="mark theme-light" src="/static/images/logo-mark-for-light.png?v={{ asset_version }}" alt="" />
-    <img class="mark theme-dark" src="/static/images/logo-mark-for-dark.png?v={{ asset_version }}" alt="" />
+    <a class="login-mark" href="/" aria-label="На главную">
+      <img class="mark theme-light" src="/static/images/logo-mark-for-light.png?v={{ asset_version }}" alt="" />
+      <img class="mark theme-dark" src="/static/images/logo-mark-for-dark.png?v={{ asset_version }}" alt="" />
+    </a>
     <h1>Parlor Night</h1>
     <p>Гостиная настольных игр</p>
   </div>
@@ -12,7 +14,7 @@
     <input type="hidden" name="csrf_token" value="{{ login_csrf }}" />
     {% if next %}<input type="hidden" name="next" value="{{ next }}" />{% endif %}
     {% if error %}<p class="banner" role="alert">{{ error }}</p>{% endif %}
-    <label>Логин <input name="username" autocomplete="username" required="required" /></label>
+    <label>Логин или почта <input name="username" autocomplete="username" required="required" /></label>
     <label>Пароль
       <span class="password">
         <input id="password" name="password" type="password" autocomplete="current-password" required="required" />

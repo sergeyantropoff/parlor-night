@@ -152,7 +152,7 @@ Every JSON method of the project is listed here. The sections below give the bod
 | `GET /ws/tables/{id}` | Video and voice socket |
 | `GET /oauth/authorize`, `POST /oauth/authorize` | Third-party confirmation on the website |
 
-`/rules`, `/privacy`, `/contact`, and the whole admin area (overview, news editor, guest list, parlor settings) stay HTML. There is no separate JSON method to unfriend: `POST /friends/{id}/decline` removes an accepted friendship. The birth date for adult games is `PATCH /account`. There is no separate age method.
+`/rules`, `/privacy`, `/contact`, and the whole admin area (overview, news editor, guest list, parlor settings) stay HTML. On the website a letter to an administrator is the `/contact` form. There is no JSON method for it. There is no separate JSON method to unfriend: `POST /friends/{id}/decline` removes an accepted friendship. The app stores the birth date at registration. Only an administrator can change it through `PATCH /account`. On the website the date is changed on the profile.
 
 ## Tokens
 
@@ -269,7 +269,7 @@ That string is the `captcha` field. A challenge lives about 10 minutes and is ac
 }
 ```
 
-The birth date is required, as on the website: it unlocks poker, blackjack, and Preferans. `referral` is the code from `/?ref=`. Referral mode without a live code is `403 referral_required`. Closed registration is `403 registration_disabled`. A taken username is `409 username_taken`. A third-party `client_id` is `403`. That app does not create accounts.
+The birth date is required in this request: it unlocks poker, blackjack, and Preferans. The website does not ask for it here. It asks in the window after the first sign-in, together with the given name. Family name and patronymic are optional. The website also asks for an email at registration. This request does not accept an email. `referral` is the code from `/?ref=`. Referral mode without a live code is `403 referral_required`. Closed registration is `403 registration_disabled`. A taken username is `409 username_taken`. A third-party `client_id` is `403`. That app does not create accounts.
 
 When `user.ask_name` is `true`, save the name first. Until it exists, every other method, except Account and `/auth`, answers `409 name_required`.
 
@@ -389,7 +389,7 @@ These methods work before a name is set.
 }
 ```
 
-A new birth date without `"confirm": true` is 422. Empty day, month, and year do not erase the date. The response is a fresh account.
+A regular guest who tries to change the date receives `403 forbidden`: an administrator changes it. An administrator sends the new date with `"confirm": true`, or the response is 422. Empty day, month, and year do not erase the date. The response is a fresh account.
 
 `PUT /api/v1/account/settings`
 

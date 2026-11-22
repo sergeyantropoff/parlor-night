@@ -145,6 +145,24 @@
         </span>
       </a>
       {% endif %}
+      <div class="choice is-soon">
+        <span class="shot">
+          <img class="theme-light" src="/static/parlor/light/game-bura.webp?v={{ asset_version }}" width="1024" height="768" alt="Бура скоро появится в гостиной" />
+          <img class="theme-dark" src="/static/parlor/dark/game-bura.webp?v={{ asset_version }}" width="1024" height="768" alt="" />
+        </span>
+        <span class="shot-body">
+          <span><strong>Бура</strong><small>Три карты и козырь. Скоро в гостиной</small></span>
+        </span>
+      </div>
+      <div class="choice is-soon">
+        <span class="shot">
+          <img class="theme-light" src="/static/parlor/light/game-yahtzy.webp?v={{ asset_version }}" width="1024" height="768" alt="Яцзы скоро появится в гостиной" />
+          <img class="theme-dark" src="/static/parlor/dark/game-yahtzy.webp?v={{ asset_version }}" width="1024" height="768" alt="" />
+        </span>
+        <span class="shot-body">
+          <span><strong>Яцзы</strong><small>Пять костей и карточка. Скоро в гостиной</small></span>
+        </span>
+      </div>
     </div>
   </div>
   {% else %}
@@ -257,7 +275,7 @@
         {% endfor %}
       </div>
       <p id="online-note" class="callout" hidden="hidden">После создания появится код: по нему садится второй игрок. Камера и микрофон есть только у игроков за столом, до шести человек. Наблюдатели звук и видео не передают.</p>
-      <p id="adult-note" class="callout{% if born and not adult %} adult{% endif %}" hidden="hidden">{% if adult %}Игра открыта. Она идёт на фишки, не на деньги.{% elif born %}Сейчас сохранено {{ born_label }} — {{ age_label }}. Это меньше 18 лет, поэтому стол закрыт. Дату можно изменить в <a href="/settings">настройках</a>.{% else %}Укажите дату рождения в <a href="/settings">настройках</a>. Покер, блэкджек и преферанс открываются с 18 лет и идут на фишки, не на деньги.{% endif %}</p>
+      <p id="adult-note" class="callout{% if born and not adult %} adult{% endif %}" hidden="hidden">{% if adult %}Игра открыта. Она идёт на фишки, не на деньги.{% elif born %}Сейчас сохранено {{ born_label }} — {{ age_label }}. Это меньше 18 лет, поэтому стол закрыт. Дату меняет администратор.{% else %}Дату рождения указывают при первом входе. Покер, блэкджек и преферанс открываются с 18 лет и идут на фишки, не на деньги.{% endif %}</p>
     </section>
 
     <section class="panel" id="audience-fields" hidden="hidden">

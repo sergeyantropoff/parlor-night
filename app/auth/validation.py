@@ -5,8 +5,18 @@ from __future__ import annotations
 import re
 
 
+_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
 def normalize_username(value: str) -> str:
     return value.strip().lower()
+
+
+def clean_email(value: str) -> str:
+    text = value.strip().lower()
+    if not text or len(text) > 200 or not _EMAIL.fullmatch(text):
+        raise ValueError("Укажите почту, например name@example.com.")
+    return text
 
 
 def validate_username(value: str, *, minimum: int = 3, maximum: int = 32) -> str | None:

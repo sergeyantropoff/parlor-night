@@ -23,66 +23,52 @@ if (root) {
   const search = root.querySelector("#friend-search");
   const shown = root.querySelector("#friend-shown");
   const empty = root.querySelector("#friend-empty");
-  const prev = root.querySelector("#friend-prev");
-  const next = root.querySelector("#friend-next");
+  const list = root.querySelector(".directory-body");
   const pageSize = 6;
   let filter = "all";
-  let page = 0;
 
-  const matches = () => {
+  const friendMatch = (row) => {
     const term = (search?.value || "").trim().toLowerCase();
-    return rows.filter((row) => {
-      if (term && !(row.dataset.name || "").includes(term)) return false;
-      const bucket = row.dataset.bucket;
-      if (filter === "requests") return bucket === "incoming";
-      if (bucket === "incoming") return false;
-      if (filter === "online") return row.dataset.live === "1" && bucket === "accepted";
-      return true;
-    });
+    if (term && !(row.dataset.name || "").includes(term)) return false;
+    const bucket = row.dataset.bucket;
+    if (filter === "requests") return bucket === "incoming";
+    if (bucket === "incoming") return false;
+    if (filter === "online") return row.dataset.live === "1" && bucket === "accepted";
+    return true;
   };
 
-  const paint = () => {
-    const visible = matches();
-    const pages = Math.max(1, Math.ceil(visible.length / pageSize));
-    page = Math.min(page, pages - 1);
-    const start = page * pageSize;
-    const slice = new Set(visible.slice(start, start + pageSize));
-    for (const row of rows) row.hidden = !slice.has(row);
-    if (empty) {
-      empty.hidden = visible.length > 0;
-      empty.textContent = rows.length
-        ? "Никого не нашлось."
-        : "Пока никого нет. Добавьте игрока по логину.";
-    }
-    if (shown) {
-      if (!visible.length) shown.textContent = "Никого не нашлось";
-      else shown.textContent = `Показано ${start + 1}–${Math.min(visible.length, start + pageSize)} из ${visible.length}`;
-    }
-    if (prev) prev.disabled = page === 0;
-    if (next) next.disabled = page >= pages - 1;
-  };
+  const paintFriends = list
+    ? attachPager(list, {
+      size: pageSize,
+      label: "Страницы друзей",
+      match: friendMatch,
+      onPaint: ({ page, count }) => {
+        const start = count ? (page - 1) * pageSize + 1 : 0;
+        const end = Math.min(count, page * pageSize);
+        if (empty) {
+          empty.hidden = count > 0;
+          empty.textContent = rows.length
+            ? "Никого не нашлось."
+            : "Пока никого нет. Добавьте игрока по логину.";
+        }
+        if (shown) {
+          shown.textContent = count
+            ? `Показано ${start}–${end} из ${count}`
+            : "Никого не нашлось";
+        }
+      },
+    })
+    : null;
 
   for (const button of filters) {
     button.addEventListener("click", () => {
       filter = button.dataset.friendFilter || "all";
-      page = 0;
       for (const item of filters) item.setAttribute("aria-pressed", String(item === button));
-      paint();
+      paintFriends?.({ reset: true });
     });
   }
-  search?.addEventListener("input", () => {
-    page = 0;
-    paint();
-  });
-  prev?.addEventListener("click", () => {
-    page -= 1;
-    paint();
-  });
-  next?.addEventListener("click", () => {
-    page += 1;
-    paint();
-  });
-  if (rows.length) paint();
+  search?.addEventListener("input", () => paintFriends?.({ reset: true }));
+  paintFriends?.();
 
   const requests = root.querySelector("#request-list");
   if (requests) attachPager(requests, { size: 5, label: "Страницы заявок" })();

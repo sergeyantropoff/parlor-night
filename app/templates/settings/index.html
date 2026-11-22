@@ -17,7 +17,7 @@
 {% set checkers = analysis.checkers_level|default(3)|int %}
 {% set checkers_ms = analysis.checkers_time_ms|default(1000)|int %}
 <section class="page">
-  <p class="lede">Портрет, имя, пароль, тема, доска и дата рождения. Покер, блэкджек и преферанс открываются с 18 лет.</p>
+  <p class="lede">Портрет, имя, почта, пароль, тема и доска. Покер, блэкджек и преферанс открываются с 18 лет.</p>
   {% if error %}<p class="banner" role="alert">{{ error }}</p>{% endif %}
   {% if saved %}<p class="banner ok" role="status">Настройки сохранены.</p>{% endif %}
 
@@ -42,36 +42,23 @@
       <p class="quiet">За столом, в беседах и в кабинете видно то, что заполнено: фамилию, имя, отчество или любое сочетание. Пустая форма оставляет логин. Логин для входа остаётся прежним.</p>
     </section>
 
+    <section class="panel" id="mail">
+      <h2>Почта</h2>
+      {% if user.is_admin %}
+      <label>Почта
+        <input name="email" type="email" value="{{ email }}" autocomplete="email" maxlength="200" />
+      </label>
+      {% else %}
+      <label>Почта
+        <input type="email" value="{{ email }}" autocomplete="email" disabled="disabled" />
+      </label>
+      <p class="quiet">Для смены почты обратитесь к администратору.</p>
+      {% endif %}
+    </section>
+
     <section class="panel" id="birth">
       <h2>Дата рождения</h2>
-      <div class="born-grid">
-        <label>День
-          <select name="born_day" id="born-day">
-            <option value="">—</option>
-            {% for day in range(1, 32) %}
-            <option value="{{ day }}" {% if born and born.day == day %}selected="selected"{% endif %}>{{ day }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <label>Месяц
-          <select name="born_month" id="born-month">
-            <option value="">—</option>
-            {% for name in ("январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь") %}
-            <option value="{{ loop.index }}" {% if born and born.month == loop.index %}selected="selected"{% endif %}>{{ name }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <label>Год
-          <select name="born_year" id="born-year">
-            <option value="">—</option>
-            {% for year in range(year_now, 1899, -1) %}
-            <option value="{{ year }}" {% if born and born.year == year %}selected="selected"{% endif %}>{{ year }}</option>
-            {% endfor %}
-          </select>
-        </label>
-      </div>
-      <p id="age-status" class="callout{% if born and not adult %} adult{% endif %}">{% if not born %}Дата не указана. Покер, блэкджек и преферанс закрыты, пока не исполнится 18 лет.{% elif adult %}{{ born_label }} · {{ age_label }} · взрослые игры открыты{% else %}{{ born_label }} · {{ age_label }} · взрослые игры откроются с 18 лет{% endif %}</p>
-      <label class="check"><input type="checkbox" name="confirm" value="yes" /> Дата указана верно. Нужно только если меняете дату.</label>
+      <p class="quiet">{% if born %}{{ born_label }} · {{ age_label }}. Изменить дату может администратор.{% else %}Дата ещё не указана.{% endif %}</p>
     </section>
 
     <section class="panel portrait-panel">
@@ -247,6 +234,24 @@
         {% if chosen %}{% set ns.picked = true %}{% endif %}
         {% endif %}
         {% endfor %}
+        <div class="choice is-soon">
+          <span class="shot">
+            <img class="theme-light" src="/static/parlor/light/game-bura.webp?v={{ asset_version }}" width="1024" height="768" alt="Бура скоро появится в гостиной" />
+            <img class="theme-dark" src="/static/parlor/dark/game-bura.webp?v={{ asset_version }}" width="1024" height="768" alt="" />
+          </span>
+          <span class="shot-body">
+            <span><strong>Бура</strong><small>Скоро в гостиной</small></span>
+          </span>
+        </div>
+        <div class="choice is-soon">
+          <span class="shot">
+            <img class="theme-light" src="/static/parlor/light/game-yahtzy.webp?v={{ asset_version }}" width="1024" height="768" alt="Яцзы скоро появится в гостиной" />
+            <img class="theme-dark" src="/static/parlor/dark/game-yahtzy.webp?v={{ asset_version }}" width="1024" height="768" alt="" />
+          </span>
+          <span class="shot-body">
+            <span><strong>Яцзы</strong><small>Скоро в гостиной</small></span>
+          </span>
+        </div>
         {% if kept_adult %}
         <input type="hidden" name="default_game" value="{{ prefs.default_game }}" />
         {% endif %}

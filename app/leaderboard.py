@@ -20,6 +20,8 @@ def wins_word(count: int) -> str:
 def rank(guests: list[dict[str, object]]) -> list[dict[str, object]]:
     ranked: list[dict[str, object]] = []
     for person in guests:
+        if person.get("is_active") is False:
+            continue
         finished = int(person["finished"] or 0)
         wins = int(person["wins"] or 0)
         ranked.append(
@@ -47,12 +49,13 @@ def rank(guests: list[dict[str, object]]) -> list[dict[str, object]]:
     return ranked
 
 
-async def fetch_people(conn: asyncpg.Connection) -> list[dict[str, object]]:
+async def fetch_people(conn: asyncpg.Connection, *, include_blocked: bool = False) -> list[dict[str, object]]:
+    where = "" if include_blocked else "WHERE u.is_active"
     rows = await conn.fetch(
-        """
+        f"""
         SELECT shown_name(u.full_name, u.username) AS username,
                u.username AS login, u.avatar,
-               u.role, u.created_at, u.last_seen, u.last_ip, u.last_country,
+               u.role, u.is_active, u.created_at, u.last_seen, u.last_ip, u.last_country,
                u.last_user_agent, u.born_on,
                shown_name(inv.full_name, inv.username) AS invited_by,
                inv.username AS invited_login,
@@ -74,6 +77,7 @@ async def fetch_people(conn: asyncpg.Connection) -> list[dict[str, object]]:
         FROM users AS u
         LEFT JOIN wallets AS w ON w.user_id = u.id
         LEFT JOIN users AS inv ON inv.id = u.referred_by
+        {where}
         ORDER BY games DESC, u.created_at
         """
     )

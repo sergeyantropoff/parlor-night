@@ -8,28 +8,55 @@
     <div class="paper-body">
       <p class="kicker">Гостиная <i></i></p>
       <h1>Связаться с нами</h1>
-      <p class="lede">У гостиной нет общей почты на сайте. Доступ открывает администратор, и с ним же решают вопросы учётки, правил и фишек.</p>
+      <p class="lede">Письмо уходит на почту выбранного администратора. Ответить он сможет на адрес, который вы оставите в форме.</p>
+      <form class="contact-form" method="post" action="/contact">
+        <input type="hidden" name="csrf_token" value="{% if user %}{{ csrf_token }}{% else %}{{ login_csrf }}{% endif %}" />
+        {% if contact_sent %}<p class="banner ok" role="status">Письмо отправлено.</p>{% endif %}
+        {% if contact_error %}<p class="banner" role="alert">{{ contact_error }}</p>{% endif %}
+        {% if contact_admins %}
+        <label>
+          <span class="field-title">Кому <span class="need" aria-hidden="true">*</span></span>
+          <select name="admin_id" required="required">
+            {% for admin in contact_admins %}
+            <option value="{{ admin.id }}" {% if contact_admin == admin.id|string %}selected="selected"{% endif %}>{{ admin.label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          <span class="field-title">Как к вам обращаться <span class="need" aria-hidden="true">*</span></span>
+          <input name="name" value="{{ contact_name }}" autocomplete="name" required="required" maxlength="120" />
+        </label>
+        <label>
+          <span class="field-title">Почта для ответа <span class="need" aria-hidden="true">*</span></span>
+          <input name="email" type="email" value="{{ contact_email }}" autocomplete="email" required="required" maxlength="200" />
+        </label>
+        <label>
+          <span class="field-title">Сообщение <span class="need" aria-hidden="true">*</span></span>
+          <textarea name="message" required="required" maxlength="4000">{{ contact_message }}</textarea>
+        </label>
+        <fieldset class="robot">
+          <legend>Проверка от ботов <span class="need" aria-hidden="true">*</span></legend>
+          <label class="robot-row">
+            <input type="checkbox" id="robot" required="required" />
+            <span>Я не робот</span>
+          </label>
+          <input type="hidden" name="captcha" id="captcha-payload" value="" />
+          <p id="robot-note" class="fine" hidden="hidden"></p>
+        </fieldset>
+        <button type="submit">Отправить письмо</button>
+        {% else %}
+        <p class="banner" role="alert">Сейчас письмо отправить некому: у администраторов не указана почта.</p>
+        {% endif %}
+      </form>
       <div class="story">
-        <h2>Если вас ещё нет в гостиной</h2>
-        {% if site and site.registration_mode == "open" %}
-        <p>Набор сейчас открыт: можно <a href="/register">создать учётную запись</a>. Если вас пригласили, откройте ссылку друга до регистрации — тогда будет видно, кто пригласил.</p>
-        {% elif site and site.registration_mode == "referral" and can_register %}
-        <p>Вас пригласили. <a href="/register">Создайте учётную запись</a> — гостиная запомнит, кто прислал ссылку. Если ссылка потерялась, напишите тому, кто её отправил.</p>
-        {% elif site and site.registration_mode == "referral" %}
-        <p>Регистрация открыта по ссылке друга. Откройте приглашение, затем создайте учётную запись. Если ссылки нет, доступ открывает администратор.</p>
-        {% else %}
-        <p>Сейчас гостиная закрыта для самостоятельной регистрации. Учётную запись создаёт администратор. Напишите тому, кто вас приглашал: он передаст просьбу или откроет доступ сам.</p>
-        {% endif %}
-        <h2>Если вы уже вошли</h2>
-        {% if user %}
-        <p>Вы в гостиной как {{ player_link(user.display_name, user.username, user.avatar, false, false, true) }}. Имя, дату рождения, тему и сторону по умолчанию можно поменять в <a href="/settings">настройках</a>. Вопрос по правилам, чужому столу или фишкам адресуйте администратору, который открыл вам дом.</p>
-        {% else %}
-        <p><a href="/login">Войдите</a>, если учётка уже есть. Дальше дату рождения и оформление стола меняют в настройках, а вопрос по правилам или фишкам задают администратору гостиной.</p>
-        {% endif %}
+        <h2>Как устроена обратная связь</h2>
+        <p>Письмо читает тот администратор, которого вы выбрали в списке. Это не заявка в кабинете и не сообщение внутри гостиной: ответ приходит на почту из формы. Если почта гостиной не настроена, форма скажет об этом и письмо не отправит.</p>
+        <p>Автоматической отбивки нет, ждать стоит ответа человека. Одного письма достаточно. Если напишете ещё раз, коротко напомните, о чём шла речь: на сайте переписка не собирается в одну ленту, и администратор видит только новое письмо.</p>
+        <p>Напишите, кто вы и что случилось. Если вопрос про стол, вечер или фишки, укажите, когда это было, — так проще ответить по делу, а не переспрашивать. Пароль, код стола и ссылку-приглашение в письмо лучше не вкладывать: для ответа они не нужны, а чужой ящик их хранить не должен.</p>
         <h2>О чём писать</h2>
         <ul>
           <li>Не открывается вход или потерян доступ к имени.</li>
-          <li>Нужно поправить дату рождения для покера, блэкджека или преферанса.</li>
+          <li>Нужно попросить администратора поправить дату рождения для покера, блэкджека или преферанса.</li>
           <li>За столом мешают, и вечер стоит остановить.</li>
           <li>Фишки сошлись не так, как обещает <a href="/rules">правила гостиной</a>.</li>
         </ul>
@@ -39,4 +66,7 @@
   </div>
 </article>
 {% if not user %}{% include "public/_foot.html" %}{% endif %}
+{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/js/login.js?v={{ asset_version }}"></script>
 {% endblock %}

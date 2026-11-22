@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from datetime import date
 
 import asyncpg
 
@@ -92,7 +93,7 @@ async def find_session(conn: asyncpg.Connection, token_hash: str) -> Session | N
     row = await conn.fetchrow(
         """
         SELECT s.id AS session_id, s.csrf_token,
-               u.id, u.username, u.role, u.full_name, u.ask_name, u.avatar
+               u.id, u.username, u.role, u.full_name, u.ask_name, u.avatar, u.born_on, u.email
         FROM sessions AS s
         JOIN users AS u ON u.id = s.user_id
         WHERE s.token_hash = $1
@@ -113,6 +114,8 @@ async def find_session(conn: asyncpg.Connection, token_hash: str) -> Session | N
             full_name=str(row["full_name"] or ""),
             ask_name=bool(row["ask_name"]),
             avatar=str(row["avatar"] or ""),
+            born_on=row["born_on"] if isinstance(row["born_on"], date) else None,
+            email=str(row["email"] or ""),
         ),
         csrf_token=row["csrf_token"],
     )

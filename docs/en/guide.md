@@ -14,9 +14,9 @@ The painted pictures below set the mood of a section. The pieces and cards on th
 
 ![Sign-in](../screenshots/login.png)
 
-A guest signs in with a username and a password. Before «Войти» the page asks for a human check: the browser solves a small proof-of-work, and the person only ticks the box.
+A guest signs in with a username or an email address, and a password. Before «Войти» the page asks for a human check: the browser solves a small proof-of-work, and the person only ticks the box.
 
-A username is lowercase Latin letters, digits, `_`, and `-`, usually 3 to 32 characters. The password follows the rules the administrator set for this parlor. The sign-in page and the settings page show the current sentence, such as a minimum length, a letter, and a digit. A wrong password gets the same general sentence as an unknown username. After several failures sign-in closes for a while.
+A username is lowercase Latin letters, digits, `_`, and `-`, usually 3 to 32 characters. An email is stored in lowercase, and the same address cannot be used twice. The password follows the rules the administrator set for this parlor. The sign-in page and the settings page show the current sentence, such as a minimum length, a letter, and a digit. A wrong password gets the same general sentence as an unknown username or an unknown email. After several failures sign-in closes for a while.
 
 Registration has three modes:
 
@@ -26,11 +26,13 @@ Registration has three modes:
 | Referral | A person who opened a live friend link `/?ref=…` |
 | Open | Any visitor of the registration page |
 
-A birth date is required. It unlocks poker, blackjack, and Preferans: those three open at 18. If the date is missing or the person is under 18, the parlor shows the reason and leads to settings.
+Every field on the registration page is required: username, email, password, the password again, and the human check. The birth date is not asked there. If the two passwords differ, the account is not created.
 
-After the first registration the name is still empty. While family name, given name, and patronymic are blank, the site asks the guest to introduce themselves. The table and the chats show whatever is filled in. An empty form leaves the username.
+Right after the first sign-in a window opens that cannot be dismissed. Sign-in needs the given name and the birth date. Family name and patronymic are optional. Until the name and the date are filled in, the parlor does not go further. The date unlocks poker, blackjack, and Preferans: those three open at 18. If the person is under 18, the parlor shows the reason. Later only an administrator changes the date, with «Изменить возраст» on the profile page. Settings show the date and do not edit it.
 
-While `ENV=local`, startup creates the accounts `admin` / `admin` and `user` / `user`. Change those passwords before the parlor faces a network.
+The table and the chats show whatever of the name is filled in. An empty name leaves the username. A guest sees their own email on their profile and in settings. Someone else's email is hidden. An administrator sees the email on any profile. A regular guest cannot change the address: the settings field is inactive, and the note says to ask an administrator. An administrator changes their own address in those same settings.
+
+While `ENV=local`, startup creates the accounts `admin` / `admin` and `user` / `user`. If the administrator still has no email, the migration sets `admin@admin.local`. Change those passwords before the parlor faces a network.
 
 ## Home
 
@@ -50,7 +52,7 @@ The chip count in the header opens the ledger.
 
 ![Catalog](../screenshots/new-game.png)
 
-The catalog offers ten games. Poker, blackjack, and Preferans carry an 18+ mark. If a game is switched off in the site settings, its card does not lead to a table. A backgammon card is already in the catalog, but it cannot be sat at yet: it is only an announcement.
+The catalog offers ten games: chess, Russian checkers, Go, dominoes, backgammon, UNO, Texas Hold'em, Durak, blackjack, and Preferans. Poker, blackjack, and Preferans carry an 18+ mark. If a game is switched off in the site settings, its card does not lead to a table.
 
 ![Chess setup](../screenshots/chess-setup.png)
 
@@ -155,7 +157,7 @@ The lobby shows who has been looking for company for the last 15 minutes and who
 
 ![Live tables](../screenshots/live.png)
 
-Live tables are games that already exist. The list refreshes itself. An open table can be watched without a camera or a microphone and, if a seat is free, sat at. A closed table is visible in the list, and entry requires the invitation. The filter splits tables into all, open, and closed. Search looks for a table or a player.
+Live tables are games that already exist. The list refreshes itself. An open table can be watched without a camera or a microphone and, if a seat is free, sat at. A closed table is visible in the list, and entry requires the invitation. The filter splits tables into all, open, and closed. Search looks for a table or a player. When there are more than six tables, the same page buttons sit underneath as under «Последние партии» on Home: «Назад», the page numbers, and «Дальше». Friends use the same pager.
 
 Sit at a table accepts an 8-character code. The same code seats a player and, for an open game, admits a watcher.
 
@@ -183,7 +185,13 @@ Chips are for play. A win and a draw award them. A loss does not take a separate
 
 The ledger distinguishes a game, an invitation, and a manual grant. A row leads to the table or to the person's profile when those are known.
 
-A player profile shows the name, portrait, presence, chips, friendship, and statistics: played, wins, losses, draws, a breakdown by game, and eight weeks. The chart on the site is drawn from those numbers.
+A player profile shows the name, portrait, presence, the date they joined the parlor, chips, friendship, and statistics: played, wins, losses, draws, a breakdown by game, and eight weeks. The chart on the site is drawn from those numbers. A guest sees their own email under that date. Only an administrator sees someone else's email. If no email is stored, the line is absent.
+
+Under the joined-on date an administrator has two buttons. Change age opens a window for the day, month, and year. Grant chips opens a window: how many to add, from 1 to 100,000, onto the current balance. The old grant column on the profile page is gone.
+
+## The leaderboard
+
+The Leaderboard page and the block on the public home rank guests by wins, then by win rate, then by games played and chips. The first three stand on a podium, and the rest are a table. A deactivated account is left out: not on the home page, not on the leaderboard, and not in the administrator's overview. That person stays in the administrator's guest list until they are activated again.
 
 ## Settings
 
@@ -194,7 +202,8 @@ A player profile shows the name, portrait, presence, chips, friendship, and stat
 The Personal tab:
 
 - family name, given name, and patronymic;
-- birth date, with a confirmation when the date changes;
+- email: inactive for a regular guest, and editable for an administrator;
+- birth date, read only;
 - portrait: JPEG, PNG, or WebP up to 10 MB, cropped on the page, and a smaller picture is what the server stores;
 - password: current, new, and repeat, under the parlor's rules;
 - theme: follow the system, light, or dark. The sun and moon in the header change the theme at once;
@@ -212,7 +221,9 @@ Changing the password on the website revokes app tokens. Changing the password i
 
 News can be read without signing in. A card has a short note, a date, a kind (update, event, announcement), and a cover. If the cover is a file, the picture lives on its own. Otherwise it is a built-in parlor cover. The body is already sanitized HTML.
 
-Rules, privacy, and contact are separate site pages: `/rules`, `/privacy`, `/contact`.
+Rules, privacy, and contact are separate site pages: `/rules`, `/privacy`, `/contact`. The rules cover how a table is opened, watchers, chips, and what an administrator decides. Privacy covers the account, email, cookies, who can see what, and a letter sent from the site.
+
+The contact page writes to a chosen administrator. The list is the active administrators who have an email, and the earliest one is first. Then a name, a reply address, and a message of up to 4,000 characters. The human check is the same as on sign-in. The letter goes by SMTP to that administrator, and the reply goes to the address in the form. If `SMTP_HOST` is empty, the form says the parlor mail is not configured. On public pages the footer credit «© 2026 Сергей Антропов» opens [antropoff.ru](https://antropoff.ru) in a new window.
 
 ## Video and voice
 
@@ -227,7 +238,7 @@ An administrator has four pages in the sidebar.
 | Page | Purpose |
 | --- | --- |
 | Overview | A summary of games. Clearing records asks for confirmation |
-| Guests | A new account, role, activation, and chips. A deactivated guest loses sessions and app tokens |
+| Guests | A new account, role, activation, and chips. A deactivated guest loses sessions and app tokens and drops out of the leaderboard |
 | Site | Registration mode, password rules, session lifetime, which games are open, and the banner |
 | News | Creating, editing, covering, and deleting posts |
 
@@ -248,7 +259,7 @@ The address is `http://127.0.0.1` and the port from `WEB_PORT`. The sample envir
 
 Checks without Docker need Python 3.12: `make install`, then `make test`. Integration tests skip themselves when PostgreSQL at `TEST_DATABASE_URL` is down. `make backup` writes a dump into `backups/`.
 
-`SECRET_KEY` is longer than 32 characters. The sample in `.env.example` is fit only for `ENV=local`. The database, the chess engine, cookies, trusted hosts, registration, `ENGINE_MODE`, and `TURN_*` are described there. One web process runs inside a pod. The cluster runs two such pods, and a separate pod calculates chess, checkers, and Go. Valkey carries the call signal between pods. Card games stay in the site pod. Games and sessions stay in PostgreSQL, so sign-out and an expired session take effect at once. Valkey also holds request counters, failed sign-ins, and the "player is here" marks.
+`SECRET_KEY` is longer than 32 characters. The sample in `.env.example` is fit only for `ENV=local`. The database, the chess engine, cookies, trusted hosts, registration, `ENGINE_MODE`, `TURN_*`, and the contact form mail (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS`, `SMTP_SSL`) are described there. One web process runs inside a pod. The cluster runs two such pods, and a separate pod calculates chess, checkers, and Go. Valkey carries the call signal between pods. Card games stay in the site pod. Games and sessions stay in PostgreSQL, so sign-out and an expired session take effect at once. Valkey also holds request counters, failed sign-ins, and the "player is here" marks.
 
 The site and the database currently listen only on the local address. If the parlor is opened to the internet, it needs a filter at the network entrance.
 

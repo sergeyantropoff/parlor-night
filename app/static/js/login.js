@@ -8,16 +8,30 @@ for (const dialog of document.querySelectorAll("dialog.confirm-dialog")) {
 }
 
 const input = document.querySelector("#password");
-const peek = document.querySelector("#peek");
-if (input && peek) {
+for (const peek of document.querySelectorAll(".password button")) {
+  const field = peek.parentElement?.querySelector("input");
+  if (!(field instanceof HTMLInputElement)) continue;
   peek.addEventListener("click", () => {
-    const show = input.type === "password";
-    input.type = show ? "text" : "password";
+    const show = field.type === "password";
+    field.type = show ? "text" : "password";
     peek.setAttribute("aria-pressed", show ? "true" : "false");
     const label = show ? "Скрыть пароль" : "Показать пароль";
     peek.setAttribute("aria-label", label);
     peek.dataset.tip = label;
   });
+}
+if (input instanceof HTMLInputElement && !document.querySelector(".password button")) {
+  const peek = document.querySelector("#peek");
+  if (peek instanceof HTMLElement) {
+    peek.addEventListener("click", () => {
+      const show = input.type === "password";
+      input.type = show ? "text" : "password";
+      peek.setAttribute("aria-pressed", show ? "true" : "false");
+      const label = show ? "Скрыть пароль" : "Показать пароль";
+      peek.setAttribute("aria-label", label);
+      peek.dataset.tip = label;
+    });
+  }
 }
 
 const bornDay = document.querySelector("#born-day");

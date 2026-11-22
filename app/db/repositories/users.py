@@ -10,7 +10,8 @@ from datetime import date, datetime
 
 import asyncpg
 
-from app.names import shown
+from app.errors import AppError
+from app.names import called, shown
 from app.wallet import credit
 
 
@@ -22,14 +23,24 @@ class User:
     full_name: str = ""
     ask_name: bool = False
     avatar: str = ""
+    born_on: date | None = None
+    email: str = ""
 
     @property
     def is_admin(self) -> bool:
         return self.role == "admin"
 
     @property
+    def needs_intake(self) -> bool:
+        return self.born_on is None or self.ask_name
+
+    @property
     def display_name(self) -> str:
         return shown(self.full_name, self.username)
+
+    @property
+    def called_name(self) -> str:
+        return called(self.full_name, self.username)
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,6 +81,7 @@ async def create_user(
     starting_chips: int = 500,
     born_on: date | None = None,
     ask_name: bool = False,
+    email: str | None = None,
 ) -> User:
     user_id = uuid.uuid4()
     row = None
@@ -77,9 +89,9 @@ async def create_user(
         try:
             row = await conn.fetchrow(
                 """
-                INSERT INTO users (id, username, password_hash, role, referral_code, born_on, ask_name)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
-                RETURNING id, username, role, full_name, ask_name, avatar
+                INSERT INTO users (id, username, password_hash, role, referral_code, born_on, ask_name, email)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                RETURNING id, username, role, full_name, ask_name, avatar, born_on, email
                 """,
                 user_id,
                 username,
@@ -88,6 +100,7 @@ async def create_user(
                 new_referral_code(),
                 born_on,
                 ask_name,
+                email,
             )
             break
         except asyncpg.UniqueViolationError as exc:
@@ -112,8 +125,10 @@ async def get_auth_record(conn: asyncpg.Connection, username: str) -> UserRecord
         SELECT id, username, password_hash, role, is_active, created_at
         FROM users
         WHERE username = $1
+           OR ($2 AND lower(email) = $1)
         """,
         username,
+        "@" in username,
     )
     if row is None:
         return None
@@ -201,6 +216,17 @@ async def get_user(conn: asyncpg.Connection, user_id: uuid.UUID) -> asyncpg.Reco
         "SELECT id, username, role, is_active FROM users WHERE id = $1",
         user_id,
     )
+
+
+async def set_email(conn: asyncpg.Connection, user_id: uuid.UUID, email: str) -> None:
+    try:
+        await conn.execute(
+            "UPDATE users SET email = $2, updated_at = now() WHERE id = $1",
+            user_id,
+            email,
+        )
+    except asyncpg.UniqueViolationError as exc:
+        raise AppError(409, "email_taken", "Эта почта уже указана у другого игрока.") from exc
 
 
 async def set_active(conn: asyncpg.Connection, user_id: uuid.UUID, *, active: bool) -> None:

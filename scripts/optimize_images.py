@@ -58,6 +58,8 @@ def css_px(rel: str) -> int:
         return 960
     if "footer-still" in name:
         return 520
+    if name.startswith("github-star"):
+        return 186
     if "sidebar-walnut" in name:
         return 280
     if name.startswith("ongoing-"):

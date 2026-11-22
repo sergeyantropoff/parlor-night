@@ -28,12 +28,12 @@
       <a href="#about">О проекте</a>
     </nav>
     <div class="mast-actions">
+      {% if can_register %}<a class="button" href="/register">Регистрация</a>{% endif %}
+      <a class="button{% if can_register %} secondary{% endif %}" href="/login">Войти</a>
       <div class="theme-switch" role="group" aria-label="Тема">
         <button type="button" class="tip-host" data-theme-value="light" data-tip="Светлая" data-tip-below aria-pressed="false" aria-label="Светлая"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sun"/></svg></button>
         <button type="button" class="tip-host" data-theme-value="dark" data-tip="Тёмная" data-tip-below data-tip-edge aria-pressed="false" aria-label="Тёмная"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-moon"/></svg></button>
       </div>
-      {% if can_register %}<a class="button" href="/register">Регистрация</a>{% endif %}
-      <a class="button{% if can_register %} secondary{% endif %}" href="/login">Войти</a>
     </div>
   </div>
 </header>
@@ -69,14 +69,14 @@
       <img class="theme-dark" src="/static/parlor/dark/hero-parlor.webp?v={{ asset_version }}" width="819" height="545" alt="" />
       <figcaption>
         <svg class="laurel only-light" viewBox="0 0 28 16" aria-hidden="true"><path d="M3 13c2.2-1 4-3.2 4.6-6.2 1.2 2.2 2 4.2 1.2 6.2M11 13.2c2.4-1.4 4.6-4 6-7.2.8 2.8.6 5-1.2 7.2M18.2 12.4c1.6-2.2 4-4.6 6.6-6-.6 2.8-2.2 5-4.8 6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-        <i></i>Десять игр. Одна гостиная<i></i>
+        <i></i>Двенадцать игр, две в разработке<i></i>
         <svg class="laurel only-light flip" viewBox="0 0 28 16" aria-hidden="true"><path d="M3 13c2.2-1 4-3.2 4.6-6.2 1.2 2.2 2 4.2 1.2 6.2M11 13.2c2.4-1.4 4.6-4 6-7.2.8 2.8.6 5-1.2 7.2M18.2 12.4c1.6-2.2 4-4.6 6.6-6-.6 2.8-2.2 5-4.8 6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
       </figcaption>
     </figure>
   </div>
 </section>
 <ul class="landing stat-row">
-  <li><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-dice"/></svg><span>10 игр</span></li>
+  <li><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-dice"/></svg><span>12 игр (две в разработке)</span></li>
   <li><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chat"/></svg><span>Чаты и беседы</span></li>
   <li><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-video"/></svg><span>Созвон до 6 игроков</span></li>
   <li class="stat-safe">
@@ -87,7 +87,7 @@
 </ul>
 <section class="landing band" id="games">
   <div class="title-row"><h2>Выберите игру на вечер</h2><i></i></div>
-  <p class="lede only-light">Десять классических игр в одной гостиной. Соберите партию, пригласите друзей и играйте в привычном, уютном формате.</p>
+  <p class="lede only-light">Классические игры в одной гостиной. Соберите партию, пригласите друзей и играйте в привычном, уютном формате.</p>
   <p class="lede only-dark">В гостиной собраны любимые настольные игры — для спокойных партий, дружеских турниров и вечерних разговоров.</p>
   <div class="game-cards">
     <article>
@@ -193,6 +193,24 @@
         <a class="round tip-host" href="/login" data-tip="Преферанс" data-tip-edge aria-label="Войти, чтобы играть в преферанс"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
       </div>
     </article>
+    <article class="is-soon">
+      <div class="shot">
+        <img class="theme-light" src="/static/parlor/light/game-bura.webp?v={{ asset_version }}" width="1024" height="768" alt="Бура скоро появится в гостиной" loading="lazy" />
+        <img class="theme-dark" src="/static/parlor/dark/game-bura.webp?v={{ asset_version }}" width="1024" height="768" alt="" loading="lazy" />
+      </div>
+      <div class="shot-body">
+        <div><h3>Бура</h3><p>Три карты и козырь. Скоро в гостиной.</p></div>
+      </div>
+    </article>
+    <article class="is-soon">
+      <div class="shot">
+        <img class="theme-light" src="/static/parlor/light/game-yahtzy.webp?v={{ asset_version }}" width="1024" height="768" alt="Яцзы скоро появится в гостиной" loading="lazy" />
+        <img class="theme-dark" src="/static/parlor/dark/game-yahtzy.webp?v={{ asset_version }}" width="1024" height="768" alt="" loading="lazy" />
+      </div>
+      <div class="shot-body">
+        <div><h3>Яцзы</h3><p>Пять костей и карточка. Скоро в гостиной.</p></div>
+      </div>
+    </article>
   </div>
   <p class="mid-note"><i></i><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-coins"/></svg> Фишки начисляются за победу и ничью. Денег в игре нет. <i></i></p>
 </section>
@@ -206,11 +224,15 @@
         <p><span class="avatar">АК</span><span>Ну и финал! Реванш? 🙂</span><time>21:04</time></p>
         <p><span class="avatar">ММ</span><span>Давай. Коня в этот раз не отдам.</span><time>21:05</time></p>
         <p><span class="avatar">АК</span><span>Идёт. Чай уже ставлю.</span><time>21:06</time></p>
+        <p><span class="avatar">ММ</span><span>Только без цейтнота, я сегодня медленный.</span><time>21:07</time></p>
+        <p><span class="avatar">АК</span><span>Договорились. Доска уже стоит.</span><time>21:08</time></p>
       </div>
       <div class="mini-chat only-dark" aria-hidden="true">
         <p><span class="avatar">АК</span><span>Хорошая партия!</span><time>21:14</time></p>
         <p class="mine"><span>Реванш? Чай стынет.</span><time>21:15</time></p>
         <p><span class="avatar">ДВ</span><span>Давайте ещё одну, я раздаю.</span><time>21:15</time></p>
+        <p><span class="avatar">АК</span><span>Я за. Карты только перетасуйте.</span><time>21:16</time></p>
+        <p class="mine"><span>Уже. Садитесь к столу.</span><time>21:16</time></p>
       </div>
     </article>
     <article>
@@ -265,13 +287,16 @@
   {% else %}
   <p class="quiet">Скоро здесь появятся вечера, обновления и акции.</p>
   {% endif %}
+  <p class="mid-note"><i></i><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-news"/></svg> Вечера, обновления и анонсы — в одной ленте. <i></i></p>
 </section>
 {% if podium %}
 <section class="landing band" id="leaders">
   <div class="title-row"><h2>Топ игроков</h2><i></i></div>
   {% set linked = false %}
   {% set titled = false %}
+  {% set caption = false %}
   {% include "_podium.html" %}
+  <p class="mid-note"><i></i><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-medal"/></svg> Места в топе считаются по числу побед. <i></i></p>
 </section>
 {% endif %}
 <section class="landing band" id="about">
@@ -292,6 +317,18 @@
       </ol>
       {% if can_register %}<a class="button" href="/register">Регистрация</a>{% endif %}
       <a class="button{% if can_register %} secondary{% endif %}" href="/login">Войти в гостиную</a>
+      <hr class="join-rule" />
+      <aside class="star-note">
+        <img src="/static/parlor/github-star.webp?v={{ asset_version }}" width="521" height="347" alt="" />
+        <div>
+          <h3>Нравится гостиная?</h3>
+          <p>Поставьте Parlor Night звезду на GitHub. Мне будет приятно узнать, что вы играете здесь с удовольствием.</p>
+          <a class="button secondary" href="https://github.com/sergeyantropoff/parlor-night" target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><path d="m12 3.5 2.35 4.76 5.25.76-3.8 3.7.9 5.23L12 15.5 7.3 17.95l.9-5.23-3.8-3.7 5.25-.76z"/></svg>
+            Поставить звезду
+          </a>
+        </div>
+      </aside>
     </article>
   </div>
 </section>

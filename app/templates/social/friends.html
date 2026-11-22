@@ -47,6 +47,7 @@
         <article
           class="person-row{% if friend.live %} is-live{% endif %}"
           data-friend
+          data-page-row="1"
           data-bucket="{{ friend.relation }}"
           data-live="{{ 1 if friend.live else 0 }}"
           data-name="{{ friend.name|lower }} {{ friend.username|lower }}"
@@ -122,18 +123,6 @@
       </div>
       <footer class="directory-foot">
         <span id="friend-shown">Показано {{ counts.all }} из {{ counts.all }}</span>
-        <span class="pager">
-          <span class="tip-host" data-tip="Предыдущая страница" data-tip-edge>
-            <button type="button" id="friend-prev" class="secondary" aria-label="Предыдущая страница" disabled>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
-            </button>
-          </span>
-          <span class="tip-host" data-tip="Следующая страница" data-tip-edge>
-            <button type="button" id="friend-next" class="secondary" aria-label="Следующая страница" disabled>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
-            </button>
-          </span>
-        </span>
       </footer>
     </section>
 

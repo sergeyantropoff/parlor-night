@@ -18,7 +18,13 @@ async def ensure_local_accounts(pool: asyncpg.Pool, passwords: Passwords) -> Non
             existing = await get_auth_record(conn, username)
             if existing is None:
                 try:
-                    await create_user(conn, username=username, password_hash=digest, role=role)
+                    await create_user(
+                        conn,
+                        username=username,
+                        password_hash=digest,
+                        role=role,
+                        email="admin@admin.local" if role == "admin" else None,
+                    )
                 except asyncpg.UniqueViolationError:
                     pass
                 continue
@@ -28,3 +34,12 @@ async def ensure_local_accounts(pool: asyncpg.Pool, passwords: Passwords) -> Non
                 digest,
                 role,
             )
+            if role == "admin":
+                await conn.execute(
+                    """
+                    UPDATE users
+                    SET email = 'admin@admin.local', updated_at = now()
+                    WHERE id = $1 AND (email IS NULL OR btrim(email) = '')
+                    """,
+                    existing.id,
+                )

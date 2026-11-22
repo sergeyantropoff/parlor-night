@@ -163,6 +163,8 @@ class RequestMiddleware:
                 for key, value in extra.items():
                     if key not in existing:
                         headers.append((key.encode(), value.encode()))
+                if request.state.user is not None and "cache-control" not in existing:
+                    headers.append((b"cache-control", b"no-store"))
                 message["headers"] = headers
             await send(message)
 
@@ -284,6 +286,11 @@ class RequestMiddleware:
             if not supplied:
                 supplied = parsed.get("csrf_token", [""])[0]
         if path in {"/register", "/register/welcome"} and request.state.user is None:
+            cookie = request.cookies.get("bm_login_csrf", "")
+            if verify_login_csrf(settings.secret_key, supplied, cookie):
+                return None
+            return self._denied(request)
+        if path == "/contact" and request.state.user is None:
             cookie = request.cookies.get("bm_login_csrf", "")
             if verify_login_csrf(settings.secret_key, supplied, cookie):
                 return None

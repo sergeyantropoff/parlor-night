@@ -14,7 +14,7 @@ from app.auth.attempts import authenticate
 from app.auth.captcha import issue as issue_captcha
 from app.auth.captcha import proof as captcha_proof
 from app.auth.csrf import issue_login_csrf, issue_welcome, read_welcome
-from app.auth.validation import normalize_username, validate_password, validate_username
+from app.auth.validation import clean_email, normalize_username, validate_password, validate_username
 from app.db.repositories import api_access, sessions, users
 from app.errors import AppError
 from app.errors_page import error_response
@@ -52,6 +52,8 @@ def _entry_page(
     family: str = "",
     given: str = "",
     patronymic: str = "",
+    username: str = "",
+    email: str = "",
 ) -> Response:
     token, signed = issue_login_csrf(request.app.state.settings.secret_key)
     response = render(
@@ -67,6 +69,8 @@ def _entry_page(
             "family": family,
             "given": given,
             "patronymic": patronymic,
+            "username": username,
+            "email": email,
             "login_csrf": token,
             "year_now": date.today().year,
             "next": next_url,
@@ -262,24 +266,81 @@ async def register(request: Request) -> Response:
     policy = await current(request)
     await _guard_signup(request, policy)
     form = await request.form()
+    username = str(form.get("username") or "")
+    email_raw = str(form.get("email") or "")
+    password = str(form.get("password") or "")
     try:
+        email = _clean_email(email_raw)
+        if password != str(form.get("password_repeat") or ""):
+            raise AppError(422, "bad_password", "Пароли не совпадают.")
         await _require_human(request, str(form.get("captcha") or ""))
-        born = _required_born(form)
         created_id = await _create_account(
             request,
-            username=str(form.get("username", "")),
-            password=str(form.get("password", "")),
+            username=username,
+            password=password,
             role="user",
             referral=True,
-            born_on=born,
+            ask_name=True,
+            email=email,
         )
     except AppError as exc:
         if "application/json" in request.headers.get("accept", ""):
             raise
-        return _entry_page(request, "auth/register.html", exc.message, exc.status, cookie_path="/register")
-    response = _entry_page(request, "auth/register.html", cookie_path="/register", welcome=True)
-    _set_welcome(request, response, created_id)
-    return response
+        return _entry_page(
+            request,
+            "auth/register.html",
+            exc.message,
+            exc.status,
+            cookie_path="/register",
+            username=username,
+            email=email_raw,
+        )
+    return await _open_session(request, created_id)
+
+
+@router.post("/intake")
+async def intake_save(request: Request) -> Response:
+    user = request.state.user
+    if user is None:
+        return RedirectResponse("/login", status_code=303)
+    if not user.needs_intake:
+        return RedirectResponse("/", status_code=303)
+    form = await request.form()
+    family = str(form.get("family") or "")
+    given = str(form.get("given") or "")
+    patronymic = str(form.get("patronymic") or "")
+    day = str(form.get("born_day") or "")
+    month = str(form.get("born_month") or "")
+    year = str(form.get("born_year") or "")
+    try:
+        if not given.strip():
+            raise AppError(422, "bad_name", "Укажите имя.")
+        full_name = parse_full_name(family, given, patronymic)
+        born = _required_born(form)
+    except AppError as exc:
+        return render(
+            request,
+            "auth/intake.html",
+            {
+                "intake_error": exc.message,
+                "intake_family": family,
+                "intake_given": given,
+                "intake_patronymic": patronymic,
+                "intake_day": day,
+                "intake_month": month,
+                "intake_year": year,
+            },
+            status=exc.status,
+        )
+    async with request.app.state.pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                "UPDATE users SET born_on = $2, updated_at = now() WHERE id = $1",
+                user.id,
+                born,
+            )
+            await users.set_full_name(conn, user.id, full_name)
+    return RedirectResponse("/", status_code=303)
 
 
 @router.post("/register/welcome")
@@ -452,6 +513,13 @@ async def _require_human(request: Request, payload: str) -> None:
         raise AppError(422, "captcha", "Подтвердите, что вы не робот.")
 
 
+def _clean_email(value: str) -> str:
+    try:
+        return clean_email(value)
+    except ValueError as exc:
+        raise AppError(422, "bad_email", str(exc)) from exc
+
+
 def _required_born(form) -> date:
     try:
         born = born_from_parts(
@@ -497,6 +565,7 @@ async def _create_account(
     ask_name: bool = False,
     full_name: str = "",
     referral_code: str | None = None,
+    email: str | None = None,
 ) -> uuid.UUID:
     if role not in {"admin", "user"}:
         raise AppError(422, "bad_role", "Неизвестная роль.")
@@ -526,6 +595,7 @@ async def _create_account(
                 starting_chips=policy.starting_chips,
                 born_on=born_on,
                 ask_name=ask_name,
+                email=email,
             )
             if full_name:
                 await users.set_full_name(conn, created.id, full_name)
@@ -534,7 +604,32 @@ async def _create_account(
                 await users.attach_referral(conn, created.id, code, policy.referral_chips)
             return created.id
     except asyncpg.UniqueViolationError as exc:
+        constraint = str(getattr(exc, "constraint_name", "") or "")
+        if "email" in constraint:
+            raise AppError(409, "email_taken", "Эта почта уже указана у другого игрока.") from exc
         raise AppError(409, "username_taken", "Такой логин уже занят.") from exc
+
+
+async def _open_session(request: Request, user_id: uuid.UUID) -> Response:
+    policy = await current(request)
+    pool = request.app.state.pool
+    async with pool.acquire() as conn:
+        account = await conn.fetchrow("SELECT id, is_active FROM users WHERE id = $1", user_id)
+        if account is None or not account["is_active"]:
+            return RedirectResponse("/register", status_code=303)
+        old_hash = getattr(request.state, "session_hash", None)
+        if old_hash:
+            await sessions.revoke_token(conn, old_hash)
+        token, _csrf = await sessions.create_session(
+            conn,
+            user_id=account["id"],
+            ttl_seconds=policy.session_ttl_seconds,
+            user_agent=request.headers.get("user-agent"),
+            ip_address=request.state.client_ip,
+        )
+    response = RedirectResponse("/", status_code=303)
+    response.set_cookie("bm_session", token, max_age=policy.session_ttl_seconds, **_cookie_flags(request))
+    return response
 
 
 def _callback(uri: str, **extra: str) -> str:

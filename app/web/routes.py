@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 import secrets
 import uuid
@@ -12,7 +13,10 @@ from pathlib import Path
 from fastapi import APIRouter, Request
 from starlette.responses import FileResponse, JSONResponse, RedirectResponse, Response
 
-from app.auth.validation import password_requirements, validate_password
+from app.auth.captcha import issue as issue_captcha
+from app.auth.csrf import issue_login_csrf
+from app.auth.routes import _require_human
+from app.auth.validation import clean_email, password_requirements, validate_password
 from app.avatars import image_file as avatar_file
 from app.avatars import media_type as avatar_media
 from app.avatars import remove_avatar, store_avatar
@@ -31,6 +35,7 @@ from app.games.schemas import SettingsBody
 from app.games.service import _summarize
 from app.greeting import greeting
 from app.leaderboard import fetch_people, rank
+from app.mail import send_letter
 from app.names import called, parse_full_name, shown, split_full_name
 from app.news_images import image_file, media_type
 from app.paging import clamp_page, list_href, page_count, page_links, read_page
@@ -92,7 +97,7 @@ async def dashboard(request: Request) -> Response:
         "dashboard/index.html",
         {
             "dashboard": data,
-            "greeting": greeting(user.display_name),
+            "greeting": greeting(user.called_name),
             "theme": theme,
             "board_style": data["settings"]["board_style"],
             "referral_link": await _referral_link(request, user.id),
@@ -173,7 +178,56 @@ async def privacy(request: Request) -> Response:
 
 @router.get("/contact")
 async def contact(request: Request) -> Response:
-    return _public_page(request, "public/contact.html")
+    return await _contact_page(request, sent=request.query_params.get("sent") == "1")
+
+
+@router.get("/contact/captcha")
+async def contact_captcha(request: Request) -> JSONResponse:
+    ip_address = request.state.client_ip
+    if not await request.app.state.gate.allow(f"captcha:{ip_address}", 30, 60):
+        raise AppError(429, "rate_limited", "Слишком много проверок. Подождите минуту.")
+    return JSONResponse(issue_captcha(request.app.state.settings.secret_key))
+
+
+@router.post("/contact")
+async def contact_send(request: Request) -> Response:
+    form = await request.form()
+    name = " ".join(str(form.get("name") or "").split())
+    email_raw = str(form.get("email") or "")
+    message = str(form.get("message") or "").replace("\r\n", "\n").replace("\r", "\n").strip()
+    admin_id = str(form.get("admin_id") or "")
+    posted = {"contact_name": name, "contact_email": email_raw, "contact_message": message, "contact_admin": admin_id}
+    try:
+        await _require_human(request, str(form.get("captcha") or ""))
+        if not await request.app.state.gate.allow(f"contact:{request.state.client_ip}", 5, 600):
+            raise AppError(429, "rate_limited", "Слишком много писем. Подождите и напишите снова.")
+        if not name or len(name) > 120:
+            raise AppError(422, "bad_name", "Укажите, как к вам обращаться.")
+        try:
+            reply_to = clean_email(email_raw)
+        except ValueError as exc:
+            raise AppError(422, "bad_email", str(exc)) from exc
+        if not message or len(message) > 4000:
+            raise AppError(422, "bad_message", "Напишите сообщение, не длиннее 4000 знаков.")
+        admins = await _contact_admins(request)
+        chosen = next((item for item in admins if str(item["id"]) == admin_id), None)
+        if chosen is None:
+            raise AppError(422, "bad_admin", "Выберите администратора из списка.")
+        user = request.state.user
+        account = f"@{user.username}" if user is not None else "гость не вошёл"
+        subject = f"Parlor Night — сообщение от {name}"[:180]
+        body = f"От: {name}\nПочта для ответа: {reply_to}\nУчётка: {account}\n\n{message}\n"
+        await asyncio.to_thread(
+            send_letter,
+            request.app.state.settings,
+            recipient=str(chosen["email"]),
+            reply_to=reply_to,
+            subject=subject,
+            body=body,
+        )
+    except AppError as exc:
+        return await _contact_page(request, error=exc.message, status=exc.status, **posted)
+    return RedirectResponse("/contact?sent=1", status_code=303)
 
 
 @router.get("/about")
@@ -193,6 +247,76 @@ async def news_page(request: Request, news_id: uuid.UUID) -> Response:
         "public/news.html",
         {"post": post, "earlier": earlier, "public_page": True},
     )
+
+
+async def _contact_admins(request: Request) -> list[dict[str, object]]:
+    async with request.app.state.pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id, username, full_name, email
+            FROM users
+            WHERE role = 'admin' AND is_active AND email IS NOT NULL AND btrim(email) <> ''
+            ORDER BY created_at
+            """
+        )
+    found = []
+    for row in rows:
+        item = dict(row)
+        item["label"] = shown(row["full_name"], row["username"])
+        found.append(item)
+    return found
+
+
+async def _contact_page(
+    request: Request,
+    *,
+    error: str = "",
+    sent: bool = False,
+    status: int = 200,
+    contact_name: str = "",
+    contact_email: str = "",
+    contact_message: str = "",
+    contact_admin: str = "",
+) -> Response:
+    user = request.state.user
+    admins = await _contact_admins(request)
+    if not contact_name and user is not None:
+        contact_name = str(getattr(user, "display_name", "") or "")
+    if not contact_email and user is not None:
+        contact_email = str(getattr(user, "email", "") or "")
+    if not contact_admin and admins:
+        contact_admin = str(admins[0]["id"])
+    token = ""
+    signed = ""
+    if user is None:
+        token, signed = issue_login_csrf(request.app.state.settings.secret_key)
+    response = render(
+        request,
+        "public/contact.html",
+        {
+            "public_page": True,
+            "contact_error": error,
+            "contact_sent": sent,
+            "contact_name": contact_name,
+            "contact_email": contact_email,
+            "contact_message": contact_message,
+            "contact_admin": contact_admin,
+            "contact_admins": admins,
+            "login_csrf": token,
+        },
+        status=status,
+    )
+    if user is None:
+        response.set_cookie(
+            "bm_login_csrf",
+            signed,
+            max_age=3600,
+            httponly=True,
+            secure=request.app.state.settings.cookie_secure,
+            samesite="lax",
+            path="/contact",
+        )
+    return response
 
 
 def _offered_game(request: Request, game: str | None) -> str | None:
@@ -431,20 +555,32 @@ async def settings_save(request: Request) -> Response:
         full_name = parse_full_name(family, given, patronymic)
     except AppError as exc:
         return await _settings_page(request, user, error=exc.message, name=posted_name)
-    try:
-        posted_born = _posted_born(form)
-    except AppError as exc:
-        return await _settings_page(request, user, error=exc.message, name=posted_name)
-    stored = await _stored_born(request, user.id)
-    if posted_born is not None and posted_born != stored and form.get("confirm") != "yes":
-        return await _settings_page(
-            request,
-            user,
-            error="Подтвердите, что дата указана верно.",
-            born=posted_born,
-            preview=True,
-            name=posted_name,
-        )
+    posted_email = str(form.get("email") or "")
+    email = None
+    if user.is_admin:  # type: ignore[attr-defined]
+        try:
+            email = clean_email(posted_email)
+        except ValueError as exc:
+            return await _settings_page(
+                request,
+                user,
+                error=str(exc),
+                name=posted_name,
+                email=posted_email,
+            )
+        if email != (getattr(user, "email", "") or ""):
+            try:
+                async with request.app.state.pool.acquire() as conn:
+                    await users.set_email(conn, user.id, email)  # type: ignore[attr-defined]
+            except AppError as exc:
+                return await _settings_page(
+                    request,
+                    user,
+                    error=exc.message,
+                    name=posted_name,
+                    email=posted_email,
+                    status=exc.status,
+                )
     body = SettingsBody(
         theme=str(form.get("theme") or "dark"),  # type: ignore[arg-type]
         board_style=str(form.get("board_style") or "classic"),  # type: ignore[arg-type]
@@ -460,14 +596,13 @@ async def settings_save(request: Request) -> Response:
     if full_name != (user.full_name or ""):
         async with request.app.state.pool.acquire() as conn:
             await users.set_full_name(conn, user.id, full_name)
-    if posted_born is not None and posted_born != stored:
-        async with request.app.state.pool.acquire() as conn:
-            await conn.execute(
-                "UPDATE users SET born_on = $2, updated_at = now() WHERE id = $1",
-                user.id,
-                posted_born,
-            )
-    return await _settings_page(request, user, saved=True, name=split_full_name(full_name))
+    return await _settings_page(
+        request,
+        user,
+        saved=True,
+        name=split_full_name(full_name),
+        email=email,
+    )
 
 
 @router.post("/settings/password")
@@ -571,6 +706,53 @@ async def player_page(request: Request, username: str) -> Response:
         purse,
         chips_added=request.query_params.get("chips") == "1",
     )
+
+
+@router.post("/players/{username}/born")
+async def profile_born(request: Request, username: str) -> Response:
+    user = _user_or_login(request)
+    if isinstance(user, Response):
+        return user
+    if not user.is_admin:  # type: ignore[attr-defined]
+        raise AppError(404, "not_found", "Страница не найдена.")
+    loaded = await _load_player(request, username)
+    if isinstance(loaded, Response):
+        return loaded
+    player, played, counted, online, purse = loaded
+    form = await request.form()
+    try:
+        born = _posted_born(form)
+    except AppError as exc:
+        return await _profile_page(
+            request,
+            user,
+            player,
+            played,
+            counted,
+            online,
+            purse,
+            age_error=exc.message,
+            status=exc.status,
+        )
+    if born is None:
+        return await _profile_page(
+            request,
+            user,
+            player,
+            played,
+            counted,
+            online,
+            purse,
+            age_error="Укажите дату рождения.",
+            status=422,
+        )
+    async with request.app.state.pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE users SET born_on = $2, updated_at = now() WHERE id = $1",
+            player["id"],
+            born,
+        )
+    return RedirectResponse(f"/players/{player['username']}", status_code=303)
 
 
 @router.post("/players/{username}/chips")
@@ -706,7 +888,7 @@ async def _load_player(
     async with request.app.state.pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            SELECT id, username, full_name, avatar, created_at, last_seen
+            SELECT id, username, full_name, avatar, created_at, last_seen, email, born_on
             FROM users
             WHERE username = $1 AND is_active = TRUE
             """,
@@ -762,6 +944,7 @@ async def _profile_page(
     *,
     chips_added: bool = False,
     chip_error: str = "",
+    age_error: str = "",
     friend_error: str = "",
     status: int = 200,
 ) -> Response:
@@ -778,6 +961,8 @@ async def _profile_page(
             "player_chips": purse,
             "chips_added": chips_added,
             "chip_error": chip_error,
+            "age_error": age_error,
+            "year_now": date.today().year,
             "friend_state": friend_state,
             "friend_error": friend_error,
             "theme": prefs["theme"],
@@ -1070,6 +1255,7 @@ async def _settings_page(
     born: date | None = None,
     preview: bool = False,
     name: tuple[str, str, str] | None = None,
+    email: str | None = None,
 ) -> Response:
     prefs = await _prefs(request, user.id)  # type: ignore[attr-defined]
     facts = _birth_facts(born) if preview else await _birth(request, user.id)  # type: ignore[attr-defined]
@@ -1098,6 +1284,7 @@ async def _settings_page(
             "family": family,
             "given": given,
             "patronymic": patronymic,
+            "email": getattr(user, "email", "") if email is None else email,
             "referral_link": await _referral_link(request, user.id),  # type: ignore[attr-defined]
             **facts,
         },

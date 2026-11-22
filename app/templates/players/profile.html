@@ -21,6 +21,15 @@
         {% if online %}В сети{% else %}Был {{ player.last_seen|when or "давно" }}{% endif %}
       </p>
       <p class="quiet">В гостиной с {{ player.created_at|dt }}</p>
+      {% if player.email and (user.is_admin or player.id|string == user.id|string) %}
+      <p class="quiet">{{ player.email }}</p>
+      {% endif %}
+      {% if user.is_admin %}
+      <div class="profile-admin">
+        <button type="button" data-open-dialog="age-edit">Изменить возраст</button>
+        <button type="button" data-open-dialog="chip-grant">Начислить фишки</button>
+      </div>
+      {% endif %}
       {% if friend_state == "none" %}
       <form class="profile-friend" method="post" action="/players/{{ player.username }}/friend">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
@@ -47,21 +56,6 @@
       {% endif %}
     </div>
   </header>
-  {% if user.is_admin %}
-  <aside class="panel profile-grant">
-    <h2>Начислить фишки</h2>
-    {% if chip_error %}<p class="banner" role="alert">{{ chip_error }}</p>{% endif %}
-    {% if chips_added %}<p class="banner ok" role="status">Фишки начислены.</p>{% endif %}
-    <p class="quiet">Сейчас {{ player_chips|grouped }} фишек.</p>
-    <form method="post" action="/players/{{ player.username }}/chips">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-      <label>Сколько добавить
-        <input name="amount" type="number" min="1" max="100000" inputmode="numeric" required="required" />
-      </label>
-      <button type="submit">Начислить</button>
-    </form>
-  </aside>
-  {% endif %}
   </div>
 
   <div class="profile-numbers">
@@ -169,5 +163,64 @@
     </ol>
     <p class="week-key"><i class="swatch-played"></i> Партии <i class="swatch-win"></i> Победы</p>
   </section>
+  {% if user.is_admin %}
+  <dialog id="age-edit" class="confirm-dialog welcome-dialog" {% if age_error %}data-open="1"{% endif %} aria-labelledby="age-edit-title">
+    <h2 id="age-edit-title">Изменить возраст</h2>
+    <p>Дата рождения открывает покер, блэкджек и преферанс с 18 лет.</p>
+    <form method="post" action="/players/{{ player.username }}/born">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      {% if age_error %}<p class="banner" role="alert">{{ age_error }}</p>{% endif %}
+      <fieldset class="birth">
+        <legend>Дата рождения</legend>
+        <div class="born-grid">
+          <label>День
+            <select name="born_day" required="required">
+              <option value="">—</option>
+              {% for day in range(1, 32) %}
+              <option value="{{ day }}" {% if player.born_on and player.born_on.day == day %}selected="selected"{% endif %}>{{ day }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Месяц
+            <select name="born_month" required="required">
+              <option value="">—</option>
+              {% for name in ("январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь") %}
+              <option value="{{ loop.index }}" {% if player.born_on and player.born_on.month == loop.index %}selected="selected"{% endif %}>{{ name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Год
+            <select name="born_year" required="required">
+              <option value="">—</option>
+              {% for year in range(year_now, 1899, -1) %}
+              <option value="{{ year }}" {% if player.born_on and player.born_on.year == year %}selected="selected"{% endif %}>{{ year }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+      </fieldset>
+      <div class="confirm-actions">
+        <button type="button" class="secondary" data-close>Закрыть</button>
+        <button type="submit">Сохранить</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="chip-grant" class="confirm-dialog welcome-dialog" {% if chip_error or chips_added %}data-open="1"{% endif %} aria-labelledby="chip-grant-title">
+    <h2 id="chip-grant-title">Начислить фишки</h2>
+    {% if chip_error %}<p class="banner" role="alert">{{ chip_error }}</p>{% endif %}
+    {% if chips_added %}<p class="banner ok" role="status">Фишки начислены.</p>{% endif %}
+    <p>Сейчас {{ player_chips|grouped }} фишек.</p>
+    <form method="post" action="/players/{{ player.username }}/chips">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <label>Сколько добавить
+        <input name="amount" type="number" min="1" max="100000" inputmode="numeric" required="required" />
+      </label>
+      <div class="confirm-actions">
+        <button type="button" class="secondary" data-close>Закрыть</button>
+        <button type="submit">Начислить</button>
+      </div>
+    </form>
+  </dialog>
+  {% endif %}
 </section>
 {% endblock %}

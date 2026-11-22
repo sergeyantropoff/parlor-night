@@ -122,7 +122,7 @@
     <div class="workspace">
       <header class="topbar">
         {% block topbar_lead %}{% endblock %}
-        {{ player_link(user.display_name, user.username, user.avatar, false, false, true) }}
+        {{ player_link(user.called_name, user.username, user.avatar, false, false, true) }}
         {% if chips is not none %}
         <a class="chips-pill" href="/chips" title="История фишек">
           <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-coins"/></svg>
@@ -144,11 +144,55 @@
     </div>
   </div>
   {% endif %}
+  {% if user and not preview and user.needs_intake %}
+  <dialog id="intake-dialog" class="confirm-dialog welcome-dialog" data-open="1" aria-labelledby="intake-title">
+    <h2 id="intake-title">Первый вход</h2>
+    <p>Для входа необходимо заполнить вашу дату рождения и имя. Фамилия и отчество — по желанию.</p>
+    <form method="post" action="/intake">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      {% if intake_error %}<p class="banner" role="alert">{{ intake_error }}</p>{% endif %}
+      <label>Фамилия <input name="family" value="{{ intake_family }}" autocomplete="family-name" /></label>
+      <label><span class="field-title">Имя <span class="need" aria-hidden="true">*</span></span> <input name="given" value="{{ intake_given }}" autocomplete="given-name" required="required" /></label>
+      <label>Отчество <input name="patronymic" value="{{ intake_patronymic }}" autocomplete="additional-name" /></label>
+      <fieldset class="birth">
+        <legend>Дата рождения <span class="need" aria-hidden="true">*</span></legend>
+        <div class="born-grid">
+          <label>День
+            <select name="born_day" required="required">
+              <option value="">—</option>
+              {% for day in range(1, 32) %}
+              <option value="{{ day }}" {% if intake_day == day|string %}selected="selected"{% endif %}>{{ day }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Месяц
+            <select name="born_month" required="required">
+              <option value="">—</option>
+              {% for name in ("январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь") %}
+              <option value="{{ loop.index }}" {% if intake_month == loop.index|string %}selected="selected"{% endif %}>{{ name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Год
+            <select name="born_year" required="required">
+              <option value="">—</option>
+              {% for year in range(year_now, 1899, -1) %}
+              <option value="{{ year }}" {% if intake_year == year|string %}selected="selected"{% endif %}>{{ year }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+      </fieldset>
+      <div class="confirm-actions">
+        <button type="submit">Сохранить</button>
+      </div>
+    </form>
+  </dialog>
+  {% endif %}
   <dialog id="age-dialog" class="confirm-dialog" {% if age_block %}data-open="1"{% endif %} aria-labelledby="age-title">
     <h2 id="age-title">Игра с 18 лет</h2>
     <p id="age-text">{{ age_block }}</p>
     <div class="confirm-actions">
-      <a class="button secondary" href="/settings">Настройки</a>
       <button type="button" id="age-close">Понятно</button>
     </div>
   </dialog>
