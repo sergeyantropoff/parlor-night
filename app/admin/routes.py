@@ -29,6 +29,7 @@ _DONE = {
     "sessions": "Все сессии, кроме вашей, завершены.",
     "lockouts": "Блокировки входа сняты.",
     "messages": "Все сообщения удалены.",
+    "games": "Партии очищены. Гости и фишки не изменены.",
     "stats": "Статистика игр очищена.",
 }
 _NEWS_DONE = {
@@ -36,9 +37,24 @@ _NEWS_DONE = {
     "saved": "Новость сохранена.",
     "removed": "Новость убрана.",
 }
+_SITE_TABS = frozenset({"access", "login", "sessions", "parlor", "wipe"})
 _BODY_LIMIT = 20000
 _NEWS_PAGE = 4
-_COVERS = {"light-theme", "uno-evening", "welcome", "card-games", "go", "beta", "domino", "nardy"}
+_COVERS = {"light-theme", "uno-evening", "welcome", "card-games", "go", "beta", "domino", "nardy", "yahtzy"}
+
+
+def _site_tab(value: object) -> str:
+    text = str(value or "")
+    return text if text in _SITE_TABS else "access"
+
+
+def _site_url(done: str = "", tab: str = "") -> str:
+    params: dict[str, str] = {}
+    if done:
+        params["done"] = done
+    if tab:
+        params["tab"] = _site_tab(tab)
+    return "/admin/site" + (("?" + urlencode(params)) if params else "")
 
 
 def _admin(request: Request) -> Response | object:
@@ -67,7 +83,13 @@ async def site_page(request: Request) -> Response:
     if isinstance(user, Response):
         return user
     done = _DONE.get(request.query_params.get("done", ""), "")
-    return render(request, "admin/site.html", await _site_context(request, message=done or None))
+    raw_tab = request.query_params.get("tab", "")
+    tab = raw_tab if raw_tab in _SITE_TABS else None
+    return render(
+        request,
+        "admin/site.html",
+        await _site_context(request, message=done or None, tab=tab),
+    )
 
 
 @router.post("/admin/site")
@@ -76,6 +98,7 @@ async def site_save(request: Request) -> Response:
     if isinstance(user, Response):
         return user
     form = await request.form()
+    tab = _site_tab(form.get("tab"))
     payload = {
         "registration_mode": form.get("registration_mode"),
         "registration_open": form.get("registration_open"),
@@ -99,14 +122,14 @@ async def site_save(request: Request) -> Response:
         return render(
             request,
             "admin/site.html",
-            await _site_context(request, error=exc.message),
+            await _site_context(request, error=exc.message, tab=tab),
             status=exc.status,
         )
     async with request.app.state.pool.acquire() as conn:
         await load_policy(conn)
         await save_policy(conn, policy)
     remember(request.app, policy)
-    return RedirectResponse("/admin/site?done=saved", status_code=303)
+    return RedirectResponse(_site_url("saved", tab), status_code=303)
 
 
 @router.post("/admin/site/sessions")
@@ -119,7 +142,7 @@ async def close_sessions(request: Request) -> Response:
         async with request.app.state.pool.acquire() as conn:
             await sessions.revoke_other_sessions(conn, token_hash)
             await api_access.revoke_all(conn)
-    return RedirectResponse("/admin/site?done=sessions", status_code=303)
+    return RedirectResponse(_site_url("sessions", "sessions"), status_code=303)
 
 
 @router.post("/admin/site/lockouts")
@@ -130,7 +153,28 @@ async def clear_lockouts(request: Request) -> Response:
     async with request.app.state.pool.acquire() as conn:
         await rate_limit.clear_login_failures(conn)
     await request.app.state.gate.clear_login_buckets()
-    return RedirectResponse("/admin/site?done=lockouts", status_code=303)
+    return RedirectResponse(_site_url("lockouts", "sessions"), status_code=303)
+
+
+async def _wipe_password(request: Request, user, form, kind: str) -> Response | None:
+    password = str(form.get("password") or "")
+    async with request.app.state.pool.acquire() as conn:
+        record = await users.get_auth_record(conn, user.username)
+    digest = record.password_hash if record is not None and record.is_active else None
+    matched = await request.app.state.passwords.verify_async(digest, password)
+    if form.get("confirm") == "yes" and password and matched:
+        return None
+    return render(
+        request,
+        "admin/site.html",
+        await _site_context(
+            request,
+            wipe=kind,
+            wipe_error="Пароль не подошёл." if password else "Введите свой пароль.",
+            tab="wipe",
+        ),
+        status=422,
+    )
 
 
 @router.post("/admin/site/messages")
@@ -139,12 +183,13 @@ async def clear_messages(request: Request) -> Response:
     if isinstance(user, Response):
         return user
     form = await request.form()
-    if form.get("confirm") != "yes":
-        raise AppError(422, "confirm", "Подтвердите очистку сообщений.")
+    denied = await _wipe_password(request, user, form, "messages")
+    if denied is not None:
+        return denied
     async with request.app.state.pool.acquire() as conn, conn.transaction():
         await conn.execute("DELETE FROM messages")
         await conn.execute("DELETE FROM chat_reads")
-    return RedirectResponse("/admin/site?done=messages", status_code=303)
+    return RedirectResponse(_site_url("messages", "wipe"), status_code=303)
 
 
 @router.post("/admin/site/stats")
@@ -153,11 +198,26 @@ async def clear_game_stats(request: Request) -> Response:
     if isinstance(user, Response):
         return user
     form = await request.form()
-    if form.get("confirm") != "yes":
-        raise AppError(422, "confirm", "Подтвердите очистку статистики.")
+    denied = await _wipe_password(request, user, form, "stats")
+    if denied is not None:
+        return denied
     async with request.app.state.pool.acquire() as conn, conn.transaction():
         await conn.execute("DELETE FROM games")
-    return RedirectResponse("/admin/site?done=stats", status_code=303)
+    return RedirectResponse(_site_url("stats", "wipe"), status_code=303)
+
+
+@router.post("/admin/site/games")
+async def clear_games(request: Request) -> Response:
+    user = _admin(request)
+    if isinstance(user, Response):
+        return user
+    form = await request.form()
+    denied = await _wipe_password(request, user, form, "games")
+    if denied is not None:
+        return denied
+    async with request.app.state.pool.acquire() as conn, conn.transaction():
+        await conn.execute("DELETE FROM games")
+    return RedirectResponse(_site_url("games", "wipe"), status_code=303)
 
 
 @router.post("/admin/site/keys")
@@ -166,8 +226,9 @@ async def clear_keys(request: Request) -> Response:
     if isinstance(user, Response):
         return user
     form = await request.form()
-    if form.get("confirm") != "yes":
-        raise AppError(422, "confirm", "Подтвердите очистку ключей.")
+    denied = await _wipe_password(request, user, form, "keys")
+    if denied is not None:
+        return denied
     async with request.app.state.pool.acquire() as conn, conn.transaction():
         await conn.execute("DELETE FROM api_tokens")
         await conn.execute("DELETE FROM api_grants")
@@ -478,6 +539,9 @@ async def _site_context(
     *,
     message: str | None = None,
     error: str | None = None,
+    wipe: str | None = None,
+    wipe_error: str | None = None,
+    tab: str | None = None,
 ) -> dict[str, object]:
     async with request.app.state.pool.acquire() as conn:
         counts = await conn.fetchrow(
@@ -498,4 +562,7 @@ async def _site_context(
         "wipe_messages": int(counts["messages"] or 0),
         "wipe_games": int(counts["games"] or 0),
         "wipe_tokens": int(counts["tokens"] or 0),
+        "wipe": wipe,
+        "wipe_error": wipe_error,
+        "tab": tab if tab in _SITE_TABS else None,
     }

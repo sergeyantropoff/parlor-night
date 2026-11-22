@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import re
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import asyncpg
 from starlette.requests import Request
 
 from app.errors import AppError
 
-_GAMES = ("chess", "checkers", "go", "uno", "poker", "durak", "blackjack", "preferans", "domino", "nardy")
+_GAMES = ("chess", "checkers", "go", "uno", "poker", "durak", "blackjack", "preferans", "domino", "nardy", "yahtzy")
 _MODES = ("closed", "referral", "open")
 _REFERRAL = re.compile(r"^[a-z0-9]{6,12}$")
 
@@ -39,6 +39,7 @@ class SitePolicy:
     preferans: bool
     domino: bool
     nardy: bool
+    yahtzy: bool
     notice: str
     maintenance: bool
 
@@ -50,6 +51,23 @@ class SitePolicy:
         if game not in _GAMES:
             return False
         return bool(getattr(self, game))
+
+    def for_staff(self) -> SitePolicy:
+        """Администратор видит и открывает все игры, даже закрытые для гостей."""
+        return replace(
+            self,
+            chess=True,
+            checkers=True,
+            go=True,
+            uno=True,
+            poker=True,
+            durak=True,
+            blackjack=True,
+            preferans=True,
+            domino=True,
+            nardy=True,
+            yahtzy=True,
+        )
 
     @property
     def session_ttl_seconds(self) -> int:
@@ -83,6 +101,7 @@ def defaults() -> SitePolicy:
         preferans=True,
         domino=True,
         nardy=True,
+        yahtzy=True,
         notice="",
         maintenance=False,
     )
@@ -111,8 +130,8 @@ def normalize(data: dict[str, object], *, local: bool) -> SitePolicy:
     username_max = _number(data.get("username_max"), low=8, high=32, label="Максимальная длина логина")
     if username_min > username_max:
         raise AppError(422, "bad_settings", "Минимальная длина логина больше максимальной.")
-    letter = True if not local else _flag(data.get("password_needs_letter"))
-    digit = True if not local else _flag(data.get("password_needs_digit"))
+    letter = _flag(data.get("password_needs_letter"))
+    digit = _flag(data.get("password_needs_digit"))
     games = {str(item) for item in data.get("games") or []}
     chosen = {name: name in games for name in _GAMES}
     if not any(chosen.values()):
@@ -160,6 +179,7 @@ def normalize(data: dict[str, object], *, local: bool) -> SitePolicy:
         preferans=chosen["preferans"],
         domino=chosen["domino"],
         nardy=chosen["nardy"],
+        yahtzy=chosen["yahtzy"],
         notice=notice,
         maintenance=_flag(data.get("maintenance")),
     )
@@ -188,6 +208,7 @@ def from_row(row: asyncpg.Record) -> SitePolicy:
         preferans=bool(row["preferans_open"]),
         domino=bool(row["domino_open"]),
         nardy=bool(row["nardy_open"]),
+        yahtzy=bool(row["yahtzy_open"]),
         notice=str(row["notice"] or ""),
         maintenance=bool(row["maintenance"]),
     )
@@ -237,6 +258,7 @@ async def save_policy(conn: asyncpg.Connection, policy: SitePolicy) -> None:
             go_open = $22,
             domino_open = $23,
             nardy_open = $24,
+            yahtzy_open = $25,
             updated_at = now()
         WHERE id = TRUE
         """,
@@ -264,6 +286,7 @@ async def save_policy(conn: asyncpg.Connection, policy: SitePolicy) -> None:
         policy.go,
         policy.domino,
         policy.nardy,
+        policy.yahtzy,
     )
 
 

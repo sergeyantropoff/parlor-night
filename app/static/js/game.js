@@ -3,6 +3,7 @@ import { mountEmoji } from "./emoji.js";
 import { attachPager } from "./pager.js";
 import { bindGo, paintGo } from "./go.js";
 import { bindNardy, paintNardy } from "./nardy.js?v=20261122";
+import { bindYahtzy, paintYahtzy, yahtzySettled } from "./yahtzy.js?v=20261122j";
 
 const source = document.querySelector("#game-state");
 let current = JSON.parse(source.textContent);
@@ -377,6 +378,7 @@ function showTool(id, visible) {
 function paintWatchTools() {
   const watching = Boolean(current.watching);
   for (const tool of document.querySelectorAll(".tool-col .icon-tool")) {
+    if (tool.dataset.keep) continue;
     if (watching && !tool.querySelector("#flip")) tool.hidden = true;
   }
   for (const column of document.querySelectorAll(".tool-col")) {
@@ -3150,6 +3152,7 @@ function render() {
   }
   if (current.table === "cards") {
     if (current.game_type === "nardy") paintNardy(current);
+    else if (current.game_type === "yahtzy") paintYahtzy(current);
     else if (current.game_type === "domino") renderDomino();
     else renderCards();
     return;
@@ -3335,7 +3338,7 @@ function apply(next) {
 async function present(next) {
   const plan = motionPlan(current, next);
   const shot = plan ? snapshotMotion(plan) : null;
-  const cards = next.table === "cards" && next.game_type !== "nardy" && current.table === "cards" && current.game_type !== "nardy" && next.version !== current.version
+  const cards = next.table === "cards" && next.game_type !== "nardy" && next.game_type !== "yahtzy" && current.table === "cards" && current.game_type !== "nardy" && current.game_type !== "yahtzy" && next.version !== current.version
     ? rememberCards()
     : null;
   const spoken = next.moves?.at(-1);
@@ -3361,6 +3364,7 @@ async function present(next) {
   }
   syncTableHold();
   render();
+  if (current.game_type === "yahtzy") await yahtzySettled();
   const engineMove = added && spoken?.by === "engine" && (shot || cards || next.table === "go");
   if (engineMove) {
     const who = computerSpeaker();
@@ -4798,13 +4802,14 @@ function maybeEngine() {
   if (!auto) return;
   const gallery = Boolean(current.gallery);
   const nardy = current.game_type === "nardy";
-  const delay = gallery ? 1600 : nardy ? 1600 : current.game_type === "domino" ? 680 : 480;
+  const yahtzy = current.game_type === "yahtzy";
+  const delay = gallery ? 1600 : yahtzy ? 420 : nardy ? 1600 : current.game_type === "domino" ? 680 : 480;
   window.setTimeout(() => {
     if (ticket !== engineTicket || busy || !current.can_engine) return;
     const still = current.table === "go" && current.status === "scoring";
     if (!still && current.status !== "active") return;
     const body = { version: current.version };
-    if (current.gallery || current.game_type === "nardy") body.steps = 1;
+    if (current.gallery || current.game_type === "nardy" || current.game_type === "yahtzy") body.steps = 1;
     act("engine-move", body);
   }, delay);
 }
@@ -4871,6 +4876,23 @@ bindGo({
   apply,
   ask,
   refresh,
+  getState: () => current,
+  getBusy: () => busy,
+  setBusy(value) {
+    busy = value;
+  },
+  onSettled() {
+    maybeEngine();
+  },
+});
+bindYahtzy({
+  post,
+  say,
+  apply,
+  refresh,
+  asset,
+  fillPersonName,
+  plateFace,
   getState: () => current,
   getBusy: () => busy,
   setBusy(value) {

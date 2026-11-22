@@ -7,7 +7,7 @@ import secrets
 from pathlib import Path
 
 IMAGE_NAME = re.compile(r"^[0-9a-f]{32}\.(jpg|png|webp)$")
-PRESET_COVERS = frozenset({"light-theme", "uno-evening", "welcome", "card-games", "go", "beta", "domino", "nardy"})
+PRESET_COVERS = frozenset({"light-theme", "uno-evening", "welcome", "card-games", "go", "beta", "domino", "nardy", "yahtzy"})
 _MEDIA = {"jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
 
 

@@ -6,8 +6,9 @@ from typing import Any
 
 from app.cards import blackjack, domino, durak, poker, preferans, uno
 from app.nardy import rules as nardy
+from app.yahtzy import rules as yahtzy
 
-CARD_GAMES = frozenset({"poker", "uno", "durak", "blackjack", "preferans", "domino", "nardy"})
+CARD_GAMES = frozenset({"poker", "uno", "durak", "blackjack", "preferans", "domino", "nardy", "yahtzy"})
 ADULT_GAMES = frozenset({"poker", "blackjack", "preferans"})
 CHIP_GAMES = frozenset({"poker", "blackjack", "preferans"})
 
@@ -19,6 +20,7 @@ _MODULES = {
     "preferans": preferans,
     "domino": domino,
     "nardy": nardy,
+    "yahtzy": yahtzy,
 }
 
 

@@ -52,7 +52,7 @@
       <label>Обложка из гостиной
         <select name="cover" data-cover-preset>
           <option value="">Без обложки</option>
-          {% for value, title in (("light-theme", "Светлая тема"), ("uno-evening", "Вечер Уно"), ("welcome", "Знакомство с гостиной"), ("card-games", "Новые карточные игры"), ("go", "Го"), ("beta", "Бета-тестирование"), ("domino", "Домино"), ("nardy", "Нарды")) %}
+          {% for value, title in (("light-theme", "Светлая тема"), ("uno-evening", "Вечер Уно"), ("welcome", "Знакомство с гостиной"), ("card-games", "Новые карточные игры"), ("go", "Го"), ("beta", "Бета-тестирование"), ("domino", "Домино"), ("nardy", "Нарды"), ("yahtzy", "Яцзы")) %}
           <option value="{{ value }}" {% if source and source.cover == value %}selected="selected"{% endif %}>{{ title }}</option>
           {% endfor %}
         </select>

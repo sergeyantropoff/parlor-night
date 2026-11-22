@@ -557,6 +557,28 @@ async def settings_save(request: Request) -> Response:
         return await _settings_page(request, user, error=exc.message, name=posted_name)
     posted_email = str(form.get("email") or "")
     email = None
+    born = None
+    if user.is_admin:  # type: ignore[attr-defined]
+        try:
+            born = _posted_born(form)
+        except AppError as exc:
+            return await _settings_page(
+                request,
+                user,
+                error=exc.message,
+                name=posted_name,
+                email=posted_email,
+                status=exc.status,
+            )
+        if born is None:
+            return await _settings_page(
+                request,
+                user,
+                error="Укажите дату рождения.",
+                name=posted_name,
+                email=posted_email,
+                status=422,
+            )
     if user.is_admin:  # type: ignore[attr-defined]
         try:
             email = clean_email(posted_email)
@@ -593,9 +615,16 @@ async def settings_save(request: Request) -> Response:
         checkers_time_ms=_int(form.get("checkers_time_ms"), 1000),
     )
     await _store_settings(request, user.id, body)
-    if full_name != (user.full_name or ""):
+    if full_name != (user.full_name or "") or born is not None:
         async with request.app.state.pool.acquire() as conn:
-            await users.set_full_name(conn, user.id, full_name)
+            if full_name != (user.full_name or ""):
+                await users.set_full_name(conn, user.id, full_name)
+            if born is not None:
+                await conn.execute(
+                    "UPDATE users SET born_on = $2, updated_at = now() WHERE id = $1",
+                    user.id,
+                    born,
+                )
     return await _settings_page(
         request,
         user,
@@ -1133,7 +1162,7 @@ async def _board_page(request: Request, game_id: uuid.UUID, *, analysis: bool) -
         if exc.status == 404:
             return error_response(request, 404, note=exc.message)
         raise
-    if analysis and state.get("game_type") in {"domino", "nardy"}:
+    if analysis and state.get("game_type") in {"domino", "nardy", "yahtzy"}:
         return RedirectResponse(f"/games/{game_id}", status_code=303)
     prefs = await _prefs(request, user.id)
     return render(
@@ -1373,6 +1402,7 @@ async def _settings_page(
     preview: bool = False,
     name: tuple[str, str, str] | None = None,
     email: str | None = None,
+    status: int = 200,
 ) -> Response:
     prefs = await _prefs(request, user.id)  # type: ignore[attr-defined]
     facts = _birth_facts(born) if preview else await _birth(request, user.id)  # type: ignore[attr-defined]
@@ -1405,6 +1435,7 @@ async def _settings_page(
             "referral_link": await _referral_link(request, user.id),  # type: ignore[attr-defined]
             **facts,
         },
+        status=status,
     )
 
 

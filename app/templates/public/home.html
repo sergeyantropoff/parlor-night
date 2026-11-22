@@ -10,6 +10,7 @@
   "beta": "news-beta.webp",
   "domino": "news-domino.webp",
   "nardy": "news-nardy.webp",
+  "yahtzy": "news-yahtzy.webp",
 } %}
 {% set months = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"] %}
 <header class="mast">
@@ -69,14 +70,14 @@
       <img class="theme-dark" src="/static/parlor/dark/hero-parlor.webp?v={{ asset_version }}" width="819" height="545" alt="" />
       <figcaption>
         <svg class="laurel only-light" viewBox="0 0 28 16" aria-hidden="true"><path d="M3 13c2.2-1 4-3.2 4.6-6.2 1.2 2.2 2 4.2 1.2 6.2M11 13.2c2.4-1.4 4.6-4 6-7.2.8 2.8.6 5-1.2 7.2M18.2 12.4c1.6-2.2 4-4.6 6.6-6-.6 2.8-2.2 5-4.8 6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-        <i></i>Двенадцать игр, две в разработке<i></i>
+        <i></i>Одиннадцать игр, одна в разработке<i></i>
         <svg class="laurel only-light flip" viewBox="0 0 28 16" aria-hidden="true"><path d="M3 13c2.2-1 4-3.2 4.6-6.2 1.2 2.2 2 4.2 1.2 6.2M11 13.2c2.4-1.4 4.6-4 6-7.2.8 2.8.6 5-1.2 7.2M18.2 12.4c1.6-2.2 4-4.6 6.6-6-.6 2.8-2.2 5-4.8 6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
       </figcaption>
     </figure>
   </div>
 </section>
 <ul class="landing stat-row">
-  <li><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-dice"/></svg><span>12 игр (две в разработке)</span></li>
+  <li><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-dice"/></svg><span>11 игр (одна в разработке)</span></li>
   <li><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chat"/></svg><span>Чаты и беседы</span></li>
   <li><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-video"/></svg><span>Созвон до 6 игроков</span></li>
   <li class="stat-safe">
@@ -90,6 +91,7 @@
   <p class="lede only-light">Классические игры в одной гостиной. Соберите партию, пригласите друзей и играйте в привычном, уютном формате.</p>
   <p class="lede only-dark">В гостиной собраны любимые настольные игры — для спокойных партий, дружеских турниров и вечерних разговоров.</p>
   <div class="game-cards">
+    {% if not site or site.allows('chess') %}
     <article>
       <div class="shot">
         <img class="theme-light" src="/static/parlor/light/game-chess.webp?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
@@ -97,9 +99,14 @@
       </div>
       <div class="shot-body">
         <div><h3>Шахматы</h3><p>Партии вдвоём и разбор со Stockfish.</p></div>
-        <a class="round tip-host" href="/login" data-tip="Шахматы" data-tip-edge aria-label="Войти, чтобы играть в шахматы"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        <div class="shot-actions">
+          <button type="button" class="round tip-host" data-rules="chess" data-tip="Правила" aria-haspopup="dialog" aria-controls="rules-dialog" aria-label="Правила: шахматы"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-help"/></svg></button>
+          <a class="round tip-host" href="/login" data-tip="Шахматы" data-tip-edge aria-label="Войти, чтобы играть в шахматы"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        </div>
       </div>
     </article>
+    {% endif %}
+    {% if not site or site.allows('checkers') %}
     <article>
       <div class="shot">
         <img class="theme-light" src="/static/parlor/light/game-checkers.webp?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
@@ -107,9 +114,14 @@
       </div>
       <div class="shot-body">
         <div><h3>Русские шашки</h3><p>Классические правила и собственный движок.</p></div>
-        <a class="round tip-host" href="/login" data-tip="Русские шашки" data-tip-edge aria-label="Войти, чтобы играть в шашки"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        <div class="shot-actions">
+          <button type="button" class="round tip-host" data-rules="checkers" data-tip="Правила" aria-haspopup="dialog" aria-controls="rules-dialog" aria-label="Правила: русские шашки"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-help"/></svg></button>
+          <a class="round tip-host" href="/login" data-tip="Русские шашки" data-tip-edge aria-label="Войти, чтобы играть в шашки"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        </div>
       </div>
     </article>
+    {% endif %}
+    {% if not site or site.allows('go') %}
     <article>
       <div class="shot">
         <img class="theme-light" src="/static/parlor/light/game-go.webp?v={{ asset_version }}" width="1440" height="1080" alt="" loading="lazy" />
@@ -117,9 +129,14 @@
       </div>
       <div class="shot-body">
         <div><h3>ГО</h3><p>С человеком или с компьютером.</p></div>
-        <a class="round tip-host" href="/login" data-tip="ГО" data-tip-edge aria-label="Войти, чтобы играть в ГО"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        <div class="shot-actions">
+          <button type="button" class="round tip-host" data-rules="go" data-tip="Правила" aria-haspopup="dialog" aria-controls="rules-dialog" aria-label="Правила: го"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-help"/></svg></button>
+          <a class="round tip-host" href="/login" data-tip="ГО" data-tip-edge aria-label="Войти, чтобы играть в ГО"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        </div>
       </div>
     </article>
+    {% endif %}
+    {% if not site or site.allows('domino') %}
     <article>
       <div class="shot">
         <img class="theme-light" src="/static/parlor/light/game-domino.webp?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
@@ -127,9 +144,14 @@
       </div>
       <div class="shot-body">
         <div><h3>Домино</h3><p>Кости в линию, от двух до четырёх.</p></div>
-        <a class="round tip-host" href="/login" data-tip="Домино" data-tip-edge aria-label="Войти, чтобы играть в домино"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        <div class="shot-actions">
+          <button type="button" class="round tip-host" data-rules="domino" data-tip="Правила" aria-haspopup="dialog" aria-controls="rules-dialog" aria-label="Правила: домино"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-help"/></svg></button>
+          <a class="round tip-host" href="/login" data-tip="Домино" data-tip-edge aria-label="Войти, чтобы играть в домино"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        </div>
       </div>
     </article>
+    {% endif %}
+    {% if not site or site.allows('nardy') %}
     <article>
       <div class="shot">
         <img class="theme-light" src="/static/parlor/light/game-nardy.webp?v={{ asset_version }}" width="768" height="576" alt="" loading="lazy" />
@@ -137,9 +159,29 @@
       </div>
       <div class="shot-body">
         <div><h3>Нарды</h3><p>Длинные и короткие, с человеком или с компьютером.</p></div>
-        <a class="round tip-host" href="/login" data-tip="Нарды" data-tip-edge aria-label="Войти, чтобы играть в нарды"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        <div class="shot-actions">
+          <button type="button" class="round tip-host" data-rules="nardy" data-tip="Правила" aria-haspopup="dialog" aria-controls="rules-dialog" aria-label="Правила: нарды"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-help"/></svg></button>
+          <a class="round tip-host" href="/login" data-tip="Нарды" data-tip-edge aria-label="Войти, чтобы играть в нарды"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        </div>
       </div>
     </article>
+    {% endif %}
+    {% if not site or site.allows('yahtzy') %}
+    <article>
+      <div class="shot">
+        <img class="theme-light" src="/static/parlor/light/game-yahtzy.webp?v={{ asset_version }}" width="1024" height="768" alt="" loading="lazy" />
+        <img class="theme-dark" src="/static/parlor/dark/game-yahtzy.webp?v={{ asset_version }}" width="1024" height="768" alt="" loading="lazy" />
+      </div>
+      <div class="shot-body">
+        <div><h3>Яцзы</h3><p>Пять костей и бланк, с человеком или с компьютером.</p></div>
+        <div class="shot-actions">
+          <button type="button" class="round tip-host" data-rules="yahtzy" data-tip="Правила" aria-haspopup="dialog" aria-controls="rules-dialog" aria-label="Правила: яцзы"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-help"/></svg></button>
+          <a class="round tip-host" href="/login" data-tip="Яцзы" data-tip-edge aria-label="Войти, чтобы играть в яцзы"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        </div>
+      </div>
+    </article>
+    {% endif %}
+    {% if not site or site.allows('uno') %}
     <article>
       <div class="shot">
         <img class="theme-light" src="/static/parlor/light/game-uno.webp?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
@@ -147,9 +189,14 @@
       </div>
       <div class="shot-body">
         <div><h3>Уно</h3><p>Многопользовательские партии с друзьями.</p></div>
-        <a class="round tip-host" href="/login" data-tip="Уно" data-tip-edge aria-label="Войти, чтобы играть в Уно"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        <div class="shot-actions">
+          <button type="button" class="round tip-host" data-rules="uno" data-tip="Правила" aria-haspopup="dialog" aria-controls="rules-dialog" aria-label="Правила: Уно"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-help"/></svg></button>
+          <a class="round tip-host" href="/login" data-tip="Уно" data-tip-edge aria-label="Войти, чтобы играть в Уно"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        </div>
       </div>
     </article>
+    {% endif %}
+    {% if not site or site.allows('poker') %}
     <article>
       <div class="shot">
         <img class="theme-light" src="/static/parlor/light/game-poker.webp?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
@@ -158,9 +205,14 @@
       </div>
       <div class="shot-body">
         <div><h3>Покер</h3><p>Техасский холдем на игровые фишки.</p></div>
-        <a class="round tip-host" href="/login" data-tip="Покер" data-tip-edge aria-label="Войти, чтобы играть в покер"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        <div class="shot-actions">
+          <button type="button" class="round tip-host" data-rules="poker" data-tip="Правила" aria-haspopup="dialog" aria-controls="rules-dialog" aria-label="Правила: покер"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-help"/></svg></button>
+          <a class="round tip-host" href="/login" data-tip="Покер" data-tip-edge aria-label="Войти, чтобы играть в покер"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        </div>
       </div>
     </article>
+    {% endif %}
+    {% if not site or site.allows('durak') %}
     <article>
       <div class="shot">
         <img class="theme-light" src="/static/parlor/light/game-durak.webp?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
@@ -168,9 +220,14 @@
       </div>
       <div class="shot-body">
         <div><h3>Дурак</h3><p>Подкидной или переводной — вид выбирают в начале.</p></div>
-        <a class="round tip-host" href="/login" data-tip="Дурак" data-tip-edge aria-label="Войти, чтобы играть в дурака"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        <div class="shot-actions">
+          <button type="button" class="round tip-host" data-rules="durak" data-tip="Правила" aria-haspopup="dialog" aria-controls="rules-dialog" aria-label="Правила: дурак"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-help"/></svg></button>
+          <a class="round tip-host" href="/login" data-tip="Дурак" data-tip-edge aria-label="Войти, чтобы играть в дурака"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        </div>
       </div>
     </article>
+    {% endif %}
+    {% if not site or site.allows('blackjack') %}
     <article>
       <div class="shot">
         <img class="theme-light" src="/static/parlor/light/game-blackjack.webp?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
@@ -179,9 +236,14 @@
       </div>
       <div class="shot-body">
         <div><h3>Блэкджек</h3><p>Против дилера, на игровые фишки.</p></div>
-        <a class="round tip-host" href="/login" data-tip="Блэкджек" data-tip-edge aria-label="Войти, чтобы играть в блэкджек"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        <div class="shot-actions">
+          <button type="button" class="round tip-host" data-rules="blackjack" data-tip="Правила" aria-haspopup="dialog" aria-controls="rules-dialog" aria-label="Правила: блэкджек"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-help"/></svg></button>
+          <a class="round tip-host" href="/login" data-tip="Блэкджек" data-tip-edge aria-label="Войти, чтобы играть в блэкджек"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        </div>
       </div>
     </article>
+    {% endif %}
+    {% if not site or site.allows('preferans') %}
     <article>
       <div class="shot">
         <img class="theme-light" src="/static/parlor/light/game-preferans.webp?v={{ asset_version }}" width="1448" height="1086" alt="" loading="lazy" />
@@ -190,9 +252,13 @@
       </div>
       <div class="shot-body">
         <div><h3>Преферанс</h3><p>Торг и взятки на троих, на игровые фишки.</p></div>
-        <a class="round tip-host" href="/login" data-tip="Преферанс" data-tip-edge aria-label="Войти, чтобы играть в преферанс"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        <div class="shot-actions">
+          <button type="button" class="round tip-host" data-rules="preferans" data-tip="Правила" aria-haspopup="dialog" aria-controls="rules-dialog" aria-label="Правила: преферанс"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-help"/></svg></button>
+          <a class="round tip-host" href="/login" data-tip="Преферанс" data-tip-edge aria-label="Войти, чтобы играть в преферанс"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        </div>
       </div>
     </article>
+    {% endif %}
     <article class="is-soon">
       <div class="shot">
         <img class="theme-light" src="/static/parlor/light/game-bura.webp?v={{ asset_version }}" width="1024" height="768" alt="Бура скоро появится в гостиной" loading="lazy" />
@@ -200,15 +266,6 @@
       </div>
       <div class="shot-body">
         <div><h3>Бура</h3><p>Три карты и козырь. Скоро в гостиной.</p></div>
-      </div>
-    </article>
-    <article class="is-soon">
-      <div class="shot">
-        <img class="theme-light" src="/static/parlor/light/game-yahtzy.webp?v={{ asset_version }}" width="1024" height="768" alt="Яцзы скоро появится в гостиной" loading="lazy" />
-        <img class="theme-dark" src="/static/parlor/dark/game-yahtzy.webp?v={{ asset_version }}" width="1024" height="768" alt="" loading="lazy" />
-      </div>
-      <div class="shot-body">
-        <div><h3>Яцзы</h3><p>Пять костей и карточка. Скоро в гостиной.</p></div>
       </div>
     </article>
   </div>
@@ -327,5 +384,28 @@
     </article>
   </div>
 </section>
+<dialog id="rules-dialog" class="rules-dialog" aria-labelledby="rules-title">
+  <div class="rules-body">
+    <p class="kicker">За столом</p>
+    <h2 id="rules-title">Правила</h2>
+    {% if not site or site.allows('chess') %}<div data-rules-pane="chess" data-rules-title="Шахматы" hidden>{% with rules_game="chess" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+    {% if not site or site.allows('checkers') %}<div data-rules-pane="checkers" data-rules-title="Русские шашки" hidden>{% with rules_game="checkers" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+    {% if not site or site.allows('go') %}<div data-rules-pane="go" data-rules-title="Го" hidden>{% with rules_game="go" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+    {% if not site or site.allows('domino') %}<div data-rules-pane="domino" data-rules-title="Домино" hidden>{% with rules_game="domino" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+    {% if not site or site.allows('nardy') %}<div data-rules-pane="nardy" data-rules-title="Нарды" hidden>{% with rules_game="nardy" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+    {% if not site or site.allows('yahtzy') %}<div data-rules-pane="yahtzy" data-rules-title="Яцзы" hidden>{% with rules_game="yahtzy" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+    {% if not site or site.allows('uno') %}<div data-rules-pane="uno" data-rules-title="Уно" hidden>{% with rules_game="uno" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+    {% if not site or site.allows('poker') %}<div data-rules-pane="poker" data-rules-title="Покер" hidden>{% with rules_game="poker" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+    {% if not site or site.allows('durak') %}<div data-rules-pane="durak" data-rules-title="Дурак" hidden>{% with rules_game="durak" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+    {% if not site or site.allows('blackjack') %}<div data-rules-pane="blackjack" data-rules-title="Блэкджек" hidden>{% with rules_game="blackjack" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+    {% if not site or site.allows('preferans') %}<div data-rules-pane="preferans" data-rules-title="Преферанс" hidden>{% with rules_game="preferans" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+  </div>
+  <div class="rules-actions">
+    <button type="button" class="secondary" data-close>Закрыть</button>
+  </div>
+</dialog>
 {% include "public/_foot.html" %}
+{% endblock %}
+{% block scripts %}
+<script type="module" src="/static/js/rules-dialog.js?v={{ asset_version }}"></script>
 {% endblock %}

@@ -238,6 +238,7 @@ class GameService:
             "preferans": "classic",
             "domino": "draw",
             "nardy": str(data.get("nardy_kind") or "long"),
+            "yahtzy": "classic",
         }
         if data["game_type"] == "durak":
             variant = self._salon_variant(data)
@@ -252,7 +253,7 @@ class GameService:
         async with self.pool.acquire() as conn:
             async with conn.transaction():
                 policy = await load_policy(conn)
-                if not policy.allows(str(data["game_type"])):
+                if not user.is_admin and not policy.allows(str(data["game_type"])):
                     raise AppError(403, "game_closed", "Эта игра сейчас закрыта.")
                 game_id = await games_repo.insert_game(
                     conn,
@@ -788,7 +789,7 @@ class GameService:
                     raise AppError(404, "not_found", "Партия не найдена.")
                 seat = self._require_rematch(row, user)
                 policy = await load_policy(conn)
-                if not policy.allows(str(row["game_type"])):
+                if not user.is_admin and not policy.allows(str(row["game_type"])):
                     raise AppError(403, "game_closed", "Эта игра сейчас закрыта.")
                 offer = await games_repo.lock_rematch(conn, game_id)
                 if offer is not None and offer["status"] == "accepted" and offer["new_game_id"]:
@@ -1434,6 +1435,8 @@ class GameService:
             data["nardy_kind"] = kind
             data["computers"] = None
             data["open_seats"] = None
+        if data["game_type"] == "yahtzy" and data["mode"] not in {"online", "vs_computer"}:
+            raise AppError(422, "bad_mode", "Яцзы играется с человеком или с компьютером.")
         if data["mode"] not in {"vs_computer", "free", "analysis", "lesson", "online"}:
             raise AppError(422, "bad_mode", "Неизвестный режим партии.")
         if data["player_side"] not in {"white", "black"}:
@@ -1457,6 +1460,9 @@ class GameService:
             elif data["game_type"] == "domino":
                 if computers < 0 or opens < 0 or computers > 3 or opens > 3 or not 1 <= total <= 3:
                     raise AppError(422, "bad_seats", "В домино за столом от двух до четырёх.")
+            elif data["game_type"] == "yahtzy":
+                if computers < 0 or opens < 0 or computers > 3 or opens > 3 or not 1 <= total <= 3:
+                    raise AppError(422, "bad_seats", "В яцзы за столом от двух до четырёх.")
             elif computers < 0 or opens < 0 or computers > 5 or opens > 5 or not 1 <= total <= 5:
                 raise AppError(
                     422,
@@ -1949,6 +1955,11 @@ class GameService:
         module = card_module(str(game["game_type"]))
         state = _card_state(module, game, payloads)
         actions = module.legal(state)
+        if str(game["game_type"]) == "yahtzy":
+            if not path or str(path[0]) not in {"roll", "score"}:
+                raise IllegalMove("Такого хода нет.")
+            if str(path[0]) == "score" and list(path) not in [list(item["path"]) for item in actions]:
+                raise IllegalMove("Эту клетку сейчас не записать.")
         notation = next((item["notation"] for item in actions if list(item["path"]) == list(path)), "")
         if not notation and len(path) >= 3 and path[1] in {"bet", "raise"}:
             sized = next((item for item in actions if list(item["path"])[:2] == list(path)[:2]), None)
@@ -2131,6 +2142,25 @@ class GameService:
                     amount = 10
                 elif result == "draw" and loser and str(seat) != loser:
                     amount = 20
+                else:
+                    continue
+                await credit(conn, player, amount, reason="table", game_id=game_id)
+                self._forget_purse(player)
+            return
+        if str(game["game_type"]) == "yahtzy":
+            try:
+                final = json.loads(str(applied["after"]))
+            except json.JSONDecodeError:
+                final = {}
+            winners = [str(item) for item in final.get("winners") or []]
+            for seat in list(final.get("order") or []):
+                player = seat_user(game, str(seat), seats or None)
+                if player is None:
+                    continue
+                if result == f"{seat}_win":
+                    amount = 30
+                elif result == "draw" and (not winners or str(seat) in winners):
+                    amount = 10
                 else:
                     continue
                 await credit(conn, player, amount, reason="table", game_id=game_id)
@@ -2426,6 +2456,7 @@ def _summarize(rows: list[Any], user_id: uuid.UUID) -> dict[str, dict[str, int]]
         "preferans": {"total": 0, "active": 0, "wins": 0, "losses": 0, "draws": 0},
         "domino": {"total": 0, "active": 0, "wins": 0, "losses": 0, "draws": 0},
         "nardy": {"total": 0, "active": 0, "wins": 0, "losses": 0, "draws": 0},
+        "yahtzy": {"total": 0, "active": 0, "wins": 0, "losses": 0, "draws": 0},
     }
     for row in rows:
         bucket = summary.setdefault(

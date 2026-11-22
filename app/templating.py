@@ -40,6 +40,7 @@ TEMPLATES.globals["type_label"] = {
     "preferans": "Преферанс",
     "domino": "Домино",
     "nardy": "Нарды",
+    "yahtzy": "Яцзы",
 }
 TEMPLATES.globals["result_label"] = {
     "white_win": "Победа белых",

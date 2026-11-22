@@ -35,13 +35,14 @@ def test_local_rules_can_be_relaxed() -> None:
     assert policy.allows("poker") is False
 
 
-def test_deployed_rules_keep_password_strength() -> None:
+def test_deployed_rules_keep_password_floor() -> None:
     with pytest.raises(AppError):
         normalize(_payload(password_min="4"), local=False)
     policy = normalize(_payload(password_needs_letter="", password_needs_digit=""), local=False)
     assert policy.password_min == 10
-    assert policy.password_needs_letter is True
-    assert policy.password_needs_digit is True
+    assert policy.password_needs_letter is False
+    assert policy.password_needs_digit is False
+    assert policy.for_staff().allows("poker") is True
 
 
 def test_registration_has_three_modes() -> None:

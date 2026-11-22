@@ -40,6 +40,11 @@ def personal_mark(
         return _poker_mark(seat, state)
     if game_type == "preferans":
         return _preferans_mark(seat, state)
+    if game_type == "yahtzy":
+        winners = [str(item) for item in state.get("winners") or []]
+        if winners:
+            return "draw" if seat in winners else "loss"
+        return "draw"
     return "draw"
 
 

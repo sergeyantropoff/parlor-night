@@ -68,23 +68,16 @@
   {% endif %}
 </section>
 {% endmacro %}
-<section class="page" id="overview">
-  <div class="overview-head">
-    <div>
-      <p class="lede">Сначала топ игроков: победы, процент и фишки. Дальше сводка, игры, список гостей и сессии.</p>
-    </div>
-    <button type="button" class="secondary" id="clear-games">Очистить партии</button>
-  </div>
-  {% if cleared %}<p class="banner ok" role="status">Партии очищены. Гости и фишки не изменены.</p>{% endif %}
-  <div class="live-filters" role="tablist" aria-label="Разделы обзора">
-    <button type="button" role="tab" data-tab="top" aria-selected="true">Топ игроков</button>
-    <button type="button" role="tab" class="secondary" data-tab="summary" aria-selected="false">Сводка</button>
-    <button type="button" role="tab" class="secondary" data-tab="games" aria-selected="false">Игры</button>
-    <button type="button" role="tab" class="secondary" data-tab="people" aria-selected="false">Игроки</button>
-    <button type="button" role="tab" class="secondary" data-tab="sessions" aria-selected="false">Сессии</button>
+<section class="card wide" id="overview">
+  <div class="settings-tabs" role="tablist" aria-label="Разделы обзора">
+    <button type="button" class="settings-tab" id="tab-top" role="tab" data-tab="top" aria-selected="true" aria-controls="panel-top">Топ игроков</button>
+    <button type="button" class="settings-tab" id="tab-summary" role="tab" data-tab="summary" aria-selected="false" aria-controls="panel-summary" tabindex="-1">Сводка</button>
+    <button type="button" class="settings-tab" id="tab-games" role="tab" data-tab="games" aria-selected="false" aria-controls="panel-games" tabindex="-1">Игры</button>
+    <button type="button" class="settings-tab" id="tab-people" role="tab" data-tab="people" aria-selected="false" aria-controls="panel-people" tabindex="-1">Игроки</button>
+    <button type="button" class="settings-tab" id="tab-sessions" role="tab" data-tab="sessions" aria-selected="false" aria-controls="panel-sessions" tabindex="-1">Сессии</button>
   </div>
 
-  <div data-panel="top">
+  <div id="panel-top" class="settings-panel" data-panel="top" role="tabpanel" aria-labelledby="tab-top">
     {% if leaders %}
     {% set titled = false %}
     {% set caption = false %}
@@ -134,7 +127,7 @@
     {% endif %}
   </div>
 
-  <div data-panel="summary" hidden="hidden">
+  <div id="panel-summary" class="settings-panel" data-panel="summary" role="tabpanel" aria-labelledby="tab-summary" hidden="hidden">
     <div class="kpi">
       <article><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-user"/></svg><strong>{{ totals.users }}</strong><span>Гостей · {{ totals.online }} в сети</span></article>
       <article><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-grid"/></svg><strong>{{ totals.games }}</strong><span>Партий всего</span></article>
@@ -212,7 +205,7 @@
     </section>
   </div>
 
-  <div data-panel="games" hidden="hidden">
+  <div id="panel-games" class="settings-panel" data-panel="games" role="tabpanel" aria-labelledby="tab-games" hidden="hidden">
     <p class="quiet">Наблюдателей сейчас {{ totals.watchers }}.</p>
     <div class="donut-row">
       {{ donut_card("По играм", "Доля каждой игры", type_donut) }}
@@ -302,7 +295,7 @@
     </section>
   </div>
 
-  <div data-panel="people" hidden="hidden">
+  <div id="panel-people" class="settings-panel" data-panel="people" role="tabpanel" aria-labelledby="tab-people" hidden="hidden">
     <div class="donut-row">
       {{ donut_card("Партии", "Где гость сидел. Партия на двоих считается обоим", people_game_donut) }}
       {{ donut_card("Победы", "Победы гостей. Победы компьютера сюда не входят", people_win_donut) }}
@@ -353,7 +346,7 @@
     </section>
   </div>
 
-  <div data-panel="sessions" hidden="hidden">
+  <div id="panel-sessions" class="settings-panel" data-panel="sessions" role="tabpanel" aria-labelledby="tab-sessions" hidden="hidden">
     <div class="chart-row">
       <section class="panel">
         <h2>Входы</h2>
@@ -396,18 +389,6 @@
     </section>
   </div>
 
-  <dialog id="clear-dialog" class="confirm-dialog">
-    <h2>Очистить все партии?</h2>
-    <p>Удалятся партии, ходы, места за столом и сообщения за столом. Сейчас партий: {{ totals.games }}. Гости, фишки, друзья и личные беседы останутся.</p>
-    <form method="post" action="/admin/overview/clear">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-      <input type="hidden" name="confirm" value="yes" />
-      <div class="confirm-actions">
-        <button type="button" class="secondary" id="clear-cancel">Отмена</button>
-        <button type="submit" class="is-danger">Очистить партии</button>
-      </div>
-    </form>
-  </dialog>
 </section>
 {% endblock %}
 {% block scripts %}

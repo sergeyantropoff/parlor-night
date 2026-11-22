@@ -33,6 +33,7 @@ from app.games.access import (
     user_may_request_engine,
 )
 from app.games.messages import result_badge, result_message, result_tone, stopped_badge
+from app.games.outcome import personal_mark
 from app.games.replay import replay_checkers, replay_chess
 from app.go.engine import computer_pending
 from app.go.match import load_state, points_for, same_bones, score_view
@@ -441,12 +442,14 @@ def _gallery_line(phase: str) -> str:
 def _card_move(move: dict[str, object]) -> dict[str, object]:
     payload = move.get("move_payload")
     raw = payload if isinstance(payload, dict) else {}
+    path = raw.get("path") if isinstance(raw.get("path"), list) else []
     return {
         "ply": move.get("ply"),
         "notation": move.get("notation"),
         "algebraic": None,
         "by": raw.get("by"),
         "seat": str(raw.get("seat") or ""),
+        "path": [str(item) for item in path],
     }
 
 
@@ -489,7 +492,7 @@ def _project_cards(
     stopped = stopped_badge(status, _optional(game.get("result")), _optional(game.get("result_reason")))
     if stopped:
         line = stopped
-    elif status == "finished" and str(game["game_type"]) in {"poker", "preferans"}:
+    elif status == "finished" and str(game["game_type"]) in {"poker", "preferans", "yahtzy"}:
         line = message or finished
     elif status == "finished":
         line = finished or message
@@ -559,6 +562,10 @@ def _project_cards(
         picture = card.get("nardy") if isinstance(card.get("nardy"), dict) else {}
         borne = picture.get("off") if isinstance(picture.get("off"), dict) else {}
         marks = {key: f"снято {int(borne.get(key) or 0)}" for key in ("white", "black")}
+    elif str(game["game_type"]) == "yahtzy":
+        picture = card.get("yahtzy") if isinstance(card.get("yahtzy"), dict) else {}
+        totals = picture.get("totals") if isinstance(picture.get("totals"), dict) else {}
+        marks = {str(key): str(int(value)) for key, value in totals.items()}
     else:
         marks = (report.get("last") or {}) if report else {}
     for item in public_seats:
@@ -576,7 +583,7 @@ def _project_cards(
             rival = ordered[0]
         elif ordered:
             rival = ", ".join(ordered)
-    if not public_seats and str(game["game_type"]) in {"durak", "blackjack", "preferans", "domino", "nardy"}:
+    if not public_seats and str(game["game_type"]) in {"durak", "blackjack", "preferans", "domino", "nardy", "yahtzy"}:
         public_seats = _salon_faces(
             card,
             mode=mode,
@@ -673,10 +680,11 @@ def _project_cards(
         "note": str(card.get("note") or ""),
         "note_tone": str(card.get("note_tone") or ""),
         "nardy": card.get("nardy") if isinstance(card.get("nardy"), dict) else None,
+        "yahtzy": card.get("yahtzy") if isinstance(card.get("yahtzy"), dict) else None,
         "seats": public_seats
         if len(public_seats) > 2
         or (
-            str(game["game_type"]) in {"uno", "durak", "blackjack", "preferans", "domino", "nardy"}
+            str(game["game_type"]) in {"uno", "durak", "blackjack", "preferans", "domino", "nardy", "yahtzy"}
             and len(public_seats) >= 1
         )
         else [],
@@ -695,8 +703,8 @@ def _project_cards(
         "result_tone": (
             "stop"
             if stopped
-            else result_tone(_optional(game.get("result")), seat)
-            if status == "finished" and str(game["game_type"]) == "nardy"
+            else _table_tone(str(game["game_type"]), _optional(game.get("result")), seat, state)
+            if status == "finished" and str(game["game_type"]) in {"nardy", "yahtzy"}
             else None
         ),
         "status_line": line,
@@ -721,6 +729,16 @@ def _project_cards(
         **_viewer_face(game, user, mode),
         **named,
     }
+
+
+def _table_tone(kind: str, result: str | None, seat: str | None, state: dict[str, object]) -> str | None:
+    if kind != "yahtzy":
+        return result_tone(result, seat)
+    if not seat:
+        if result == "draw":
+            return "draw"
+        return "win" if result and result.endswith("_win") else None
+    return personal_mark(kind, result, seat, position=state)
 
 
 def _card_report(
@@ -949,7 +967,14 @@ def _parlor_summary(
         line = f"Дурак — {loser_name}."
     elif winner_name and kind != "durak":
         line = line or f"Победитель — {winner_name}."
-    titles = {"durak": "Дурак", "blackjack": "Блэкджек", "preferans": "Преферанс", "domino": "Домино", "nardy": "Нарды"}
+    titles = {
+        "durak": "Дурак",
+        "blackjack": "Блэкджек",
+        "preferans": "Преферанс",
+        "domino": "Домино",
+        "nardy": "Нарды",
+        "yahtzy": "Яцзы",
+    }
     return {
         "kind": "parlor",
         "game": kind,
@@ -1000,7 +1025,7 @@ def _halted_card_summary(
         )
     counts = report.get("counts") if isinstance(report, dict) and isinstance(report.get("counts"), dict) else {}
     pot = int(report.get("pot") or 0) if isinstance(report, dict) else 0
-    parlor = kind in {"durak", "blackjack", "preferans", "domino", "nardy"}
+    parlor = kind in {"durak", "blackjack", "preferans", "domino", "nardy", "yahtzy"}
     return {
         "kind": "parlor" if parlor else ("uno" if kind == "uno" else "poker"),
         "winner": "",

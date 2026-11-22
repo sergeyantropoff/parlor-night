@@ -14,8 +14,9 @@
 {% set preferans_on = not site or site.allows('preferans') %}
 {% set domino_on = not site or site.allows('domino') %}
 {% set nardy_on = not site or site.allows('nardy') %}
-{% set cards = game in ['uno', 'poker', 'durak', 'blackjack', 'preferans', 'domino'] %}
-{% set titles = {'chess': 'Шахматы', 'checkers': 'Русские шашки', 'go': 'Го', 'uno': 'Уно', 'poker': 'Покер', 'durak': 'Дурак', 'blackjack': 'Блэкджек', 'preferans': 'Преферанс', 'domino': 'Домино', 'nardy': 'Нарды'} %}
+{% set yahtzy_on = not site or site.allows('yahtzy') %}
+{% set cards = game in ['uno', 'poker', 'durak', 'blackjack', 'preferans', 'domino', 'yahtzy'] %}
+{% set titles = {'chess': 'Шахматы', 'checkers': 'Русские шашки', 'go': 'Го', 'uno': 'Уно', 'poker': 'Покер', 'durak': 'Дурак', 'blackjack': 'Блэкджек', 'preferans': 'Преферанс', 'domino': 'Домино', 'nardy': 'Нарды', 'yahtzy': 'Яцзы'} %}
 <section class="page">
   {% if not game %}
   <p class="lede">Выберите игру.</p>
@@ -78,6 +79,18 @@
         </span>
         <span class="shot-body">
           <span><strong>Нарды</strong><small>Длинные и короткие</small></span>
+          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
+        </span>
+      </a>
+      {% endif %}
+      {% if yahtzy_on %}
+      <a class="choice pick" href="/games/new/yahtzy">
+        <span class="shot">
+          <img class="theme-light" src="/static/parlor/light/game-yahtzy.webp?v={{ asset_version }}" width="1024" height="768" alt="" />
+          <img class="theme-dark" src="/static/parlor/dark/game-yahtzy.webp?v={{ asset_version }}" width="1024" height="768" alt="" />
+        </span>
+        <span class="shot-body">
+          <span><strong>Яцзы</strong><small>Пять костей и бланк</small></span>
           <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
         </span>
       </a>
@@ -152,15 +165,6 @@
         </span>
         <span class="shot-body">
           <span><strong>Бура</strong><small>Три карты и козырь. Скоро в гостиной</small></span>
-        </span>
-      </div>
-      <div class="choice is-soon">
-        <span class="shot">
-          <img class="theme-light" src="/static/parlor/light/game-yahtzy.webp?v={{ asset_version }}" width="1024" height="768" alt="Яцзы скоро появится в гостиной" />
-          <img class="theme-dark" src="/static/parlor/dark/game-yahtzy.webp?v={{ asset_version }}" width="1024" height="768" alt="" />
-        </span>
-        <span class="shot-body">
-          <span><strong>Яцзы</strong><small>Пять костей и карточка. Скоро в гостиной</small></span>
         </span>
       </div>
     </div>
@@ -264,7 +268,7 @@
           ('analysis', 'Анализ', 'Подсказки по позиции', 'chart'),
           ('lesson', 'Разбор партии', 'Чужая запись, ход за ходом', 'book'),
         ) %}
-        {% if not (game in ['domino', 'nardy'] and value in ['free', 'analysis', 'lesson']) %}
+        {% if not (game in ['domino', 'nardy', 'yahtzy'] and value in ['free', 'analysis', 'lesson']) %}
         <label class="mode-choice pick">
           <input type="radio" name="mode" value="{{ value }}" data-title="{{ title }}" {% if value == 'vs_computer' %}checked{% endif %} required="required" />
           <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-{{ icon }}"/></svg>

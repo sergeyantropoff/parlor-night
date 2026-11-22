@@ -174,6 +174,10 @@
     <p class="quiet keys"{% if state.table == "cards" or state.table == "go" %} hidden="hidden"{% endif %}>Касание или перетаскивание: фигура, затем поле. С клавиатуры — стрелки и Enter, Escape снимает выбор.</p>
       </div>
       <div class="tool-col is-end{% if state.watching %} is-quiet{% endif %}" role="toolbar" aria-label="Дальше">
+        <span class="icon-tool" data-keep="1">
+          <button type="button" id="rules" aria-label="Правила" aria-haspopup="dialog" aria-controls="rules-dialog">{{ tool_icon("rules") }}</button>
+          <span class="tip" role="tooltip">Правила</span>
+        </span>
         {% if user.is_admin %}
         {% set nardy_hint = state.game_type == "nardy" and state.can_hint %}
         {% set board_hint = state.table == "board" and state.can_hint and not state.watching %}
@@ -224,7 +228,17 @@
     </div>
     </div>
   </div>
-  <dialog id="watcher-dialog" class="confirm-dialog watcher-dialog" aria-labelledby="watcher-title">
+  <dialog id="rules-dialog" class="rules-dialog" aria-labelledby="rules-title">
+  <div class="rules-body">
+    <p class="kicker">За столом</p>
+    <h2 id="rules-title">{{ type_label[state.game_type] }}</h2>
+    {% include "games/_rules.html" %}
+  </div>
+  <div class="rules-actions">
+    <button type="button" class="secondary" data-close>Закрыть</button>
+  </div>
+</dialog>
+<dialog id="watcher-dialog" class="confirm-dialog watcher-dialog" aria-labelledby="watcher-title">
   <h2 id="watcher-title">Наблюдают</h2>
   <p id="watcher-empty" class="quiet" hidden>Пока никто не смотрит.</p>
   <ul id="watcher-list" class="watcher-list"></ul>
@@ -244,17 +258,17 @@
   <div id="notes-backdrop" class="notes-backdrop"></div>
   <aside id="table-notes" class="side-panel" data-drawer="notes" aria-hidden="true">
     <div class="notes-head">
-      <h2>{% if state.game_type in ["domino", "nardy"] %}Ходы{% else %}Ходы и разбор{% endif %}</h2>
+      <h2>{% if state.game_type in ["domino", "nardy", "yahtzy"] %}Ходы{% else %}Ходы и разбор{% endif %}</h2>
       <button type="button" class="secondary" data-drawer-close>Закрыть</button>
     </div>
     <section>
       <h2>Ходы</h2>
       <ol id="history"></ol>
-      {% if state.game_type in ["domino", "nardy"] %}
+      {% if state.game_type in ["domino", "nardy", "yahtzy"] %}
       <p class="download"><a href="/api/v1/games/{{ state.id }}/export"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-save"/></svg> Скачать запись</a></p>
       {% endif %}
     </section>
-    {% if state.game_type not in ["domino", "nardy"] %}
+    {% if state.game_type not in ["domino", "nardy", "yahtzy"] %}
     <section>
       <h2>Разбор</h2>
       <div id="lines"></div>
@@ -325,4 +339,5 @@
 {% endblock %}
 {% block scripts %}
 <script type="module" src="/static/js/game.js?v={{ asset_version }}"></script>
+<script type="module" src="/static/js/rules-dialog.js?v={{ asset_version }}"></script>
 {% endblock %}

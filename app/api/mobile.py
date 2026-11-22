@@ -115,6 +115,8 @@ async def _catalog(request: Request, user) -> list[dict[str, object]]:
     for spec in GAMES.values():
         if spec.adult and not adult:
             continue
+        if not user.is_admin and not policy.allows(spec.key):
+            continue
         items.append(
             {
                 "key": spec.key,
@@ -122,7 +124,7 @@ async def _catalog(request: Request, user) -> list[dict[str, object]]:
                 "family": spec.family,
                 "adult": spec.adult,
                 "blurb": spec.blurb,
-                "open": policy.allows(spec.key),
+                "open": True,
             }
         )
     return items
@@ -662,7 +664,7 @@ async def api_lobby(request: Request) -> JSONResponse:
 async def api_lobby_seek(request: Request, body: SeekBody) -> JSONResponse:
     user = _user(request)
     policy = await current(request)
-    if body.game_type not in GAMES or not policy.allows(body.game_type):
+    if body.game_type not in GAMES or (not user.is_admin and not policy.allows(body.game_type)):
         raise AppError(422, "bad_game", "Эта игра сейчас закрыта.")
     if body.game_type in ADULT_GAMES:
         async with request.app.state.pool.acquire() as conn:

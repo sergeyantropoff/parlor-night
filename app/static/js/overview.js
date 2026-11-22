@@ -2,22 +2,38 @@ const root = document.querySelector("#overview");
 if (root) {
   const names = ["top", "summary", "games", "people", "sessions"];
 
+  const tabs = [...root.querySelectorAll(".settings-tab")];
+
   function show(name) {
     const tab = names.includes(name) ? name : "top";
     for (const panel of root.querySelectorAll("[data-panel]")) {
       panel.hidden = panel.dataset.panel !== tab;
     }
-    for (const button of root.querySelectorAll("[data-tab]")) {
+    for (const button of tabs) {
       const on = button.dataset.tab === tab;
       button.setAttribute("aria-selected", on ? "true" : "false");
-      button.classList.toggle("secondary", !on);
+      button.tabIndex = on ? 0 : -1;
     }
   }
 
   root.addEventListener("click", (event) => {
     const button = event.target instanceof Element ? event.target.closest("[data-tab]") : null;
     if (!(button instanceof HTMLButtonElement)) return;
-    const tab = button.dataset.tab || "summary";
+    const tab = button.dataset.tab || "top";
+    show(tab);
+    if (location.hash !== `#${tab}`) history.replaceState(null, "", `#${tab}`);
+  });
+  root.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+    const current = event.target instanceof Element ? event.target.closest(".settings-tab") : null;
+    if (!(current instanceof HTMLButtonElement)) return;
+    event.preventDefault();
+    const index = tabs.indexOf(current);
+    const next = event.key === "ArrowRight"
+      ? tabs[(index + 1) % tabs.length]
+      : tabs[(index - 1 + tabs.length) % tabs.length];
+    next.focus();
+    const tab = next.dataset.tab || "top";
     show(tab);
     if (location.hash !== `#${tab}`) history.replaceState(null, "", `#${tab}`);
   });
@@ -27,13 +43,5 @@ if (root) {
   for (const node of root.querySelectorAll("[data-size]")) {
     const pixels = node.classList.contains("day-bar") || node.parentElement?.classList.contains("strength-col");
     node.style[pixels ? "height" : "width"] = `${node.dataset.size}${pixels ? "px" : "%"}`;
-  }
-
-  const opener = document.querySelector("#clear-games");
-  const dialog = document.querySelector("#clear-dialog");
-  const cancel = document.querySelector("#clear-cancel");
-  if (opener instanceof HTMLButtonElement && dialog instanceof HTMLDialogElement) {
-    opener.addEventListener("click", () => dialog.showModal());
-    if (cancel instanceof HTMLButtonElement) cancel.addEventListener("click", () => dialog.close());
   }
 }

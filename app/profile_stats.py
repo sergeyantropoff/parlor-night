@@ -18,6 +18,7 @@ TITLES = {
     "poker": "Покер",
     "domino": "Домино",
     "nardy": "Нарды",
+    "yahtzy": "Яцзы",
 }
 
 

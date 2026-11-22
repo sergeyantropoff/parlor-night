@@ -18,7 +18,7 @@ class ErrorResponse(BaseModel):
 
 
 class CreateGameBody(BaseModel):
-    game_type: Literal["chess", "checkers", "go", "poker", "uno", "durak", "blackjack", "preferans", "domino", "nardy"]
+    game_type: Literal["chess", "checkers", "go", "poker", "uno", "durak", "blackjack", "preferans", "domino", "nardy", "yahtzy"]
     board_size: int | None = Field(default=None, ge=9, le=19)
     durak_kind: Literal["podkidnoy", "perevodnoy"] | None = None
     nardy_kind: Literal["long", "short"] | None = None
@@ -39,7 +39,7 @@ class CreateGameBody(BaseModel):
 
 class MoveBody(BaseModel):
     version: int = Field(ge=1)
-    path: list[str] = Field(min_length=2, max_length=13)
+    path: list[str] = Field(min_length=1, max_length=13)
     promotion: Literal["q", "r", "b", "n"] | None = None
 
 
@@ -75,7 +75,7 @@ class SettingsBody(BaseModel):
     theme: Literal["system", "light", "dark"]
     board_style: Literal["classic", "contrast"]
     default_game: Literal[
-        "chess", "checkers", "go", "uno", "poker", "durak", "blackjack", "preferans", "domino", "nardy"
+        "chess", "checkers", "go", "uno", "poker", "durak", "blackjack", "preferans", "domino", "nardy", "yahtzy"
     ]
     default_side: Literal["white", "black"]
     chess_depth: int = Field(default=12, ge=1, le=30)

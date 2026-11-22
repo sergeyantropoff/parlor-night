@@ -51,12 +51,12 @@
 
   <div id="live-board">
   {% if tables %}
-  <div class="og-tabs" role="group" aria-label="Какие столы показать">
-    <button type="button" class="og-tab" data-filter="all" aria-pressed="true">Все <span data-count="all">{{ tables|length }}</span></button>
-    <button type="button" class="og-tab" data-filter="mine" aria-pressed="false">Мои <span data-count="mine">{{ mine_count }}</span></button>
-    <button type="button" class="og-tab" data-filter="open" aria-pressed="false">Открытые <span data-count="open">{{ open_count }}</span></button>
-    <button type="button" class="og-tab" data-filter="closed" aria-pressed="false">Закрытые <span data-count="closed">{{ closed_count }}</span></button>
-    <p class="og-total" aria-live="polite"><span id="live-total">{{ tables|length }}</span> <span id="live-total-word">{% if tables|length % 10 == 1 and tables|length % 100 != 11 %}стол{% elif tables|length % 10 >= 2 and tables|length % 10 <= 4 and tables|length % 100 not in [12, 13, 14] %}стола{% else %}столов{% endif %}</span></p>
+  <div class="settings-tabs" role="tablist" aria-label="Какие столы показать">
+    <button type="button" class="settings-tab" role="tab" data-filter="all" aria-selected="true">Все <span data-count="all">{{ tables|length }}</span></button>
+    <button type="button" class="settings-tab" role="tab" data-filter="mine" aria-selected="false" tabindex="-1">Мои <span data-count="mine">{{ mine_count }}</span></button>
+    <button type="button" class="settings-tab" role="tab" data-filter="open" aria-selected="false" tabindex="-1">Открытые <span data-count="open">{{ open_count }}</span></button>
+    <button type="button" class="settings-tab" role="tab" data-filter="closed" aria-selected="false" tabindex="-1">Закрытые <span data-count="closed">{{ closed_count }}</span></button>
+    <span class="settings-tab is-sum" aria-live="polite"><span id="live-total">{{ tables|length }}</span> <span id="live-total-word">{% if tables|length % 10 == 1 and tables|length % 100 != 11 %}стол{% elif tables|length % 10 >= 2 and tables|length % 10 <= 4 and tables|length % 100 not in [12, 13, 14] %}стола{% else %}столов{% endif %}</span></span>
   </div>
   <div class="og-grid" id="floor-grid">
     {% for table in tables %}

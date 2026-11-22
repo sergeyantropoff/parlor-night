@@ -4,150 +4,216 @@
 <div class="topbar-lead"><h1>Настройки сайта</h1></div>
 {% endblock %}
 {% block content %}
-<section class="card wide">
+<section class="card wide" id="site-settings" data-tab="{{ tab or '' }}">
   {% if message %}<p class="banner ok" role="status">{{ message }}</p>{% endif %}
   {% if error %}<p class="banner" role="alert">{{ error }}</p>{% endif %}
-  <form method="post" action="/admin/site">
+  <div class="settings-tabs" role="tablist" aria-label="Главы настроек">
+    <button type="button" class="settings-tab" id="tab-access" role="tab" aria-selected="true" aria-controls="panel-access">Доступ</button>
+    <button type="button" class="settings-tab" id="tab-login" role="tab" aria-selected="false" aria-controls="panel-login" tabindex="-1">Логин и пароль</button>
+    <button type="button" class="settings-tab" id="tab-sessions" role="tab" aria-selected="false" aria-controls="panel-sessions" tabindex="-1">Вход и сессии</button>
+    <button type="button" class="settings-tab" id="tab-parlor" role="tab" aria-selected="false" aria-controls="panel-parlor" tabindex="-1">Гостиная</button>
+    <button type="button" class="settings-tab" id="tab-wipe" role="tab" aria-selected="false" aria-controls="panel-wipe" tabindex="-1">Очистка</button>
+  </div>
+  <form id="site-form" method="post" action="/admin/site">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-    <h2>Доступ</h2>
-    <fieldset>
-      <legend>Регистрация</legend>
-      <label class="check">
-        <input type="radio" name="registration_mode" value="closed" {% if policy.registration_mode == "closed" %}checked="checked"{% endif %} />
-        Регистрация отключена
-      </label>
-      <label class="check">
-        <input type="radio" name="registration_mode" value="referral" {% if policy.registration_mode == "referral" %}checked="checked"{% endif %} />
-        Регистрация по ссылкам пользователей
-      </label>
-      <label class="check">
-        <input type="radio" name="registration_mode" value="open" {% if policy.registration_mode == "open" %}checked="checked"{% endif %} />
-        Регистрация включена
-      </label>
-    </fieldset>
-    <p class="quiet">По ссылке гостиная запоминает, кто пригласил. Это видно в обзоре, в колонке «Пригласил». Открытая регистрация доступна всем, приглашение тоже запоминается, если человек открыл ссылку заранее.</p>
-    <label class="check">
-      <input type="checkbox" name="maintenance" {% if policy.maintenance %}checked="checked"{% endif %} />
-      Закрыть гостиную на обслуживание. Войти смогут только администраторы
-    </label>
-    <label>Объявление для всех страниц
-      <textarea name="notice" rows="2" maxlength="240">{{ policy.notice }}</textarea>
-    </label>
-    <h2>Логин и пароль</h2>
-    <div class="pair">
-      <label>Минимальная длина логина
-        <input name="username_min" type="number" min="3" max="16" required="required" value="{{ policy.username_min }}" />
-      </label>
-      <label>Максимальная длина логина
-        <input name="username_max" type="number" min="8" max="32" required="required" value="{{ policy.username_max }}" />
-      </label>
+    <input type="hidden" name="tab" id="site-return-tab" value="{{ tab or 'access' }}" />
+    <div id="panel-access" class="settings-panel" role="tabpanel" aria-labelledby="tab-access">
+      <section class="panel">
+        <h2>Регистрация</h2>
+        <label class="check">
+          <input type="radio" name="registration_mode" value="closed" {% if policy.registration_mode == "closed" %}checked="checked"{% endif %} />
+          Регистрация отключена
+        </label>
+        <label class="check">
+          <input type="radio" name="registration_mode" value="referral" {% if policy.registration_mode == "referral" %}checked="checked"{% endif %} />
+          Регистрация по ссылкам пользователей
+        </label>
+        <label class="check">
+          <input type="radio" name="registration_mode" value="open" {% if policy.registration_mode == "open" %}checked="checked"{% endif %} />
+          Регистрация включена
+        </label>
+        <p class="quiet">По ссылке гостиная запоминает, кто пригласил. Это видно в обзоре, в колонке «Пригласил». Открытая регистрация доступна всем, приглашение тоже запоминается, если человек открыл ссылку заранее.</p>
+      </section>
+      <section class="panel">
+        <h2>Обслуживание</h2>
+        <label class="switch">
+          <input type="checkbox" name="maintenance" {% if policy.maintenance %}checked="checked"{% endif %} />
+          <span class="switch-ui" aria-hidden="true"></span>
+          <span>Закрыть гостиную на обслуживание. Войти смогут только администраторы</span>
+        </label>
+        <label>Объявление для всех страниц
+          <textarea name="notice" rows="2" maxlength="240">{{ policy.notice }}</textarea>
+        </label>
+      </section>
     </div>
-    <p class="quiet">Логин: латиница, цифры, _ и -.</p>
-    <label>Минимальная длина пароля
-      <input name="password_min" type="number" min="{{ 4 if local_rules else 10 }}" max="64" required="required" value="{{ policy.password_min }}" />
-    </label>
-    {% if local_rules %}
-    <label class="check">
-      <input type="checkbox" name="password_needs_letter" {% if policy.password_needs_letter %}checked="checked"{% endif %} />
-      В пароле нужна буква
-    </label>
-    <label class="check">
-      <input type="checkbox" name="password_needs_digit" {% if policy.password_needs_digit %}checked="checked"{% endif %} />
-      В пароле нужна цифра
-    </label>
-    <p class="quiet">На этом компьютере пароль можно сократить до 4 символов. В рабочей среде нижняя граница — 10, буква и цифра остаются обязательными.</p>
-    {% else %}
-    <input type="hidden" name="password_needs_letter" value="on" />
-    <input type="hidden" name="password_needs_digit" value="on" />
-    <p class="quiet">Пароль не короче 10 символов, с буквой и цифрой. Уже созданные пароли продолжают работать.</p>
-    {% endif %}
-    <h2>Вход и сессии</h2>
-    <div class="pair">
-      <label>Неудачных попыток до блокировки логина
-        <input name="login_failures" type="number" min="3" max="20" required="required" value="{{ policy.login_failures }}" />
-      </label>
-      <label>Окно блокировки, минут
-        <input name="login_window_minutes" type="number" min="5" max="1440" required="required" value="{{ policy.login_window_minutes }}" />
-      </label>
+    <div id="panel-login" class="settings-panel" role="tabpanel" aria-labelledby="tab-login" hidden="hidden">
+      <section class="panel">
+        <h2>Логин</h2>
+        <div class="pair">
+          <label>Минимальная длина логина
+            <input name="username_min" type="number" min="3" max="16" required="required" value="{{ policy.username_min }}" />
+          </label>
+          <label>Максимальная длина логина
+            <input name="username_max" type="number" min="8" max="32" required="required" value="{{ policy.username_max }}" />
+          </label>
+        </div>
+        <p class="quiet">Логин: латиница, цифры, _ и -.</p>
+      </section>
+      <section class="panel">
+        <h2>Пароль</h2>
+        <label>Минимальная длина пароля
+          <input name="password_min" type="number" min="{{ 4 if local_rules else 10 }}" max="64" required="required" value="{{ policy.password_min }}" />
+        </label>
+        <label class="switch">
+          <input type="checkbox" name="password_needs_letter" {% if policy.password_needs_letter %}checked="checked"{% endif %} />
+          <span class="switch-ui" aria-hidden="true"></span>
+          <span>В пароле нужна буква</span>
+        </label>
+        <label class="switch">
+          <input type="checkbox" name="password_needs_digit" {% if policy.password_needs_digit %}checked="checked"{% endif %} />
+          <span class="switch-ui" aria-hidden="true"></span>
+          <span>В пароле нужна цифра</span>
+        </label>
+        <p class="quiet">{% if local_rules %}На этом компьютере пароль можно сократить до 4 символов. В рабочей среде нижняя граница — 10. Уже созданные пароли продолжают работать.{% else %}Пароль не короче 10 символов. Букву и цифру можно не требовать. Уже созданные пароли продолжают работать.{% endif %}</p>
+      </section>
     </div>
-    <p class="quiet">Один адрес блокируется после числа попыток, умноженного на четыре. Сейчас открытых сессий: {{ sessions }}.</p>
-    <label>Срок новой сессии, часов
-      <input name="session_hours" type="number" min="1" max="2160" required="required" value="{{ policy.session_hours }}" />
-    </label>
-    <h2>Гостиная</h2>
-    <div class="pair">
-      <label>Фишки новому игроку
-        <input name="starting_chips" type="number" min="0" max="100000" required="required" value="{{ policy.starting_chips }}" />
-      </label>
-      <label>Фишки за приглашение по ссылке
-        <input name="referral_chips" type="number" min="0" max="100000" required="required" value="{{ policy.referral_chips }}" />
-      </label>
+    <div id="panel-sessions" class="settings-panel" role="tabpanel" aria-labelledby="tab-sessions" hidden="hidden">
+      <section class="panel">
+        <h2>Блокировка входа</h2>
+        <div class="pair">
+          <label>Неудачных попыток до блокировки логина
+            <input name="login_failures" type="number" min="3" max="20" required="required" value="{{ policy.login_failures }}" />
+          </label>
+          <label>Окно блокировки, минут
+            <input name="login_window_minutes" type="number" min="5" max="1440" required="required" value="{{ policy.login_window_minutes }}" />
+          </label>
+        </div>
+        <p class="quiet">Один адрес блокируется после числа попыток, умноженного на четыре. Сейчас открытых сессий: {{ sessions }}.</p>
+      </section>
+      <section class="panel">
+        <h2>Сессии</h2>
+        <label>Срок новой сессии, часов
+          <input name="session_hours" type="number" min="1" max="2160" required="required" value="{{ policy.session_hours }}" />
+        </label>
+        <div class="site-actions">
+          <button type="submit" class="secondary" form="end-sessions">Завершить чужие сессии</button>
+          <button type="submit" class="secondary" form="clear-lockouts">Снять блокировки входа</button>
+        </div>
+      </section>
     </div>
-    <p class="quiet">Новый игрок получает стартовые фишки. Тот, кто прислал ссылку, получает фишки за приглашение, когда друг регистрируется.</p>
-    <fieldset>
-      <legend>Открытые игры</legend>
-      <label class="check"><input type="checkbox" name="game" value="chess" {% if policy.chess %}checked="checked"{% endif %} /> Шахматы</label>
-      <label class="check"><input type="checkbox" name="game" value="checkers" {% if policy.checkers %}checked="checked"{% endif %} /> Русские шашки</label>
-      <label class="check"><input type="checkbox" name="game" value="go" {% if policy.go %}checked="checked"{% endif %} /> Го</label>
-      <label class="check"><input type="checkbox" name="game" value="uno" {% if policy.uno %}checked="checked"{% endif %} /> Уно</label>
-      <label class="check"><input type="checkbox" name="game" value="poker" {% if policy.poker %}checked="checked"{% endif %} /> Покер, 18+, игровые фишки</label>
-      <label class="check"><input type="checkbox" name="game" value="durak" {% if policy.durak %}checked="checked"{% endif %} /> Дурак, подкидной и переводной</label>
-      <label class="check"><input type="checkbox" name="game" value="blackjack" {% if policy.blackjack %}checked="checked"{% endif %} /> Блэкджек, 18+, игровые фишки</label>
-      <label class="check"><input type="checkbox" name="game" value="preferans" {% if policy.preferans %}checked="checked"{% endif %} /> Преферанс, 18+, игровые фишки</label>
-      <label class="check"><input type="checkbox" name="game" value="domino" {% if policy.domino %}checked="checked"{% endif %} /> Домино</label>
-      <label class="check"><input type="checkbox" name="game" value="nardy" {% if policy.nardy %}checked="checked"{% endif %} /> Нарды</label>
-    </fieldset>
-    <button type="submit">Сохранить</button>
+    <div id="panel-parlor" class="settings-panel" role="tabpanel" aria-labelledby="tab-parlor" hidden="hidden">
+      <section class="panel">
+        <h2>Фишки</h2>
+        <div class="pair">
+          <label>Фишки новому игроку
+            <input name="starting_chips" type="number" min="0" max="100000" required="required" value="{{ policy.starting_chips }}" />
+          </label>
+          <label>Фишки за приглашение по ссылке
+            <input name="referral_chips" type="number" min="0" max="100000" required="required" value="{{ policy.referral_chips }}" />
+          </label>
+        </div>
+        <p class="quiet">Новый игрок получает стартовые фишки. Тот, кто прислал ссылку, получает фишки за приглашение, когда друг регистрируется.</p>
+      </section>
+      <section class="panel">
+        <h2>Открытые игры</h2>
+        <label class="switch"><input type="checkbox" name="game" value="chess" data-title="Шахматы" {% if policy.chess %}checked="checked"{% endif %} /><span class="switch-ui" aria-hidden="true"></span><span>Шахматы</span></label>
+        <label class="switch"><input type="checkbox" name="game" value="checkers" data-title="Шашки" {% if policy.checkers %}checked="checked"{% endif %} /><span class="switch-ui" aria-hidden="true"></span><span>Русские шашки</span></label>
+        <label class="switch"><input type="checkbox" name="game" value="go" data-title="Го" {% if policy.go %}checked="checked"{% endif %} /><span class="switch-ui" aria-hidden="true"></span><span>Го</span></label>
+        <label class="switch"><input type="checkbox" name="game" value="uno" data-title="Уно" {% if policy.uno %}checked="checked"{% endif %} /><span class="switch-ui" aria-hidden="true"></span><span>Уно</span></label>
+        <label class="switch"><input type="checkbox" name="game" value="poker" data-title="Покер" {% if policy.poker %}checked="checked"{% endif %} /><span class="switch-ui" aria-hidden="true"></span><span>Покер, 18+, игровые фишки</span></label>
+        <label class="switch"><input type="checkbox" name="game" value="durak" data-title="Дурак" {% if policy.durak %}checked="checked"{% endif %} /><span class="switch-ui" aria-hidden="true"></span><span>Дурак, подкидной и переводной</span></label>
+        <label class="switch"><input type="checkbox" name="game" value="blackjack" data-title="Блэкджек" {% if policy.blackjack %}checked="checked"{% endif %} /><span class="switch-ui" aria-hidden="true"></span><span>Блэкджек, 18+, игровые фишки</span></label>
+        <label class="switch"><input type="checkbox" name="game" value="preferans" data-title="Преферанс" {% if policy.preferans %}checked="checked"{% endif %} /><span class="switch-ui" aria-hidden="true"></span><span>Преферанс, 18+, игровые фишки</span></label>
+        <label class="switch"><input type="checkbox" name="game" value="domino" data-title="Домино" {% if policy.domino %}checked="checked"{% endif %} /><span class="switch-ui" aria-hidden="true"></span><span>Домино</span></label>
+        <label class="switch"><input type="checkbox" name="game" value="nardy" data-title="Нарды" {% if policy.nardy %}checked="checked"{% endif %} /><span class="switch-ui" aria-hidden="true"></span><span>Нарды</span></label>
+        <label class="switch"><input type="checkbox" name="game" value="yahtzy" data-title="Яцзы" {% if policy.yahtzy %}checked="checked"{% endif %} /><span class="switch-ui" aria-hidden="true"></span><span>Яцзы</span></label>
+        <p class="quiet">Выключенная игра скрыта у гостей и не открывается им. Администратор по-прежнему видит её и может сесть за стол.</p>
+      </section>
+    </div>
+    <div id="panel-wipe" class="settings-panel" role="tabpanel" aria-labelledby="tab-wipe" hidden="hidden">
+      <section class="panel">
+        <h2>Очистка</h2>
+        <p class="quiet">Эти действия нельзя отменить.</p>
+        <div class="site-actions">
+          <button type="button" class="is-danger" data-dialog="wipe-messages">Очистить все сообщения</button>
+          <button type="button" class="is-danger" data-dialog="wipe-games">Очистить партии</button>
+          <button type="button" class="is-danger" data-dialog="wipe-stats">Очистить всю статистику игр</button>
+          <button type="button" class="is-danger" data-dialog="wipe-keys">Очистить все ключи</button>
+        </div>
+      </section>
+    </div>
+    <div class="panel setup-bar">
+      <div>
+        <p class="quiet">Сейчас</p>
+        <p id="setup-summary" aria-live="polite"></p>
+      </div>
+      <button type="submit"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-save"/></svg> Сохранить</button>
+    </div>
   </form>
-  <div class="site-actions">
-    <form method="post" action="/admin/site/sessions">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-      <button type="submit" class="secondary">Завершить чужие сессии</button>
-    </form>
-    <form method="post" action="/admin/site/lockouts">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-      <button type="submit" class="secondary">Снять блокировки входа</button>
-    </form>
-  </div>
-  <div class="site-wipe">
-    <h2>Очистка</h2>
-    <p class="quiet">Эти действия нельзя отменить.</p>
-    <div class="site-actions">
-      <button type="button" class="secondary" data-dialog="wipe-messages">Очистить все сообщения</button>
-      <button type="button" class="secondary" data-dialog="wipe-stats">Очистить всю статистику игр</button>
-      <button type="button" class="secondary" data-dialog="wipe-keys">Очистить все ключи</button>
-    </div>
-  </div>
-  <dialog id="wipe-messages" class="confirm-dialog">
+  <form id="end-sessions" method="post" action="/admin/site/sessions" hidden="hidden">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+  </form>
+  <form id="clear-lockouts" method="post" action="/admin/site/lockouts" hidden="hidden">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+  </form>
+  <dialog id="wipe-messages" class="confirm-dialog" {% if wipe == "messages" %}data-open="1"{% endif %}>
     <h2>Очистить все сообщения?</h2>
     <p>Удалятся личные беседы и сообщения за столом. Сейчас сообщений: {{ wipe_messages }}. Гости, партии и фишки останутся.</p>
     <form method="post" action="/admin/site/messages">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <input type="hidden" name="confirm" value="yes" />
+      <label>Ваш пароль
+        <input type="password" name="password" autocomplete="current-password" required="required" />
+      </label>
+      {% if wipe == "messages" and wipe_error %}<p class="banner" role="alert">{{ wipe_error }}</p>{% endif %}
       <div class="confirm-actions">
         <button type="button" class="secondary" data-close>Отмена</button>
         <button type="submit" class="is-danger">Очистить сообщения</button>
       </div>
     </form>
   </dialog>
-  <dialog id="wipe-stats" class="confirm-dialog">
+  <dialog id="wipe-games" class="confirm-dialog" {% if wipe == "games" %}data-open="1"{% endif %}>
+    <h2>Очистить все партии?</h2>
+    <p>Удалятся партии, ходы, места за столом и сообщения за столом. Сейчас партий: {{ wipe_games }}. Гости, фишки, друзья и личные беседы останутся.</p>
+    <form method="post" action="/admin/site/games">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <input type="hidden" name="confirm" value="yes" />
+      <label>Ваш пароль
+        <input type="password" name="password" autocomplete="current-password" required="required" />
+      </label>
+      {% if wipe == "games" and wipe_error %}<p class="banner" role="alert">{{ wipe_error }}</p>{% endif %}
+      <div class="confirm-actions">
+        <button type="button" class="secondary" data-close>Отмена</button>
+        <button type="submit" class="is-danger">Очистить партии</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="wipe-stats" class="confirm-dialog" {% if wipe == "stats" %}data-open="1"{% endif %}>
     <h2>Очистить всю статистику игр?</h2>
     <p>Удалятся партии, ходы и счёт побед. Сейчас партий: {{ wipe_games }}. Гости, фишки и личные беседы останутся.</p>
     <form method="post" action="/admin/site/stats">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <input type="hidden" name="confirm" value="yes" />
+      <label>Ваш пароль
+        <input type="password" name="password" autocomplete="current-password" required="required" />
+      </label>
+      {% if wipe == "stats" and wipe_error %}<p class="banner" role="alert">{{ wipe_error }}</p>{% endif %}
       <div class="confirm-actions">
         <button type="button" class="secondary" data-close>Отмена</button>
         <button type="submit" class="is-danger">Очистить статистику</button>
       </div>
     </form>
   </dialog>
-  <dialog id="wipe-keys" class="confirm-dialog">
+  <dialog id="wipe-keys" class="confirm-dialog" {% if wipe == "keys" %}data-open="1"{% endif %}>
     <h2>Очистить все ключи?</h2>
     <p>Завершатся все входы на сайте и в приложениях, включая ваш. Сейчас открытых сессий: {{ sessions }}, ключей приложений: {{ wipe_tokens }}. После этого нужно войти снова.</p>
     <form method="post" action="/admin/site/keys">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <input type="hidden" name="confirm" value="yes" />
+      <label>Ваш пароль
+        <input type="password" name="password" autocomplete="current-password" required="required" />
+      </label>
+      {% if wipe == "keys" and wipe_error %}<p class="banner" role="alert">{{ wipe_error }}</p>{% endif %}
       <div class="confirm-actions">
         <button type="button" class="secondary" data-close>Отмена</button>
         <button type="submit" class="is-danger">Очистить ключи</button>

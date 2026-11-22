@@ -35,6 +35,7 @@ _SEEK_SEATS = {
     "preferans": (3, 3),
     "domino": (2, 4),
     "nardy": (2, 2),
+    "yahtzy": (2, 4),
 }
 ONLINE_FOR = timedelta(minutes=2)
 _OVERVIEW_GAMES = 8
@@ -294,7 +295,7 @@ async def lobby_seek(request: Request) -> Response:
     form = await request.form()
     game_type = str(form.get("game_type") or "chess")
     policy = await current(request)
-    if game_type not in GAMES or not policy.allows(game_type):
+    if game_type not in GAMES or (not user.is_admin and not policy.allows(game_type)):
         raise AppError(422, "bad_game", "Эта игра сейчас закрыта.")
     if game_type in ADULT_GAMES:
         async with request.app.state.pool.acquire() as conn:
@@ -572,9 +573,10 @@ _REASONS = {
     "fold": "Пас",
     "split": "Банк пополам",
     "other": "Без указанной причины",
+    "score": "По бланку",
 }
 _LEVELS = ("Новичок", "Любитель", "Опытный", "Сильный", "Мастер")
-_GAME_ORDER = ("chess", "checkers", "go", "domino", "nardy", "uno", "poker", "durak", "blackjack", "preferans")
+_GAME_ORDER = ("chess", "checkers", "go", "domino", "nardy", "yahtzy", "uno", "poker", "durak", "blackjack", "preferans")
 
 
 _RING = 263.89
@@ -906,19 +908,6 @@ def _leaderboard(guests: list[dict[str, object]]) -> dict[str, object]:
     }
 
 
-@router.post("/admin/overview/clear")
-async def admin_clear_games(request: Request) -> Response:
-    user = _admin(request)
-    if isinstance(user, Response):
-        return user
-    form = await request.form()
-    if form.get("confirm") != "yes":
-        raise AppError(422, "confirm", "Подтвердите очистку партий.")
-    async with request.app.state.pool.acquire() as conn, conn.transaction():
-        await conn.execute("DELETE FROM games")
-    return RedirectResponse("/admin/overview?cleared=1", status_code=303)
-
-
 @router.get("/admin/overview")
 async def admin_overview(request: Request) -> Response:
     user = _admin(request)
@@ -1159,9 +1148,7 @@ async def admin_overview(request: Request) -> Response:
         request.query_params.get(key) not in (None, str(value))
         for key, value in pages.items()
     ):
-        extra = "cleared=1" if request.query_params.get("cleared") == "1" else ""
-        return RedirectResponse(_overview_target(pages, extra), status_code=303)
-    cleared = request.query_params.get("cleared") == "1"
+        return RedirectResponse(_overview_target(pages), status_code=303)
     return _page(
         request,
         "admin/overview.html",
@@ -1210,15 +1197,14 @@ async def admin_overview(request: Request) -> Response:
             "sessions_links": page_links(sessions_page, sessions_pages),
             "sessions_href": _overview_href(pages, "sessions_page", "#sessions"),
             "referral_bars": _bars([(str(row["username"]), int(row["total"])) for row in invites]),
-            "cleared": cleared,
             **charts,
             **board,
         },
     )
 
 
-def _overview_target(pages: dict[str, int], extra: str = "") -> str:
-    parts = [extra] if extra else []
+def _overview_target(pages: dict[str, int]) -> str:
+    parts = []
     for key, value in pages.items():
         if value > 1:
             parts.append(f"{key}={value}")

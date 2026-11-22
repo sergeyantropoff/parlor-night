@@ -126,6 +126,9 @@ class RequestMiddleware:
                 request.state.user = None
             request.state.site = await current(request)
             request.state.can_register = await visitor_may_register(request, request.state.site)
+            staff = request.state.user
+            if staff is not None and staff.is_admin:
+                request.state.site = request.state.site.for_staff()
             closed = self._maintenance(request)
             if closed is not None:
                 await closed(scope, receive, send)

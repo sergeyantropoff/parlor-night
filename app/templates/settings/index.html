@@ -1,13 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Настройки — Parlor Night{% endblock %}
 {% block topbar_lead %}
-<div class="topbar-lead">
-  <h1>Настройки</h1>
-  <div class="settings-tabs" role="tablist" aria-label="Разделы настроек">
-    <button type="button" class="settings-tab" id="tab-personal" role="tab" aria-selected="true" aria-controls="panel-personal">Личные</button>
-    <button type="button" class="settings-tab" id="tab-games" role="tab" aria-selected="false" aria-controls="panel-games" tabindex="-1">Игры</button>
-  </div>
-</div>
+<div class="topbar-lead"><h1>Настройки</h1></div>
 {% endblock %}
 {% block content %}
 {% set analysis = prefs.analysis_preferences %}
@@ -16,10 +10,18 @@
 {% set multipv = analysis.chess_multipv|default(3)|int %}
 {% set checkers = analysis.checkers_level|default(3)|int %}
 {% set checkers_ms = analysis.checkers_time_ms|default(1000)|int %}
-<section class="page">
-  <p class="lede">Портрет, имя, почта, пароль, тема и доска. Покер, блэкджек и преферанс открываются с 18 лет.</p>
+<section class="card wide" id="player-settings">
   {% if error %}<p class="banner" role="alert">{{ error }}</p>{% endif %}
   {% if saved %}<p class="banner ok" role="status">Настройки сохранены.</p>{% endif %}
+
+  <div class="settings-tabs" role="tablist" aria-label="Разделы настроек">
+    <button type="button" class="settings-tab" id="tab-personal" role="tab" aria-selected="true" aria-controls="panel-personal">Личные</button>
+    <button type="button" class="settings-tab" id="tab-portrait" role="tab" aria-selected="false" aria-controls="panel-portrait" tabindex="-1">Портрет</button>
+    <button type="button" class="settings-tab" id="tab-password" role="tab" aria-selected="false" aria-controls="panel-password" tabindex="-1">Пароль</button>
+    <button type="button" class="settings-tab" id="tab-theme" role="tab" aria-selected="false" aria-controls="panel-theme" tabindex="-1">Тема</button>
+    <button type="button" class="settings-tab" id="tab-invite" role="tab" aria-selected="false" aria-controls="panel-invite" tabindex="-1">Приглашение</button>
+    <button type="button" class="settings-tab" id="tab-games" role="tab" aria-selected="false" aria-controls="panel-games" tabindex="-1">Игры</button>
+  </div>
 
   <form id="password-form" method="post" action="/settings/password"></form>
   <form method="post" action="/settings" id="settings" class="setup-form">
@@ -58,9 +60,41 @@
 
     <section class="panel" id="birth">
       <h2>Дата рождения</h2>
+      {% if user.is_admin %}
+      <div class="born-grid">
+          <label>День
+            <select name="born_day" required="required">
+              <option value="">—</option>
+              {% for day in range(1, 32) %}
+              <option value="{{ day }}" {% if born and born.day == day %}selected="selected"{% endif %}>{{ day }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Месяц
+            <select name="born_month" required="required">
+              <option value="">—</option>
+              {% for name in ("январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь") %}
+              <option value="{{ loop.index }}" {% if born and born.month == loop.index %}selected="selected"{% endif %}>{{ name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Год
+            <select name="born_year" required="required">
+              <option value="">—</option>
+              {% for year in range(year_now, 1899, -1) %}
+              <option value="{{ year }}" {% if born and born.year == year %}selected="selected"{% endif %}>{{ year }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+      {% if born %}<p class="quiet">{{ born_label }} · {{ age_label }}.</p>{% endif %}
+      {% else %}
       <p class="quiet">{% if born %}{{ born_label }} · {{ age_label }}. Изменить дату может администратор.{% else %}Дата ещё не указана.{% endif %}</p>
+      {% endif %}
     </section>
+    </div>
 
+    <div id="panel-portrait" class="settings-panel" role="tabpanel" aria-labelledby="tab-portrait" hidden="hidden">
     <section class="panel portrait-panel">
       <h2>Портрет</h2>
       <div class="portrait-layout">
@@ -83,6 +117,7 @@
       </div>
       <p id="avatar-note" class="quiet" role="status"></p>
     </section>
+    </div>
 
     <dialog id="avatar-crop" class="crop-dialog" aria-labelledby="crop-title">
       <h2 id="crop-title">Фрагмент портрета</h2>
@@ -100,6 +135,7 @@
       </div>
     </dialog>
 
+    <div id="panel-password" class="settings-panel" role="tabpanel" aria-labelledby="tab-password" hidden="hidden">
     <section class="panel password-panel" id="password-panel" data-min="{{ password_min }}" data-letter="{{ 1 if password_letter else 0 }}" data-digit="{{ 1 if password_digit else 0 }}">
       <h2>Пароль</h2>
       <p class="quiet">{{ password_rules }}</p>
@@ -135,7 +171,9 @@
       </div>
       <button type="submit" form="password-form"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-lock"/></svg> Сменить пароль</button>
     </section>
+    </div>
 
+    <div id="panel-theme" class="settings-panel" role="tabpanel" aria-labelledby="tab-theme" hidden="hidden">
     <section class="panel">
       <h2 id="pick-theme">Тема</h2>
       <div class="mode-grid" role="radiogroup" aria-labelledby="pick-theme">
@@ -153,7 +191,9 @@
         {% endfor %}
       </div>
     </section>
+    </div>
 
+    <div id="panel-invite" class="settings-panel" role="tabpanel" aria-labelledby="tab-invite" hidden="hidden">
     <section class="panel">
       <h2>Приглашение</h2>
       {% if site.registration_mode == "closed" %}
@@ -206,25 +246,30 @@
 
     <section class="panel">
       <h2 id="pick-game">Игра по умолчанию</h2>
-      {% set kept_adult = adult and prefs.default_game in ('poker', 'blackjack', 'preferans') %}
       {% set ns = namespace(picked=false) %}
       <div class="setup-games settings-games" role="radiogroup" aria-labelledby="pick-game">
-        {% for key, title, note in (
-          ('chess', 'Шахматы', 'Партия на классической доске'),
-          ('checkers', 'Русские шашки', 'Дамки и обязательный бой'),
-          ('go', 'Го', 'С человеком или с компьютером'),
-          ('uno', 'Уно', 'Цвета, цифры и дикие карты'),
-          ('durak', 'Дурак', 'Подкидной или переводной'),
-          ('domino', 'Домино', 'Кости в линию, от двух до четырёх'),
-          ('nardy', 'Нарды', 'Длинные и короткие'),
+        {% for key, title, note, grown in (
+          ('chess', 'Шахматы', 'Партия на классической доске', false),
+          ('checkers', 'Русские шашки', 'Дамки и обязательный бой', false),
+          ('go', 'Го', 'С человеком или с компьютером', false),
+          ('domino', 'Домино', 'Кости в линию, от двух до четырёх', false),
+          ('nardy', 'Нарды', 'Длинные и короткие', false),
+          ('yahtzy', 'Яцзы', 'Пять костей и бланк', false),
+          ('uno', 'Уно', 'Цвета, цифры и дикие карты', false),
+          ('poker', 'Покер', 'Техасский холдем на фишки', true),
+          ('durak', 'Дурак', 'Подкидной или переводной', false),
+          ('blackjack', 'Блэкджек', 'Против дилера на фишки', true),
+          ('preferans', 'Преферанс', 'Торг и взятки на троих', true),
         ) %}
-        {% if not site or site.allows(key) %}
-        {% set chosen = prefs.default_game == key or (not kept_adult and prefs.default_game in ('poker', 'blackjack', 'preferans') and not ns.picked) %}
+        {% if (not grown or adult) and (not site or site.allows(key)) %}
+        {% set offered = (not site or site.allows(prefs.default_game)) and (adult or prefs.default_game not in ('poker', 'blackjack', 'preferans')) %}
+        {% set chosen = prefs.default_game == key or (not ns.picked and not offered) %}
         <label class="choice pick">
-          <input type="radio" name="default_game" value="{{ key }}" data-title="{{ title }}" {% if chosen %}checked="checked"{% endif %} {% if not kept_adult %}required="required"{% endif %} />
+          <input type="radio" name="default_game" value="{{ key }}" data-title="{{ title }}" {% if chosen %}checked="checked"{% endif %} required="required" />
           <span class="shot">
             <img class="theme-light" src="/static/parlor/light/game-{{ key }}.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
             <img class="theme-dark" src="/static/parlor/dark/game-{{ key }}.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
+            {% if grown %}<span class="age">18+</span>{% endif %}
           </span>
           <span class="shot-body">
             <span><strong>{{ title }}</strong><small>{{ note }}</small></span>
@@ -243,18 +288,6 @@
             <span><strong>Бура</strong><small>Скоро в гостиной</small></span>
           </span>
         </div>
-        <div class="choice is-soon">
-          <span class="shot">
-            <img class="theme-light" src="/static/parlor/light/game-yahtzy.webp?v={{ asset_version }}" width="1024" height="768" alt="Яцзы скоро появится в гостиной" />
-            <img class="theme-dark" src="/static/parlor/dark/game-yahtzy.webp?v={{ asset_version }}" width="1024" height="768" alt="" />
-          </span>
-          <span class="shot-body">
-            <span><strong>Яцзы</strong><small>Скоро в гостиной</small></span>
-          </span>
-        </div>
-        {% if kept_adult %}
-        <input type="hidden" name="default_game" value="{{ prefs.default_game }}" />
-        {% endif %}
       </div>
     </section>
 

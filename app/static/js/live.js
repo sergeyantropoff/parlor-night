@@ -72,7 +72,9 @@ if (root) {
       ? shown.count
       : matched.filter(inAudience).length;
     for (const button of buttons) {
-      button.setAttribute("aria-pressed", button.dataset.filter === audience ? "true" : "false");
+      const on = button.dataset.filter === audience;
+      button.setAttribute("aria-selected", on ? "true" : "false");
+      button.tabIndex = on ? 0 : -1;
       const slot = button.querySelector("[data-count]");
       if (slot) slot.textContent = String(counts[button.dataset.filter] || 0);
     }
@@ -158,6 +160,20 @@ if (root) {
   }
 
   bind();
+  root.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+    const current = event.target instanceof Element ? event.target.closest("[data-filter]") : null;
+    if (!(current instanceof HTMLButtonElement)) return;
+    event.preventDefault();
+    const index = buttons.indexOf(current);
+    if (index < 0) return;
+    const next = event.key === "ArrowRight"
+      ? buttons[(index + 1) % buttons.length]
+      : buttons[(index - 1 + buttons.length) % buttons.length];
+    audience = next.dataset.filter || "all";
+    next.focus();
+    apply({ reset: true });
+  });
   root.addEventListener("click", (event) => {
     const target = event.target instanceof Element ? event.target : null;
     const button = target?.closest("[data-filter]");

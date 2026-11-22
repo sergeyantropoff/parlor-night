@@ -1,22 +1,24 @@
-const tabs = [...document.querySelectorAll(".settings-tab")];
+const tabs = [...document.querySelectorAll("#player-settings .settings-tab")];
+const tabNames = tabs.map((tab) => tab.id);
 const savedTab = sessionStorage.getItem("pn-settings-tab");
-const openPersonal = Boolean(
-  document.querySelector(".banner[role='alert']") || document.querySelector("#password-saved"),
+const openPassword = Boolean(
+  document.querySelector("#password-saved, #password-panel .banner[role='alert']:not([hidden])"),
 );
 
 function showSettingsTab(id) {
+  const chosen = tabNames.includes(id) ? id : "tab-personal";
   for (const tab of tabs) {
-    const on = tab.id === id;
+    const on = tab.id === chosen;
     tab.setAttribute("aria-selected", on ? "true" : "false");
     tab.tabIndex = on ? 0 : -1;
     const panel = document.getElementById(tab.getAttribute("aria-controls") || "");
     if (panel) panel.hidden = !on;
   }
-  sessionStorage.setItem("pn-settings-tab", id);
+  sessionStorage.setItem("pn-settings-tab", chosen);
 }
 
 if (tabs.length) {
-  showSettingsTab(openPersonal || savedTab !== "tab-games" ? "tab-personal" : "tab-games");
+  showSettingsTab(openPassword ? "tab-password" : savedTab || "tab-personal");
   for (const tab of tabs) {
     tab.addEventListener("click", () => showSettingsTab(tab.id));
     tab.addEventListener("keydown", (event) => {
@@ -139,6 +141,14 @@ if (form) {
     paintLevel();
     paintSummary();
   });
+  form.addEventListener("invalid", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const panel = target.closest("[role='tabpanel']");
+    if (!(panel instanceof HTMLElement) || !panel.hidden) return;
+    const tab = document.querySelector(`[aria-controls="${panel.id}"]`);
+    if (tab instanceof HTMLButtonElement) showSettingsTab(tab.id);
+  }, true);
   paint();
 }
 
