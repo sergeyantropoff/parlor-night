@@ -119,6 +119,15 @@ def _hash(value: object) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
+def _move_title(module: Any, before: dict[str, Any], after: dict[str, Any], path: list[str]) -> str:
+    namer = getattr(module, "label", None)
+    code = getattr(namer, "__code__", None)
+    # В преферансе, дураке и блэкджеке label называет одну карту, а не ход.
+    if code is None or code.co_argcount < 3:
+        return ""
+    return str(namer(before, after, list(path)) or "")
+
+
 def _checkers_hint_notation(line: dict[str, Any]) -> str:
     raw = str(line.get("notation") or "")
     try:
@@ -1967,10 +1976,9 @@ class GameService:
                 charges = []
             if hasattr(module, "stored_path"):
                 path = [str(item) for item in module.stored_path(list(path), after_state)]
-            if hasattr(module, "label"):
-                named = str(module.label(state, after_state, list(path)) or "")
-                if named:
-                    notation = named
+            named = _move_title(module, state, after_state, list(path))
+            if named:
+                notation = named
             if game["game_type"] == "uno" and (after_state.get("acts") or {}).get(side_before) == "miss" and "УНО" not in notation:
                 notation = f"{notation} · не сказал УНО"
         except ValueError as exc:

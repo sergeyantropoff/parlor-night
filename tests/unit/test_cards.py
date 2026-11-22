@@ -415,6 +415,23 @@ def test_uno_chronicle_names_the_winner() -> None:
     assert report["line"] == "Карты закончились."
 
 
+def test_preferans_pass_and_miser_are_not_named_as_a_card() -> None:
+    from app.cards import blackjack, durak, preferans
+    from app.games.service import _move_title
+    from app.nardy import rules as nardy
+
+    state = preferans.deal()
+    passed, _charges = preferans.apply(state, ["bid", "pass"])
+    miser, _charges = preferans.apply(preferans.deal(), ["bid", "miser"])
+    assert passed["bidding"][state["to_move"]] == "passed"
+    assert miser["contract"] == {"miser": True}
+    assert _move_title(preferans, state, passed, ["bid", "pass"]) == ""
+    assert _move_title(preferans, state, miser, ["bid", "miser"]) == ""
+    assert _move_title(durak, {}, {}, ["play", "7S"]) == ""
+    assert _move_title(blackjack, {}, {}, ["hit"]) == ""
+    assert _move_title(nardy, {}, {"dice": [6, 6], "motion": {}}, ["dice", "roll"]) == "Дубль 6"
+
+
 def test_uno_without_a_call_draws_two() -> None:
     state = deal_uno()
     state["hands"]["white"] = ["R5", "B2"]
