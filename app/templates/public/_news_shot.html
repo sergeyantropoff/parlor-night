@@ -1,0 +1,9 @@
+{% set light_cover = post.cover if post.cover|cover_kind == "upload" else "" %}
+{% set dark_cover = post.cover_dark if post.cover_dark|cover_kind == "upload" else "" %}
+{% if light_cover or dark_cover %}
+<img class="theme-light" src="/news-images/{{ light_cover or dark_cover }}" width="1672" height="941" alt="" loading="lazy" />
+<img class="theme-dark" src="/news-images/{{ dark_cover or light_cover }}" width="1672" height="941" alt="" loading="lazy" />
+{% elif post.cover|cover_kind == "preset" %}
+<img class="theme-light" src="/static/parlor/light/{{ covers[post.cover] }}?v={{ asset_version }}" width="1672" height="941" alt="" loading="lazy" />
+<img class="theme-dark" src="/static/parlor/dark/{{ covers[post.cover] }}?v={{ asset_version }}" width="1672" height="941" alt="" loading="lazy" />
+{% endif %}

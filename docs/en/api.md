@@ -693,6 +693,7 @@ No sign-in.
       "body": "<p>HTML</p>",
       "kind": "news",
       "cover": "house",
+      "cover_dark": null,
       "published_on": "2026-11-01"
     }
   ],
@@ -704,7 +705,7 @@ No sign-in.
 
 `body` is already sanitized HTML. `GET /api/v1/news/{id}` returns `{ "post": {} }`.
 
-If `cover` looks like `32hex.jpg`, `32hex.png`, or `32hex.webp`, the picture is at `/news-images/{cover}` and needs no sign-in. Otherwise it is the name of a built-in site cover.
+If `cover` looks like `32hex.jpg`, `32hex.png`, or `32hex.webp`, the picture is at `/news-images/{cover}` and needs no sign-in. Otherwise it is the name of a built-in site cover. `cover_dark` is a custom cover for the dark theme, or `null`. One uploaded file stays in `cover`, with `cover_dark` empty.
 
 Rules, privacy, and contact stay website pages: `/rules`, `/privacy`, `/contact`.
 

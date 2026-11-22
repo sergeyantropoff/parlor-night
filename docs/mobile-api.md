@@ -691,6 +691,7 @@ https://app.example/callback?code=...&state=xyz
       "body": "<p>HTML</p>",
       "kind": "news",
       "cover": "house",
+      "cover_dark": null,
       "published_on": "2026-11-01"
     }
   ],
@@ -702,7 +703,7 @@ https://app.example/callback?code=...&state=xyz
 
 `body` — уже очищенный HTML. `GET /api/v1/news/{id}` отдаёт `{ "post": {} }`.
 
-Если `cover` выглядит как `32hex.jpg`, `32hex.png` или `32hex.webp`, картинка лежит по `/news-images/{cover}` и доступна без входа. Иначе это имя готовой обложки сайта.
+Если `cover` выглядит как `32hex.jpg`, `32hex.png` или `32hex.webp`, картинка лежит по `/news-images/{cover}` и доступна без входа. Иначе это имя готовой обложки сайта. `cover_dark` — своя обложка для тёмной темы или `null`. Если файл один, его адрес в `cover`, а `cover_dark` пустой.
 
 Правила, конфиденциальность и контакты остаются страницами сайта: `/rules`, `/privacy`, `/contact`.
 

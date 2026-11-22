@@ -787,6 +787,105 @@ async def grant_profile_chips(request: Request, username: str) -> Response:
     return RedirectResponse(f"/players/{player['username']}?chips=1", status_code=303)
 
 
+@router.post("/players/{username}/name")
+async def profile_name(request: Request, username: str) -> Response:
+    user = _user_or_login(request)
+    if isinstance(user, Response):
+        return user
+    if not user.is_admin:  # type: ignore[attr-defined]
+        raise AppError(404, "not_found", "Страница не найдена.")
+    loaded = await _load_player(request, username)
+    if isinstance(loaded, Response):
+        return loaded
+    player, played, counted, online, purse = loaded
+    form = await request.form()
+    family = str(form.get("family") or "")
+    given = str(form.get("given") or "")
+    patronymic = str(form.get("patronymic") or "")
+    if not given.strip():
+        return await _profile_page(
+            request,
+            user,
+            player,
+            played,
+            counted,
+            online,
+            purse,
+            name_error="Укажите имя.",
+            name_family=family,
+            name_given=given,
+            name_patronymic=patronymic,
+            status=422,
+        )
+    try:
+        full_name = parse_full_name(family, given, patronymic)
+    except AppError as exc:
+        return await _profile_page(
+            request,
+            user,
+            player,
+            played,
+            counted,
+            online,
+            purse,
+            name_error=exc.message,
+            name_family=family,
+            name_given=given,
+            name_patronymic=patronymic,
+            status=exc.status,
+        )
+    async with request.app.state.pool.acquire() as conn:
+        await users.set_full_name(conn, player["id"], full_name)  # type: ignore[arg-type]
+    return RedirectResponse(f"/players/{player['username']}", status_code=303)
+
+
+@router.post("/players/{username}/email")
+async def profile_email(request: Request, username: str) -> Response:
+    user = _user_or_login(request)
+    if isinstance(user, Response):
+        return user
+    if not user.is_admin:  # type: ignore[attr-defined]
+        raise AppError(404, "not_found", "Страница не найдена.")
+    loaded = await _load_player(request, username)
+    if isinstance(loaded, Response):
+        return loaded
+    player, played, counted, online, purse = loaded
+    form = await request.form()
+    raw = str(form.get("email") or "")
+    try:
+        email = clean_email(raw)
+    except ValueError as exc:
+        return await _profile_page(
+            request,
+            user,
+            player,
+            played,
+            counted,
+            online,
+            purse,
+            email_error=str(exc),
+            email_value=raw,
+            status=422,
+        )
+    try:
+        async with request.app.state.pool.acquire() as conn:
+            await users.set_email(conn, player["id"], email)  # type: ignore[arg-type]
+    except AppError as exc:
+        return await _profile_page(
+            request,
+            user,
+            player,
+            played,
+            counted,
+            online,
+            purse,
+            email_error=exc.message,
+            email_value=raw,
+            status=exc.status,
+        )
+    return RedirectResponse(f"/players/{player['username']}", status_code=303)
+
+
 @router.post("/players/{username}/friend")
 async def profile_friend(request: Request, username: str) -> Response:
     user = _user_or_login(request)
@@ -929,7 +1028,13 @@ async def _load_player(
         moment = moment.replace(tzinfo=UTC)
     online = moment is not None and datetime.now(UTC) - moment < timedelta(minutes=2)
     player = dict(row)
+    family, given, patronymic = split_full_name(str(player.get("full_name") or ""))
+    player["family"] = family
+    player["given"] = given
+    player["patronymic"] = patronymic
     player["full_name"] = shown(player.get("full_name"), "")
+    born = player.get("born_on")
+    player["age"] = years_phrase(age_years(born)) if isinstance(born, date) else ""
     return player, list(played), list(counted), online, purse
 
 
@@ -945,6 +1050,12 @@ async def _profile_page(
     chips_added: bool = False,
     chip_error: str = "",
     age_error: str = "",
+    name_error: str = "",
+    name_family: str | None = None,
+    name_given: str | None = None,
+    name_patronymic: str | None = None,
+    email_error: str = "",
+    email_value: str | None = None,
     friend_error: str = "",
     status: int = 200,
 ) -> Response:
@@ -962,6 +1073,12 @@ async def _profile_page(
             "chips_added": chips_added,
             "chip_error": chip_error,
             "age_error": age_error,
+            "name_error": name_error,
+            "name_family": player.get("family", "") if name_family is None else name_family,
+            "name_given": player.get("given", "") if name_given is None else name_given,
+            "name_patronymic": player.get("patronymic", "") if name_patronymic is None else name_patronymic,
+            "email_error": email_error,
+            "email_value": (player.get("email") or "") if email_value is None else email_value,
             "year_now": date.today().year,
             "friend_state": friend_state,
             "friend_error": friend_error,

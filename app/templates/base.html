@@ -40,6 +40,7 @@
     <symbol id="i-lobby" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.7-3 2.8-4.5 5.5-4.5s4.8 1.5 5.5 4.5"/><circle cx="17" cy="9" r="2.2"/><path d="M16 14.7c1.8.3 3.2 1.4 3.8 3.8"/></symbol>
     <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></symbol>
     <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 19.5c1.1-3.4 3.4-5 7-5s5.9 1.6 7 5"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="m4.5 7 7.5 6 7.5-6"/></symbol>
     <symbol id="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6.5h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H9l-4 3.2V7.5a1 1 0 0 1 1-1z"/></symbol>
     <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 12h.01M11 12h6"/></symbol>
     <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3.5V7M16 3.5V7M4 10h16"/></symbol>
@@ -189,6 +190,21 @@
     </form>
   </dialog>
   {% endif %}
+  <dialog id="lightbox" class="lightbox" aria-label="Просмотр картинки">
+    <button type="button" class="lightbox-close" data-lightbox-close aria-label="Закрыть">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg>
+    </button>
+    <button type="button" class="lightbox-nav is-prev" data-lightbox-prev aria-label="Предыдущая картинка">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
+    </button>
+    <figure>
+      <img alt="" data-lightbox-image />
+      <figcaption data-lightbox-caption hidden></figcaption>
+    </figure>
+    <button type="button" class="lightbox-nav is-next" data-lightbox-next aria-label="Следующая картинка">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
+    </button>
+  </dialog>
   <dialog id="age-dialog" class="confirm-dialog" {% if age_block %}data-open="1"{% endif %} aria-labelledby="age-title">
     <h2 id="age-title">Игра с 18 лет</h2>
     <p id="age-text">{{ age_block }}</p>
@@ -200,6 +216,7 @@
   <script type="module" src="/static/js/notices.js?v={{ asset_version }}"></script>
   {% endif %}
   <script type="module" src="/static/js/age.js?v={{ asset_version }}"></script>
+  <script type="module" src="/static/js/lightbox.js?v={{ asset_version }}"></script>
   <script type="module" src="/static/js/theme.js?v={{ asset_version }}"></script>
   <script type="module" src="/static/js/copy.js?v={{ asset_version }}"></script>
   {% block scripts %}{% endblock %}

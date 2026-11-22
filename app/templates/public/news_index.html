@@ -23,13 +23,7 @@
     <article>
       <a class="stretch" href="/news/{{ post.id }}">{{ post.title }}</a>
       <div class="shot">
-        {% set shot = post.cover|cover_kind %}
-        {% if shot == "upload" %}
-        <img src="/news-images/{{ post.cover }}" width="1672" height="941" alt="" />
-        {% elif shot == "preset" %}
-        <img class="theme-light" src="/static/parlor/light/{{ covers[post.cover] }}?v={{ asset_version }}" width="1672" height="941" alt="" />
-        <img class="theme-dark" src="/static/parlor/dark/{{ covers[post.cover] }}?v={{ asset_version }}" width="1672" height="941" alt="" />
-        {% endif %}
+        {% include "public/_news_shot.html" %}
         <span class="kind">{{ kinds[post.kind] }}</span>
         <p class="news-date on-cover"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg> {{ post.published_on.day }} {{ months[post.published_on.month - 1] }} {{ post.published_on.year }}</p>
       </div>

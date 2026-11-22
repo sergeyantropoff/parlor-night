@@ -28,25 +28,18 @@
   <div class="admin-news">
     {% for post in posts %}
     <article class="news-admin">
-      {% set shot = post.cover|cover_kind %}
-      {% if shot == "upload" %}
-      <div class="admin-cover">
-        <img src="/news-images/{{ post.cover }}" alt="" />
+      {% if post.cover|cover_kind or post.cover_dark|cover_kind %}
+      <a class="admin-cover" href="/news/{{ post.id }}" aria-label="{{ post.title }}">
+        {% include "public/_news_shot.html" %}
         <span class="kind">{{ kinds[post.kind] }}</span>
-      </div>
-      {% elif shot == "preset" %}
-      <div class="admin-cover">
-        <img class="theme-light" src="/static/parlor/light/{{ covers[post.cover] }}?v={{ asset_version }}" alt="" />
-        <img class="theme-dark" src="/static/parlor/dark/{{ covers[post.cover] }}?v={{ asset_version }}" alt="" />
-        <span class="kind">{{ kinds[post.kind] }}</span>
-      </div>
+      </a>
       {% endif %}
       <div class="pad">
         <p class="news-meta">
-          {% if not post.cover or post.cover|cover_kind == "" %}<span class="kind">{{ kinds[post.kind] }}</span>{% endif %}
+          {% if not post.cover|cover_kind and not post.cover_dark|cover_kind %}<span class="kind">{{ kinds[post.kind] }}</span>{% endif %}
           <span class="news-date below"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg> {{ post.published_on.day }} {{ months[post.published_on.month - 1] }}</span>
         </p>
-        <h3>{{ post.title }}</h3>
+        <h3><a href="/news/{{ post.id }}">{{ post.title }}</a></h3>
         <p>{{ post.summary }}</p>
         <div class="row">
           <a class="button secondary" href="/admin/news/{{ post.id }}">Изменить</a>

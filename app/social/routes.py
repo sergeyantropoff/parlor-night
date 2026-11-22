@@ -442,7 +442,7 @@ async def thread_send(request: Request, username: str) -> Response:
     if isinstance(user, Response):
         return user
     form = await request.form()
-    body = " ".join(str(form.get("body") or "").split())
+    body = _message_text(form.get("body"))
     if not body or len(body) > 1000:
         raise AppError(422, "bad_message", "Сообщение должно быть от 1 до 1000 символов.")
     await _pace(request, f"chat:{user.id}", 30)
@@ -1308,6 +1308,12 @@ def _invite_parts(body: object, offer: tuple[str, str] | None = None) -> tuple[s
     if offer and text.casefold() in _TABLE_READY:
         return offer
     return ("", "")
+
+
+def _message_text(value: object) -> str:
+    text = str(value or "").replace("\r\n", "\n").replace("\r", "\n")
+    lines = [" ".join(line.split()) for line in text.split("\n")]
+    return "\n".join(lines).strip()
 
 
 def _inbox_preview(body: object) -> str:

@@ -43,7 +43,16 @@ from app.paging import clamp_page, page_count, read_page
 from app.profile_stats import tally
 from app.site_policy import current, referral_is_live
 from app.social.notices import mark_chat_read
-from app.social.routes import _activity, _chats_context, _friends_context, _pace, _presence, _seek_seats, _thread
+from app.social.routes import (
+    _activity,
+    _chats_context,
+    _friends_context,
+    _message_text,
+    _pace,
+    _presence,
+    _seek_seats,
+    _thread,
+)
 from app.wallet import adult_denial, balance, born_from_parts, credit, is_adult
 from app.web.routes import (
     _CHIP_PAGE,
@@ -764,7 +773,7 @@ async def api_thread(request: Request, username: str) -> JSONResponse:
 @router.post("/chats/{username}")
 async def api_thread_send(request: Request, username: str, body: MessageBody) -> JSONResponse:
     user = _user(request)
-    text = " ".join(body.body.split())
+    text = _message_text(body.body)
     if not text or len(text) > 1000:
         raise AppError(422, "bad_message", "Сообщение должно быть от 1 до 1000 символов.")
     await _pace(request, f"chat:{user.id}", 30)

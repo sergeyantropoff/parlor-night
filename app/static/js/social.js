@@ -91,6 +91,12 @@ if (root) {
   mountEmoji(root);
 
   const body = root.querySelector("#chat-body");
+  const growChat = () => {
+    if (!(body instanceof HTMLTextAreaElement)) return;
+    body.style.height = "auto";
+    body.style.height = `${body.scrollHeight}px`;
+  };
+  body?.addEventListener("input", growChat);
   body?.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();

@@ -211,7 +211,7 @@ function seatNode(state, picture, far) {
   copy.className = "plate-copy";
   const title = document.createElement("span");
   title.className = "plate-name";
-  const name = seat.you ? `${seat.name} · вы` : cpu && state.engine_title ? `${seat.name} · ${state.engine_title}` : seat.name;
+  const name = !seat.you && cpu && state.engine_title ? `${seat.name} · ${state.engine_title}` : seat.name;
   api.fillPersonName(title, { name, login: seat.login });
   const left = document.createElement("span");
   left.className = "plate-stack";

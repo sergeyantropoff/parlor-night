@@ -20,22 +20,15 @@
 <article class="landing article-page">
   <p class="back"><a class="text-link" href="/news">← Все новости</a></p>
   <div class="paper">
-    {% set shot = post.cover|cover_kind %}
-    {% if shot == "upload" %}
+    {% if post.cover|cover_kind or post.cover_dark|cover_kind %}
     <div class="shot article-cover">
-      <img src="/news-images/{{ post.cover }}" width="1672" height="941" alt="" />
-      <span class="kind">{{ kinds[post.kind] }}</span>
-    </div>
-    {% elif shot == "preset" %}
-    <div class="shot article-cover">
-      <img class="theme-light" src="/static/parlor/light/{{ covers[post.cover] }}?v={{ asset_version }}" width="1672" height="941" alt="" />
-      <img class="theme-dark" src="/static/parlor/dark/{{ covers[post.cover] }}?v={{ asset_version }}" width="1672" height="941" alt="" />
+      {% include "public/_news_shot.html" %}
       <span class="kind">{{ kinds[post.kind] }}</span>
     </div>
     {% endif %}
     <div class="paper-body">
       <p class="news-meta">
-        {% if not post.cover or post.cover|cover_kind == "" %}<span class="kind">{{ kinds[post.kind] }}</span>{% endif %}
+        {% if not post.cover|cover_kind and not post.cover_dark|cover_kind %}<span class="kind">{{ kinds[post.kind] }}</span>{% endif %}
         <span class="news-date below"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg> {{ post.published_on.day }} {{ months[post.published_on.month - 1] }} {{ post.published_on.year }}</span>
       </p>
       <h1>{{ post.title }}</h1>
@@ -54,13 +47,7 @@
     <article>
       <a class="stretch" href="/news/{{ post.id }}">{{ post.title }}</a>
       <div class="shot">
-        {% set shot = post.cover|cover_kind %}
-        {% if shot == "upload" %}
-        <img src="/news-images/{{ post.cover }}" width="1672" height="941" alt="" />
-        {% elif shot == "preset" %}
-        <img class="theme-light" src="/static/parlor/light/{{ covers[post.cover] }}?v={{ asset_version }}" width="1672" height="941" alt="" />
-        <img class="theme-dark" src="/static/parlor/dark/{{ covers[post.cover] }}?v={{ asset_version }}" width="1672" height="941" alt="" />
-        {% endif %}
+        {% include "public/_news_shot.html" %}
         <span class="kind">{{ kinds[post.kind] }}</span>
         <p class="news-date on-cover"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg> {{ post.published_on.day }} {{ months[post.published_on.month - 1] }} {{ post.published_on.year }}</p>
       </div>

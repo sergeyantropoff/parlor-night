@@ -20,14 +20,33 @@
         <span class="dot{% if not online %} is-idle{% endif %}"></span>
         {% if online %}В сети{% else %}Был {{ player.last_seen|when or "давно" }}{% endif %}
       </p>
+      {% if player.age %}<p class="quiet">Возраст {{ player.age }}</p>{% endif %}
       <p class="quiet">В гостиной с {{ player.created_at|dt }}</p>
       {% if player.email and (user.is_admin or player.id|string == user.id|string) %}
       <p class="quiet">{{ player.email }}</p>
       {% endif %}
       {% if user.is_admin %}
       <div class="profile-admin">
-        <button type="button" data-open-dialog="age-edit">Изменить возраст</button>
-        <button type="button" data-open-dialog="chip-grant">Начислить фишки</button>
+        <span class="tip-host" data-tip="Изменить ФИО">
+          <button type="button" class="icon-act" data-open-dialog="name-edit" aria-label="Изменить ФИО">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-user"/></svg>
+          </button>
+        </span>
+        <span class="tip-host" data-tip="Изменить почту">
+          <button type="button" class="icon-act" data-open-dialog="email-edit" aria-label="Изменить почту">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mail"/></svg>
+          </button>
+        </span>
+        <span class="tip-host" data-tip="Изменить возраст">
+          <button type="button" class="icon-act" data-open-dialog="age-edit" aria-label="Изменить возраст">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg>
+          </button>
+        </span>
+        <span class="tip-host" data-tip="Начислить фишки">
+          <button type="button" class="icon-act" data-open-dialog="chip-grant" aria-label="Начислить фишки">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-coins"/></svg>
+          </button>
+        </span>
       </div>
       {% endif %}
       {% if friend_state == "none" %}
@@ -164,6 +183,46 @@
     <p class="week-key"><i class="swatch-played"></i> Партии <i class="swatch-win"></i> Победы</p>
   </section>
   {% if user.is_admin %}
+  <dialog id="name-edit" class="confirm-dialog welcome-dialog" {% if name_error %}data-open="1"{% endif %} aria-labelledby="name-edit-title">
+    <h2 id="name-edit-title">Изменить ФИО</h2>
+    <p>Имя обязательно. Фамилию и отчество можно оставить пустыми.</p>
+    <form method="post" action="/players/{{ player.username }}/name">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      {% if name_error %}<p class="banner" role="alert">{{ name_error }}</p>{% endif %}
+      <label>
+        <span class="field-title">Фамилия</span>
+        <input name="family" value="{{ name_family }}" maxlength="80" autocomplete="off" />
+      </label>
+      <label>
+        <span class="field-title">Имя <span class="need" aria-hidden="true">*</span></span>
+        <input name="given" value="{{ name_given }}" maxlength="80" required="required" autocomplete="off" />
+      </label>
+      <label>
+        <span class="field-title">Отчество</span>
+        <input name="patronymic" value="{{ name_patronymic }}" maxlength="80" autocomplete="off" />
+      </label>
+      <div class="confirm-actions">
+        <button type="button" class="secondary" data-close>Закрыть</button>
+        <button type="submit">Сохранить</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="email-edit" class="confirm-dialog welcome-dialog" {% if email_error %}data-open="1"{% endif %} aria-labelledby="email-edit-title">
+    <h2 id="email-edit-title">Изменить почту</h2>
+    <p>На этот адрес игрок сможет входить вместо логина.</p>
+    <form method="post" action="/players/{{ player.username }}/email">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      {% if email_error %}<p class="banner" role="alert">{{ email_error }}</p>{% endif %}
+      <label>
+        <span class="field-title">Почта <span class="need" aria-hidden="true">*</span></span>
+        <input name="email" type="email" value="{{ email_value }}" maxlength="200" required="required" autocomplete="off" />
+      </label>
+      <div class="confirm-actions">
+        <button type="button" class="secondary" data-close>Закрыть</button>
+        <button type="submit">Сохранить</button>
+      </div>
+    </form>
+  </dialog>
   <dialog id="age-edit" class="confirm-dialog welcome-dialog" {% if age_error %}data-open="1"{% endif %} aria-labelledby="age-edit-title">
     <h2 id="age-edit-title">Изменить возраст</h2>
     <p>Дата рождения открывает покер, блэкджек и преферанс с 18 лет.</p>

@@ -382,6 +382,7 @@ def _news_fields(form: Any, *, strict: bool = True) -> tuple[dict[str, Any], str
     raw_day = str(form.get("published_on") or "")
     raw_cover = str(form.get("cover") or "").strip()
     raw_file = str(form.get("cover_file") or "").strip()
+    raw_dark = str(form.get("cover_dark_file") or "").strip()
     published = date.today()
     day_error = False
     if raw_day:
@@ -389,12 +390,17 @@ def _news_fields(form: Any, *, strict: bool = True) -> tuple[dict[str, Any], str
             published = date.fromisoformat(raw_day)
         except ValueError:
             day_error = True
-    if is_news_image(raw_file):
-        cover = raw_file
+    light = raw_file if is_news_image(raw_file) else None
+    dark = raw_dark if is_news_image(raw_dark) else None
+    if light or dark:
+        cover = light
+        cover_dark = dark
     elif raw_cover in _COVERS or is_news_image(raw_cover):
         cover = raw_cover
+        cover_dark = None
     else:
         cover = None
+        cover_dark = None
     fields: dict[str, Any] = {
         "title": title,
         "summary": summary,
@@ -402,6 +408,7 @@ def _news_fields(form: Any, *, strict: bool = True) -> tuple[dict[str, Any], str
         "kind": kind if kind in {"update", "event", "announce"} else "announce",
         "published_on": published,
         "cover": cover,
+        "cover_dark": cover_dark,
     }
     if not strict:
         return fields, None
@@ -410,8 +417,10 @@ def _news_fields(form: Any, *, strict: bool = True) -> tuple[dict[str, Any], str
     if day_error:
         return fields, "Проверьте дату."
     if raw_file and not is_news_image(raw_file):
-        return fields, "Своя обложка не подошла."
-    if raw_cover and cover is None:
+        return fields, "Обложка для светлой темы не подошла."
+    if raw_dark and not is_news_image(raw_dark):
+        return fields, "Обложка для тёмной темы не подошла."
+    if raw_cover and cover is None and cover_dark is None:
         return fields, "Выберите обложку из списка."
     if not 1 <= len(summary) <= 400 or not visible_text(body) or len(body) > _BODY_LIMIT:
         return fields, "Краткий текст до 400 символов, полный — до 20 000."

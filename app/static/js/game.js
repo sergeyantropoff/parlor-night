@@ -129,11 +129,7 @@ function seatLabel(side) {
   if (!raw) return null;
   const mine = current.your_side === side;
   const cpu = current.computer_side === side;
-  const text = mine
-    ? `${raw} · вы`
-    : cpu && current.engine_title
-      ? `${raw} · ${current.engine_title}`
-      : raw;
+  const text = !mine && cpu && current.engine_title ? `${raw} · ${current.engine_title}` : raw;
   return {
     text,
     raw,
@@ -174,7 +170,7 @@ function paintSeats() {
   const top = seatLabel(topSide);
   if (!bottom && !top && current.you_name) {
     bottom = {
-      text: `${current.you_name} · вы`,
+      text: current.you_name,
       raw: current.you_name,
       letter: current.you_name.slice(0, 1).toUpperCase(),
       tone: toneOf(current.you_name),
@@ -423,12 +419,6 @@ function watcherLink(person) {
   const name = document.createElement("strong");
   name.textContent = person.name || person.username || "";
   copy.append(name);
-  if (person.self) {
-    const mark = document.createElement("span");
-    mark.className = "watcher-you";
-    mark.textContent = " · вы";
-    copy.append(mark);
-  }
   link.append(face, copy);
   return link;
 }
@@ -1086,10 +1076,10 @@ function seatTone(key, folded) {
   return "";
 }
 
-function badgeLabel(name, key, { you = false, folded = false } = {}) {
+function badgeLabel(name, key, { folded = false } = {}) {
   const tone = seatTone(key, folded);
   const action = tone === "win" ? "выиграл" : (ACTION_WORD[(current.marks || {})[key]] || (folded ? "пас" : ""));
-  const who = you ? `${name} · вы` : name;
+  const who = name;
   return { text: action ? `${who} · ${action}` : who, tone };
 }
 
@@ -1283,7 +1273,7 @@ function playerPlate(seat, x, y) {
   copy.className = "plate-copy";
   const title = document.createElement("span");
   title.className = "plate-name";
-  fillPersonName(title, { name: seat.you ? `${seat.name} · вы` : seat.name, login: seat.login });
+  fillPersonName(title, { name: seat.name, login: seat.login });
   copy.append(title);
   const stack = document.createElement("span");
   stack.className = "plate-stack";
@@ -1545,7 +1535,7 @@ function unoPlate(seat, x, y) {
   copy.className = "plate-copy";
   const title = document.createElement("span");
   title.className = "plate-name";
-  fillPersonName(title, { name: seat.you ? `${seat.name} · вы` : seat.name, login: seat.login });
+  fillPersonName(title, { name: seat.name, login: seat.login });
   const count = document.createElement("span");
   const cards = Number(seat.count || 0);
   count.textContent = `${cards} ${cardsWord(cards)}`;
@@ -1788,7 +1778,7 @@ function paintCrowd(box, poker, you, heroCards) {
       overlap: fitOverlap(heroCards.length, 12.5714286, -4.2857143, 92),
     }));
   }
-  box.append(seatBadge(`${you} · вы · ${heroCards.length} ${cardsWord(heroCards.length)}`, 50, 77, false));
+  box.append(seatBadge(`${you} · ${heroCards.length} ${cardsWord(heroCards.length)}`, 50, 77, false));
   const deck = Number(current.deck || 0);
   if (deck > 0) {
     const top = makeCard(backSrc(), { alt: "Колода" });
@@ -2545,7 +2535,7 @@ function dominoPlate(seat) {
   copy.className = "plate-copy";
   const title = document.createElement("span");
   title.className = "plate-name";
-  fillPersonName(title, { name: seat.you ? `${seat.name} · вы` : seat.name, login: seat.login });
+  fillPersonName(title, { name: seat.name, login: seat.login });
   const count = dominoCount(seat);
   const left = document.createElement("span");
   left.className = "plate-stack";

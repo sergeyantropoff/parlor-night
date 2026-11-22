@@ -31,7 +31,6 @@
         <button type="button" data-cmd="image">Картинка</button>
         <button type="button" data-cmd="p">Обычный</button>
       </div>
-      <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-image-file />
       <div class="wysiwyg-sheet story" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Текст новости">{% if source %}{{ source.body|story }}{% endif %}</div>
       <textarea name="body" hidden>{% if source %}{{ source.body }}{% endif %}</textarea>
     </div>
@@ -44,6 +43,12 @@
         </select>
       </label>
       <label>Дата <input name="published_on" type="date" value="{% if source and source.published_on %}{{ source.published_on }}{% endif %}" /></label>
+    </div>
+    {% set own_light = source.cover if source and source.cover|cover_kind == "upload" else "" %}
+    {% set own_dark = source.cover_dark if source and source.cover_dark|cover_kind == "upload" else "" %}
+    <section class="panel cover-card">
+      <h2>Обложка</h2>
+      <p class="quiet">Картинка из гостиной или свой файл. Свой кадр обрезается: на карточке останется фрагмент 16:9. Если файл один, он показывается в обеих темах.</p>
       <label>Обложка из гостиной
         <select name="cover" data-cover-preset>
           <option value="">Без обложки</option>
@@ -52,17 +57,49 @@
           {% endfor %}
         </select>
       </label>
+    <div class="cover-pair">
+      <div class="cover-own" data-cover-upload>
+        <span class="field-title">Светлая тема</span>
+        <input type="hidden" name="cover_file" value="{{ own_light }}" />
+        <div class="portrait-layout">
+          <div class="portrait-side">
+            <div class="cover-preview">
+              <img alt="Обложка для светлой темы" {% if own_light %}src="/news-images/{{ own_light }}"{% else %}hidden{% endif %} data-cover-preview />
+              <span class="cover-empty" {% if own_light %}hidden{% endif %} data-cover-empty>Нет обложки</span>
+            </div>
+            <button type="button" class="secondary" data-cover-clear {% if not own_light %}hidden{% endif %}>Убрать обложку</button>
+          </div>
+          <div class="avatar-drop" data-cover-drop tabindex="0" role="button" aria-label="Загрузить обложку для светлой темы">
+            <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-cover-file />
+            <strong>Перетащите обложку сюда</strong>
+            <span>или нажмите, чтобы выбрать файл</span>
+            <span class="quiet">JPEG, PNG или WebP, до 10 МБ. Затем выберите фрагмент.</span>
+          </div>
+        </div>
+        <p class="quiet" data-cover-error hidden></p>
+      </div>
+      <div class="cover-own" data-cover-upload>
+        <span class="field-title">Тёмная тема</span>
+        <input type="hidden" name="cover_dark_file" value="{{ own_dark }}" />
+        <div class="portrait-layout">
+          <div class="portrait-side">
+            <div class="cover-preview">
+              <img alt="Обложка для тёмной темы" {% if own_dark %}src="/news-images/{{ own_dark }}"{% else %}hidden{% endif %} data-cover-preview />
+              <span class="cover-empty" {% if own_dark %}hidden{% endif %} data-cover-empty>Нет обложки</span>
+            </div>
+            <button type="button" class="secondary" data-cover-clear {% if not own_dark %}hidden{% endif %}>Убрать обложку</button>
+          </div>
+          <div class="avatar-drop" data-cover-drop tabindex="0" role="button" aria-label="Загрузить обложку для тёмной темы">
+            <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-cover-file />
+            <strong>Перетащите обложку сюда</strong>
+            <span>или нажмите, чтобы выбрать файл</span>
+            <span class="quiet">JPEG, PNG или WebP, до 10 МБ. Затем выберите фрагмент.</span>
+          </div>
+        </div>
+        <p class="quiet" data-cover-error hidden></p>
+      </div>
     </div>
-    {% set own = source.cover if source and source.cover|cover_kind == "upload" else "" %}
-    <div class="cover-own" data-cover-upload>
-      <input type="hidden" name="cover_file" value="{{ own }}" />
-      <button type="button" class="secondary" data-cover-pick>Загрузить обложку</button>
-      <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-cover-file />
-      <img alt="" {% if own %}src="/news-images/{{ own }}"{% else %}hidden{% endif %} data-cover-preview />
-      <button type="button" class="text-button" data-cover-clear {% if not own %}hidden{% endif %}>Убрать свою</button>
-      <p class="quiet">JPEG, PNG или WebP, до 4 МБ. Своя обложка и картинки в тексте хранятся отдельно.</p>
-      <p class="quiet" data-cover-error hidden></p>
-    </div>
+    </section>
     <div class="news-actions">
       <button type="submit" class="secondary" formaction="/admin/news/preview" formtarget="_blank" formnovalidate="formnovalidate">
         <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"/></svg>
@@ -71,6 +108,62 @@
       <button type="submit">{% if editing %}Сохранить{% else %}Опубликовать{% endif %}</button>
     </div>
   </form>
+  <dialog id="story-image" class="crop-dialog story-image-dialog" aria-labelledby="story-image-title">
+    <h2 id="story-image-title">Картинка в тексте</h2>
+    <p>После файла откроется кадр: потяните снимок и выберите фрагмент. Подпись можно не указывать.</p>
+    <div class="portrait-layout">
+      <div class="portrait-side">
+        <div class="cover-preview">
+          <img alt="" hidden data-story-preview />
+          <span class="cover-empty" data-story-empty>Нет файла</span>
+        </div>
+      </div>
+      <div class="avatar-drop" data-story-drop tabindex="0" role="button" aria-label="Загрузить картинку">
+        <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-image-file />
+        <strong>Перетащите картинку сюда</strong>
+        <span>или нажмите, чтобы выбрать файл</span>
+        <span class="quiet">JPEG, PNG или WebP, до 10 МБ. Затем выберите фрагмент.</span>
+      </div>
+    </div>
+    <label>
+      <span class="field-title">Подпись</span>
+      <input type="text" maxlength="180" data-story-alt autocomplete="off" />
+    </label>
+    <p class="banner" role="alert" hidden data-story-error></p>
+    <div class="crop-actions">
+      <button type="button" class="secondary" data-close>Закрыть</button>
+      <button type="button" data-story-insert>Вставить</button>
+    </div>
+  </dialog>
+  <dialog id="news-crop" class="crop-dialog news-crop-dialog" aria-labelledby="news-crop-title">
+    <h2 id="news-crop-title">Фрагмент</h2>
+    <p data-news-crop-note>Потяните снимок, чтобы сдвинуть его. Ползунок и колёсико меняют масштаб. Двойной щелчок возвращает кадр в центр.</p>
+    <div id="news-crop-stage" class="crop-stage is-rect is-cover" tabindex="0">
+      <img id="news-crop-image" alt="" draggable="false" />
+      <div class="crop-shade"></div>
+    </div>
+    <label class="crop-zoom">Масштаб
+      <input id="news-crop-zoom" type="range" min="1" max="4" step="0.01" value="1" />
+    </label>
+    <p class="banner" role="alert" hidden data-news-crop-error></p>
+    <div class="crop-actions">
+      <button type="button" class="secondary" id="news-crop-cancel">Отмена</button>
+      <button type="button" id="news-crop-save">Готово</button>
+    </div>
+  </dialog>
+  <dialog id="story-link" class="confirm-dialog welcome-dialog" aria-labelledby="story-link-title">
+    <h2 id="story-link-title">Ссылка</h2>
+    <p>Подойдут адрес https, почта и ссылка внутри гостиной.</p>
+    <label>
+      <span class="field-title">Адрес</span>
+      <input type="text" data-story-href value="https://" autocomplete="off" />
+    </label>
+    <p class="banner" role="alert" hidden data-story-link-error></p>
+    <div class="confirm-actions">
+      <button type="button" class="secondary" data-close>Закрыть</button>
+      <button type="button" data-story-link-insert>Вставить</button>
+    </div>
+  </dialog>
 </section>
 {% endblock %}
 {% block scripts %}
