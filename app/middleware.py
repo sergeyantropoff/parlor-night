@@ -26,6 +26,27 @@ from app.wallet import balance
 
 logger = logging.getLogger(__name__)
 UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
+_ASSET_TYPES = (
+    b"image/",
+    b"font/",
+    b"audio/",
+    b"video/",
+    b"text/css",
+    b"text/javascript",
+    b"application/javascript",
+    b"application/wasm",
+    b"application/octet-stream",
+    b"application/pdf",
+)
+
+
+def _maintenance_keeps(message: Message) -> bool:
+    for key, value in message.get("headers", []):
+        if key.lower() != b"content-type":
+            continue
+        kind = value.split(b";", 1)[0].strip().lower()
+        return kind.startswith(_ASSET_TYPES)
+    return False
 
 
 def _client_ip(request: Request) -> str:
@@ -111,6 +132,7 @@ class RequestMiddleware:
         request.state.api_family = None
         request.state.api_client = None
         request.state.client_ip = _client_ip(request)
+        request.state.hold_maintenance = False
         if not path.startswith("/static") and not path.startswith("/health"):
             limited = await self._pace(request)
             if limited is not None:
@@ -139,11 +161,10 @@ class RequestMiddleware:
                     await denied(scope, receive, send)
                     return
         status = 500
+        held = False
 
-        async def send_wrapper(message: Message) -> None:
-            nonlocal status
+        async def send_secured(message: Message) -> None:
             if message["type"] == "http.response.start":
-                status = int(message["status"])
                 headers = list(message.get("headers", []))
                 extra = {
                     "x-content-type-options": "nosniff",
@@ -170,6 +191,20 @@ class RequestMiddleware:
                     headers.append((b"cache-control", b"no-store"))
                 message["headers"] = headers
             await send(message)
+
+        async def send_wrapper(message: Message) -> None:
+            nonlocal status, held
+            if held:
+                return
+            if message["type"] == "http.response.start":
+                status = int(message["status"])
+                if request.state.hold_maintenance and status < 400 and not _maintenance_keeps(message):
+                    held = True
+                    status = 503
+                    closed_page = render(request, "closed.html", status=503)
+                    await closed_page(scope, receive, send_secured)
+                    return
+            await send_secured(message)
 
         try:
             await self.app(scope, receive, send_wrapper)
@@ -314,22 +349,36 @@ class RequestMiddleware:
             return None
         path = request.url.path
         user = request.state.user
-        if path in {"/login", "/login/captcha", "/logout"} or (user is not None and user.is_admin):
+        if user is not None and user.is_admin:
             return None
-        if request.method == "GET" and user is None and (
-            path in {"/", "/register"} or path.startswith("/news")
-        ):
+        if path in {
+            "/login",
+            "/login/captcha",
+            "/logout",
+            "/register",
+            "/register/captcha",
+            "/register/welcome",
+            "/api/v1/auth/login",
+            "/api/v1/auth/refresh",
+            "/api/v1/auth/logout",
+            "/api/v1/auth/token",
+        }:
+            return None
+        if request.method == "GET" and user is None and (path == "/" or path.startswith("/news")):
             return None
         if path.startswith("/api/"):
             body = {
                 "error": {
                     "code": "maintenance",
-                    "message": "Гостиная закрыта на обслуживание.",
+                    "message": site.maintenance_text,
                     "details": {},
                 }
             }
             return JSONResponse(body, status_code=503)
-        return render(request, "closed.html", status=503)
+        if request.method not in {"GET", "HEAD"}:
+            return render(request, "closed.html", status=503)
+        request.state.hold_maintenance = True
+        return None
 
     def _denied(self, request: Request, missing_user: bool = False) -> Response:
         path = request.url.path

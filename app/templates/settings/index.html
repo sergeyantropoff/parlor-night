@@ -12,7 +12,6 @@
 {% set checkers_ms = analysis.checkers_time_ms|default(1000)|int %}
 <section class="card wide" id="player-settings">
   {% if error %}<p class="banner" role="alert">{{ error }}</p>{% endif %}
-  {% if saved %}<p class="banner ok" role="status">Настройки сохранены.</p>{% endif %}
 
   <div class="settings-tabs" role="tablist" aria-label="Разделы настроек">
     <button type="button" class="settings-tab" id="tab-personal" role="tab" aria-selected="true" aria-controls="panel-personal">Личные</button>
@@ -140,7 +139,6 @@
       <h2>Пароль</h2>
       <p class="quiet">{{ password_rules }}</p>
       {% if password_error %}<p class="banner" role="alert">{{ password_error }}</p>{% endif %}
-      {% if password_saved %}<p class="banner ok" id="password-saved" role="status">Пароль изменён.</p>{% endif %}
       <p id="password-note" class="banner" role="alert" hidden="hidden"></p>
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" form="password-form" />
       <div class="password-grid">

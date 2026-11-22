@@ -121,6 +121,49 @@ html[data-theme="dark"] .theme-dark { display: block; }
 }
 .error-header,
 .error-footer { align-self: stretch; width: 100%; }
+.maintenance-banner {
+  flex: none;
+  align-self: stretch;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 0.8rem 1.25rem;
+  background: #8d3a32;
+  color: #fff8f6;
+  text-align: center;
+  font-weight: 650;
+  line-height: 1.45;
+  font-family: var(--pn-sans);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+html:has(.maintenance-banner),
+body:has(.maintenance-banner) {
+  height: auto;
+  min-height: 100dvh;
+  max-height: none;
+  overflow: visible;
+}
+body:has(.maintenance-banner) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin: 0;
+  padding: 0;
+}
+body:has(.maintenance-banner) .error-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: visible;
+}
+body:has(.maintenance-banner) .error-header {
+  position: static;
+  top: auto;
+}
 .error-header {
   min-height: 96px;
   display: flex;

@@ -62,7 +62,7 @@
 </dialog>
 <dialog id="maintenance-dialog" class="confirm-dialog" {% if maintenance %}data-open="1"{% endif %} aria-labelledby="maintenance-title">
   <h2 id="maintenance-title">Техническое обслуживание</h2>
-  <p>Сайт находится в режиме технического обслуживания. Вход невозможен.</p>
+  <p>{{ site.maintenance_text }}</p>
   <div class="confirm-actions">
     <button type="button" data-close>Понятно</button>
   </div>

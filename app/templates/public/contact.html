@@ -11,7 +11,6 @@
       <p class="lede">Письмо уходит на почту выбранного администратора. Ответить он сможет на адрес, который вы оставите в форме.</p>
       <form class="contact-form" method="post" action="/contact">
         <input type="hidden" name="csrf_token" value="{% if user %}{{ csrf_token }}{% else %}{{ login_csrf }}{% endif %}" />
-        {% if contact_sent %}<p class="banner ok" role="status">Письмо отправлено.</p>{% endif %}
         {% if contact_error %}<p class="banner" role="alert">{{ contact_error }}</p>{% endif %}
         {% if contact_admins %}
         <label>

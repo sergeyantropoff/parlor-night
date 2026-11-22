@@ -396,9 +396,12 @@ async def test_admin_configures_site(clients) -> None:
         follow_redirects=True,
     )
     assert saved.status_code == 200
-    assert "Настройки сохранены." in saved.text
+    assert "Настройки сохранены." not in saved.text
+    assert "pn_flash=site" in saved.history[0].headers["set-cookie"]
     home = await player.get("/")
-    assert "Вечер открыт" in home.text
+    assert "Вечер открыт" not in home.text
+    kept = await admin.get("/admin/site")
+    assert "Вечер открыт" in kept.text
     new_game = await player.get("/games/new")
     assert "Уно" not in new_game.text
     assert "UNO" not in new_game.text
@@ -460,8 +463,16 @@ async def test_admin_configures_site(clients) -> None:
     )
     assert closed.status_code == 200
     maintained = await player.get("/")
-    assert maintained.status_code == 503
-    assert "Гостиная закрыта" in maintained.text
+    assert maintained.status_code == 200
+    assert "Сайт находится в режиме технического обслуживания. Вход невозможен." in maintained.text
+    missing = await player.get("/no-such-room")
+    assert missing.status_code == 404
+    assert "Кажется, вы свернули не туда" in missing.text
+    assert "Гостиная закрыта" not in missing.text
+    assert "Сайт находится в режиме технического обслуживания. Вход невозможен." in missing.text
+    closed_room = await player.get("/lobby")
+    assert closed_room.status_code == 503
+    assert "Гостиная закрыта" in closed_room.text
     office = await admin.get("/admin/site")
     assert office.status_code == 200
     await admin.post("/admin/site", data=_site_form(admin_csrf), follow_redirects=True)
@@ -778,7 +789,8 @@ async def test_admin_grants_chips_on_profile(clients) -> None:
         follow_redirects=True,
     )
     assert granted.status_code == 200
-    assert "Фишки начислены." in granted.text
+    assert "Фишки начислены." not in granted.text
+    assert "pn_flash=chips" in granted.history[0].headers["set-cookie"]
     assert "Сейчас 525 фишек." in granted.text
     purse = await player.get("/")
     assert "525 фишек" in purse.text
@@ -1012,7 +1024,7 @@ async def test_player_can_change_password_when_it_matches_the_rules(clients) -> 
     assert 'id="password-form"' in page.text
     assert "Старый пароль" in page.text
     assert "Новый пароль ещё раз" in page.text
-    assert "Не меньше 10 символов, хотя бы одна буква, хотя бы одна цифра, не длиннее 128 символов." in page.text
+    assert "Не меньше 8 символов, хотя бы одна буква, хотя бы одна цифра, не длиннее 128 символов." in page.text
 
     async def post(current: str, new: str, repeat: str | None = None):
         return await player.post(
@@ -1029,7 +1041,7 @@ async def test_player_can_change_password_when_it_matches_the_rules(clients) -> 
     assert mismatch.status_code == 200
     assert "Новые пароли не совпадают." in mismatch.text
     short = await post("player-pass-1", "short1")
-    assert "Пароль должен содержать не меньше 10 символов." in short.text
+    assert "Пароль должен содержать не меньше 8 символов." in short.text
     letters = await post("player-pass-1", "abcdefghij")
     assert "В пароле нужна хотя бы одна цифра." in letters.text
     digits = await post("player-pass-1", "1234567890")
@@ -1046,9 +1058,10 @@ async def test_player_can_change_password_when_it_matches_the_rules(clients) -> 
         changed = await post("player-pass-1", "player-pass-2")
         assert changed.status_code == 303
         assert changed.headers["location"] == "/settings?password=changed"
+        assert "pn_flash=password" in changed.headers["set-cookie"]
         done = await player.get("/settings?password=changed")
         assert done.status_code == 200
-        assert "Пароль изменён." in done.text
+        assert "Пароль изменён." not in done.text
         still = await player.get("/settings")
         assert still.status_code == 200
         kicked = await other.get("/settings")

@@ -201,6 +201,7 @@ if (document.documentElement.dataset.signedIn === "1" && stack) {
     paintCount("/chats", counts.chats);
     paintCount("/live", counts.live);
     paintThreads(data.threads);
+    showBroadcast(data.broadcast);
     const items = Array.isArray(data.items) ? data.items : [];
     if (!primed) {
       for (const item of items) {
@@ -230,6 +231,79 @@ if (document.documentElement.dataset.signedIn === "1" && stack) {
       busy = false;
     }
   }
+
+  const broadcast = document.getElementById("broadcast");
+  const tones = {
+    info: "Информация",
+    warning: "Внимание",
+    ok: "Все хорошо!",
+    error: "Критическая ошибка!",
+  };
+  const titles = {
+    info: "Сообщение",
+    warning: "Обратите внимание",
+    ok: "Хорошая новость",
+    error: "Нужно знать",
+  };
+  const marks = {
+    info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><path d="M12 11v5M12 8h.01"/></svg>',
+    warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 4.5 21 19H3z"/><path d="M12 10v4M12 16.5h.01"/></svg>',
+    ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><path d="m8.2 12.2 2.6 2.6 5-5.2"/></svg>',
+    error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><path d="m9 9 6 6M15 9l-6 6"/></svg>',
+  };
+  let shownRevision = "";
+  let dismissing = false;
+
+  function csrf() {
+    return document.querySelector('meta[name="csrf-token"]')?.content || "";
+  }
+
+  async function dismissBroadcast(revision) {
+    if (!revision || dismissing) return;
+    dismissing = true;
+    try {
+      await fetch("/api/v1/broadcast/dismiss", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrf(),
+        },
+        body: JSON.stringify({ revision }),
+      });
+    } catch {
+      dismissing = false;
+    }
+  }
+
+  function showBroadcast(note) {
+    if (!(broadcast instanceof HTMLDialogElement)) return;
+    if (!note || typeof note.text !== "string" || !note.text || typeof note.revision !== "string") return;
+    if (note.revision === shownRevision || broadcast.open) return;
+    if (document.querySelector("dialog[open]")) return;
+    const tone = tones[note.tone] ? note.tone : "info";
+    broadcast.className = `broadcast-dialog is-${tone}`;
+    const mark = broadcast.querySelector(".broadcast-mark");
+    if (mark) mark.innerHTML = marks[tone];
+    const kicker = document.getElementById("broadcast-kicker");
+    const title = document.getElementById("broadcast-title");
+    const text = document.getElementById("broadcast-text");
+    if (kicker) kicker.textContent = tones[tone];
+    if (title) title.textContent = titles[tone];
+    if (text) text.textContent = note.text;
+    shownRevision = note.revision;
+    broadcast.dataset.revision = note.revision;
+    dismissing = false;
+    broadcast.showModal();
+  }
+
+  document.getElementById("broadcast-close")?.addEventListener("click", () => broadcast?.close());
+  broadcast?.addEventListener("close", () => {
+    dismissBroadcast(broadcast.dataset.revision || "");
+  });
+  broadcast?.addEventListener("click", (event) => {
+    if (event.target === broadcast) broadcast.close();
+  });
 
   tick();
   window.setInterval(tick, 6000);

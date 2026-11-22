@@ -14,6 +14,7 @@ from app.errors import AppError
 _GAMES = ("chess", "checkers", "go", "uno", "poker", "durak", "blackjack", "preferans", "domino", "nardy", "yahtzy")
 _MODES = ("closed", "referral", "open")
 _REFERRAL = re.compile(r"^[a-z0-9]{6,12}$")
+MAINTENANCE_TEXT = "Сайт находится в режиме технического обслуживания. Вход невозможен."
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +47,10 @@ class SitePolicy:
     @property
     def registration_open(self) -> bool:
         return self.registration_mode == "open"
+
+    @property
+    def maintenance_text(self) -> str:
+        return self.notice or MAINTENANCE_TEXT
 
     def allows(self, game: str) -> bool:
         if game not in _GAMES:
@@ -83,7 +88,7 @@ def defaults() -> SitePolicy:
         registration_mode="closed",
         username_min=3,
         username_max=32,
-        password_min=10,
+        password_min=8,
         password_needs_letter=True,
         password_needs_digit=True,
         session_hours=336,
@@ -108,7 +113,8 @@ def defaults() -> SitePolicy:
 
 
 def password_floor(local: bool) -> int:
-    return 4 if local else 10
+    del local
+    return 8
 
 
 def _flag(value: object) -> bool:

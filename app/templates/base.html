@@ -32,9 +32,7 @@
 </head>
 <body class="{% if user and not preview %}shell{% elif public_page or preview %}public{% else %}auth{% endif %}" data-board="{{ board_style|default('classic') }}">
   <a class="skip" href="#content">К содержанию</a>
-  {% if site and site.maintenance and not user and path in ["/", "/login", "/register"] %}
-  <p class="maintenance-banner" role="status">Сайт находится в режиме технического обслуживания. Вход невозможен.</p>
-  {% endif %}
+  {% include "_maintenance.html" %}
   <svg class="sprite" aria-hidden="true" focusable="false">
     <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z"/></symbol>
     <symbol id="i-lobby" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.7-3 2.8-4.5 5.5-4.5s4.8 1.5 5.5 4.5"/><circle cx="17" cy="9" r="2.2"/><path d="M16 14.7c1.8.3 3.2 1.4 3.8 3.8"/></symbol>
@@ -134,12 +132,10 @@
         <span class="top-gap" aria-hidden="true"></span>
         {{ theme_switch() }}
       </header>
-      <div class="toast-stack" id="toasts" aria-live="polite" aria-relevant="additions"></div>
   {% elif not public_page and not preview %}
   <div class="auth-switch">{{ theme_switch() }}</div>
   {% endif %}
   <main id="content">
-    {% if site and site.notice %}<p class="info-banner" role="status">{{ site.notice }}</p>{% endif %}
     {% block content %}{% endblock %}
   </main>
   {% if user and not preview %}
@@ -213,9 +209,20 @@
       <button type="button" id="age-close">Понятно</button>
     </div>
   </dialog>
+  <div class="toast-stack" id="toasts" aria-live="polite" aria-relevant="additions"></div>
   {% if user and not preview %}
+  <dialog id="broadcast" class="broadcast-dialog" aria-labelledby="broadcast-title">
+    <div class="broadcast-mark" aria-hidden="true"></div>
+    <p class="broadcast-kicker" id="broadcast-kicker"></p>
+    <h2 id="broadcast-title"></h2>
+    <p id="broadcast-text"></p>
+    <div class="confirm-actions">
+      <button type="button" id="broadcast-close">Закрыть</button>
+    </div>
+  </dialog>
   <script type="module" src="/static/js/notices.js?v={{ asset_version }}"></script>
   {% endif %}
+  <script type="module" src="/static/js/flash.js?v={{ asset_version }}"></script>
   <script type="module" src="/static/js/age.js?v={{ asset_version }}"></script>
   <script type="module" src="/static/js/lightbox.js?v={{ asset_version }}"></script>
   <script type="module" src="/static/js/theme.js?v={{ asset_version }}"></script>

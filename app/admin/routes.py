@@ -12,8 +12,11 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
 
+from app.broadcast import clean_broadcast, publish
+from app.broadcast import current as current_broadcast
 from app.db.repositories import api_access, news, rate_limit, sessions, users
 from app.errors import AppError
+from app.flash import pin
 from app.names import shown
 from app.news_html import sanitize_news, visible_text
 from app.news_images import is_news_image, store_news_image
@@ -24,19 +27,6 @@ from app.wallet import set_balance
 
 router = APIRouter()
 
-_DONE = {
-    "saved": "Настройки сохранены.",
-    "sessions": "Все сессии, кроме вашей, завершены.",
-    "lockouts": "Блокировки входа сняты.",
-    "messages": "Все сообщения удалены.",
-    "games": "Партии очищены. Гости и фишки не изменены.",
-    "stats": "Статистика игр очищена.",
-}
-_NEWS_DONE = {
-    "created": "Новость опубликована.",
-    "saved": "Новость сохранена.",
-    "removed": "Новость убрана.",
-}
 _SITE_TABS = frozenset({"access", "login", "sessions", "parlor", "wipe"})
 _BODY_LIMIT = 20000
 _NEWS_PAGE = 4
@@ -48,13 +38,13 @@ def _site_tab(value: object) -> str:
     return text if text in _SITE_TABS else "access"
 
 
-def _site_url(done: str = "", tab: str = "") -> str:
-    params: dict[str, str] = {}
-    if done:
-        params["done"] = done
-    if tab:
-        params["tab"] = _site_tab(tab)
-    return "/admin/site" + (("?" + urlencode(params)) if params else "")
+def _site_url(tab: str = "") -> str:
+    chosen = _site_tab(tab) if tab else ""
+    return "/admin/site" + (f"?tab={chosen}" if chosen else "")
+
+
+def _site_done(request: Request, code: str, tab: str) -> Response:
+    return pin(RedirectResponse(_site_url(tab), status_code=303), request, code)
 
 
 def _admin(request: Request) -> Response | object:
@@ -82,13 +72,12 @@ async def site_page(request: Request) -> Response:
     user = _admin(request)
     if isinstance(user, Response):
         return user
-    done = _DONE.get(request.query_params.get("done", ""), "")
     raw_tab = request.query_params.get("tab", "")
     tab = raw_tab if raw_tab in _SITE_TABS else None
     return render(
         request,
         "admin/site.html",
-        await _site_context(request, message=done or None, tab=tab),
+        await _site_context(request, tab=tab),
     )
 
 
@@ -129,7 +118,27 @@ async def site_save(request: Request) -> Response:
         await load_policy(conn)
         await save_policy(conn, policy)
     remember(request.app, policy)
-    return RedirectResponse(_site_url("saved", tab), status_code=303)
+    return _site_done(request, "site", tab)
+
+
+@router.post("/admin/site/broadcast")
+async def site_broadcast(request: Request) -> Response:
+    user = _admin(request)
+    if isinstance(user, Response):
+        return user
+    form = await request.form()
+    try:
+        text, tone = clean_broadcast(str(form.get("body") or ""), str(form.get("tone") or ""))
+    except AppError as exc:
+        return render(
+            request,
+            "admin/site.html",
+            await _site_context(request, error=exc.message, tab="access"),
+            status=exc.status,
+        )
+    async with request.app.state.pool.acquire() as conn:
+        await publish(conn, text, tone)
+    return _site_done(request, "broadcast" if text else "broadcast-off", "access")
 
 
 @router.post("/admin/site/sessions")
@@ -142,7 +151,7 @@ async def close_sessions(request: Request) -> Response:
         async with request.app.state.pool.acquire() as conn:
             await sessions.revoke_other_sessions(conn, token_hash)
             await api_access.revoke_all(conn)
-    return RedirectResponse(_site_url("sessions", "sessions"), status_code=303)
+    return _site_done(request, "sessions", "sessions")
 
 
 @router.post("/admin/site/lockouts")
@@ -153,7 +162,7 @@ async def clear_lockouts(request: Request) -> Response:
     async with request.app.state.pool.acquire() as conn:
         await rate_limit.clear_login_failures(conn)
     await request.app.state.gate.clear_login_buckets()
-    return RedirectResponse(_site_url("lockouts", "sessions"), status_code=303)
+    return _site_done(request, "lockouts", "sessions")
 
 
 async def _wipe_password(request: Request, user, form, kind: str) -> Response | None:
@@ -189,7 +198,7 @@ async def clear_messages(request: Request) -> Response:
     async with request.app.state.pool.acquire() as conn, conn.transaction():
         await conn.execute("DELETE FROM messages")
         await conn.execute("DELETE FROM chat_reads")
-    return RedirectResponse(_site_url("messages", "wipe"), status_code=303)
+    return _site_done(request, "wiped-messages", "wipe")
 
 
 @router.post("/admin/site/stats")
@@ -203,7 +212,7 @@ async def clear_game_stats(request: Request) -> Response:
         return denied
     async with request.app.state.pool.acquire() as conn, conn.transaction():
         await conn.execute("DELETE FROM games")
-    return RedirectResponse(_site_url("stats", "wipe"), status_code=303)
+    return _site_done(request, "wiped-stats", "wipe")
 
 
 @router.post("/admin/site/games")
@@ -217,7 +226,7 @@ async def clear_games(request: Request) -> Response:
         return denied
     async with request.app.state.pool.acquire() as conn, conn.transaction():
         await conn.execute("DELETE FROM games")
-    return RedirectResponse(_site_url("games", "wipe"), status_code=303)
+    return _site_done(request, "wiped-games", "wipe")
 
 
 @router.post("/admin/site/keys")
@@ -233,7 +242,7 @@ async def clear_keys(request: Request) -> Response:
         await conn.execute("DELETE FROM api_tokens")
         await conn.execute("DELETE FROM api_grants")
         await conn.execute("DELETE FROM sessions")
-    return RedirectResponse("/login", status_code=303)
+    return pin(RedirectResponse("/login", status_code=303), request, "keys")
 
 
 @router.get("/admin/news")
@@ -241,8 +250,7 @@ async def news_page(request: Request) -> Response:
     user = _admin(request)
     if isinstance(user, Response):
         return user
-    done = _NEWS_DONE.get(request.query_params.get("done", ""), "")
-    return await _news_screen(request, message=done or None)
+    return await _news_screen(request)
 
 
 @router.get("/admin/news/new")
@@ -320,7 +328,7 @@ async def news_add(request: Request) -> Response:
         return await _news_form(request, error=error, draft=fields, status=422)
     async with request.app.state.pool.acquire() as conn:
         await news.add_news(conn, **fields)
-    return RedirectResponse("/admin/news?done=created", status_code=303)
+    return pin(RedirectResponse("/admin/news", status_code=303), request, "news-created")
 
 
 @router.post("/admin/news/{news_id}")
@@ -339,7 +347,7 @@ async def news_save(request: Request, news_id: uuid.UUID) -> Response:
         updated = await news.update_news(conn, news_id, **fields)
     if not updated:
         raise AppError(404, "not_found", "Новость не найдена.")
-    return RedirectResponse("/admin/news?done=saved", status_code=303)
+    return pin(RedirectResponse("/admin/news", status_code=303), request, "news-saved")
 
 
 @router.post("/admin/news/{news_id}/delete")
@@ -349,7 +357,7 @@ async def news_delete(request: Request, news_id: uuid.UUID) -> Response:
         return user
     async with request.app.state.pool.acquire() as conn:
         await news.delete_news(conn, news_id)
-    return RedirectResponse("/admin/news?done=removed", status_code=303)
+    return pin(RedirectResponse("/admin/news", status_code=303), request, "news-removed")
 
 
 @router.post("/admin/users/{user_id}/active")
@@ -504,7 +512,7 @@ async def _news_form(
     )
 
 
-async def _news_screen(request: Request, *, message: str | None = None) -> Response:
+async def _news_screen(request: Request) -> Response:
     asked = request.query_params.get("page")
     async with request.app.state.pool.acquire() as conn:
         total = await news.count_news(conn)
@@ -512,19 +520,12 @@ async def _news_screen(request: Request, *, message: str | None = None) -> Respo
         current = clamp_page(read_page(asked), pages)
         posts = await news.list_news(conn, _NEWS_PAGE, (current - 1) * _NEWS_PAGE)
     if asked is not None and asked != str(current):
-        target = list_href("/admin/news", current)
-        if message:
-            joiner = "&" if "?" in target else "?"
-            done = request.query_params.get("done", "")
-            if done:
-                target = f"{target}{joiner}done={done}"
-        return RedirectResponse(target, status_code=303)
+        return RedirectResponse(list_href("/admin/news", current), status_code=303)
     return render(
         request,
         "admin/news.html",
         {
             "posts": posts,
-            "message": message,
             "pager_label": "Страницы новостей",
             "pager_page": current,
             "pager_pages": pages,
@@ -565,4 +566,10 @@ async def _site_context(
         "wipe": wipe,
         "wipe_error": wipe_error,
         "tab": tab if tab in _SITE_TABS else None,
+        "broadcast": await _broadcast_fields(request),
     }
+
+
+async def _broadcast_fields(request: Request) -> dict[str, str]:
+    async with request.app.state.pool.acquire() as conn:
+        return await current_broadcast(conn)

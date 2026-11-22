@@ -7,8 +7,8 @@ import re
 import secrets
 import uuid
 from datetime import UTC, date, datetime, timedelta
-from typing import Any
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, Request
 from starlette.responses import FileResponse, JSONResponse, RedirectResponse, Response
@@ -30,6 +30,7 @@ from app.db.repositories import settings as settings_repo
 from app.db.repositories.settings import as_preferences
 from app.errors import AppError
 from app.errors_page import error_response
+from app.flash import pin
 from app.games.present import computer_names
 from app.games.schemas import SettingsBody
 from app.games.service import _summarize
@@ -227,7 +228,7 @@ async def contact_send(request: Request) -> Response:
         )
     except AppError as exc:
         return await _contact_page(request, error=exc.message, status=exc.status, **posted)
-    return RedirectResponse("/contact?sent=1", status_code=303)
+    return pin(RedirectResponse("/contact", status_code=303), request, "contact")
 
 
 @router.get("/about")
@@ -419,7 +420,7 @@ async def create_game(request: Request) -> Response:
             age_block=exc.message if blocked else "",
             status=exc.status,
         )
-    return RedirectResponse(f"/games/{state['id']}", status_code=303)
+    return pin(RedirectResponse(f"/games/{state['id']}", status_code=303), request, "game")
 
 
 @router.get("/games/{game_id}")
@@ -538,7 +539,7 @@ async def settings_page(request: Request) -> Response:
     user = _user_or_login(request)
     if isinstance(user, Response):
         return user
-    return await _settings_page(request, user, password_saved=request.query_params.get("password") == "changed")
+    return await _settings_page(request, user)
 
 
 @router.post("/settings")
@@ -625,13 +626,7 @@ async def settings_save(request: Request) -> Response:
                     user.id,
                     born,
                 )
-    return await _settings_page(
-        request,
-        user,
-        saved=True,
-        name=split_full_name(full_name),
-        email=email,
-    )
+    return pin(RedirectResponse("/settings", status_code=303), request, "settings")
 
 
 @router.post("/settings/password")
@@ -669,7 +664,7 @@ async def settings_password(request: Request) -> Response:
             if token_hash:
                 await session_repo.revoke_other_user_sessions(conn, user.id, token_hash)  # type: ignore[attr-defined]
             await api_access.revoke_user(conn, user.id)
-    return RedirectResponse("/settings?password=changed", status_code=303)
+    return pin(RedirectResponse("/settings?password=changed", status_code=303), request, "password")
 
 
 @router.get("/avatars/{name}")
@@ -813,7 +808,7 @@ async def grant_profile_chips(request: Request, username: str) -> Response:
         await credit(conn, player["id"], amount, reason="admin", game_id=None)
         purse = await balance(conn, player["id"])
     request.app.state.gate.chips.pop(str(player["id"]), None)
-    return RedirectResponse(f"/players/{player['username']}?chips=1", status_code=303)
+    return pin(RedirectResponse(f"/players/{player['username']}", status_code=303), request, "chips")
 
 
 @router.post("/players/{username}/name")

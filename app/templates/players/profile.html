@@ -267,7 +267,6 @@
   <dialog id="chip-grant" class="confirm-dialog welcome-dialog" {% if chip_error or chips_added %}data-open="1"{% endif %} aria-labelledby="chip-grant-title">
     <h2 id="chip-grant-title">Начислить фишки</h2>
     {% if chip_error %}<p class="banner" role="alert">{{ chip_error }}</p>{% endif %}
-    {% if chips_added %}<p class="banner ok" role="status">Фишки начислены.</p>{% endif %}
     <p>Сейчас {{ player_chips|grouped }} фишек.</p>
     <form method="post" action="/players/{{ player.username }}/chips">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />

@@ -1,7 +1,7 @@
 import pytest
 
 from app.errors import AppError
-from app.site_policy import normalize
+from app.site_policy import MAINTENANCE_TEXT, normalize
 
 
 def _payload(**overrides: object) -> dict[str, object]:
@@ -25,9 +25,9 @@ def _payload(**overrides: object) -> dict[str, object]:
 
 
 def test_local_rules_can_be_relaxed() -> None:
-    policy = normalize(_payload(password_min="4"), local=True)
+    policy = normalize(_payload(password_min="8"), local=True)
     assert policy.registration_open is True
-    assert policy.password_min == 4
+    assert policy.password_min == 8
     assert policy.password_needs_letter is False
     assert policy.password_needs_digit is False
     assert policy.notice == "Тихий вечер"
@@ -37,9 +37,12 @@ def test_local_rules_can_be_relaxed() -> None:
 
 def test_deployed_rules_keep_password_floor() -> None:
     with pytest.raises(AppError):
-        normalize(_payload(password_min="4"), local=False)
+        normalize(_payload(password_min="7"), local=False)
+    with pytest.raises(AppError):
+        normalize(_payload(password_min="7"), local=True)
     policy = normalize(_payload(password_needs_letter="", password_needs_digit=""), local=False)
     assert policy.password_min == 10
+    assert normalize(_payload(password_min="8"), local=False).password_min == 8
     assert policy.password_needs_letter is False
     assert policy.password_needs_digit is False
     assert policy.for_staff().allows("poker") is True
@@ -55,6 +58,13 @@ def test_registration_has_three_modes() -> None:
     opened = normalize(_payload(registration_mode="open"), local=True)
     assert opened.registration_mode == "open"
     assert opened.registration_open is True
+
+
+def test_maintenance_text_uses_the_notice_or_the_default() -> None:
+    quiet = normalize(_payload(notice=""), local=True)
+    assert quiet.maintenance_text == MAINTENANCE_TEXT
+    spoken = normalize(_payload(notice="  Вернёмся утром  "), local=True)
+    assert spoken.maintenance_text == "Вернёмся утром"
 
 
 def test_site_form_rejects_empty_catalog() -> None:

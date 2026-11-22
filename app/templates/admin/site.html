@@ -5,7 +5,6 @@
 {% endblock %}
 {% block content %}
 <section class="card wide" id="site-settings" data-tab="{{ tab or '' }}">
-  {% if message %}<p class="banner ok" role="status">{{ message }}</p>{% endif %}
   {% if error %}<p class="banner" role="alert">{{ error }}</p>{% endif %}
   <div class="settings-tabs" role="tablist" aria-label="Главы настроек">
     <button type="button" class="settings-tab" id="tab-access" role="tab" aria-selected="true" aria-controls="panel-access">Доступ</button>
@@ -45,6 +44,22 @@
           <textarea name="notice" rows="2" maxlength="240">{{ policy.notice }}</textarea>
         </label>
       </section>
+      <section class="panel broadcast-card">
+        <h2>Показать сообщение всем на сайте</h2>
+        <p class="quiet">Фраза всплывает у всех, кто вошёл. Человек закрывает окно — и больше его не видит, пока не появится новое сообщение.</p>
+        <label>Тип
+          <select name="tone" form="site-broadcast">
+            <option value="info" {% if broadcast.tone == "info" %}selected="selected"{% endif %}>Информация</option>
+            <option value="warning" {% if broadcast.tone == "warning" %}selected="selected"{% endif %}>Внимание</option>
+            <option value="ok" {% if broadcast.tone == "ok" %}selected="selected"{% endif %}>Все хорошо!</option>
+            <option value="error" {% if broadcast.tone == "error" %}selected="selected"{% endif %}>Критическая ошибка!</option>
+          </select>
+        </label>
+        <label>Фраза
+          <textarea name="body" form="site-broadcast" rows="3" maxlength="500">{{ broadcast.body }}</textarea>
+        </label>
+        <button type="submit" form="site-broadcast">Показать</button>
+      </section>
     </div>
     <div id="panel-login" class="settings-panel" role="tabpanel" aria-labelledby="tab-login" hidden="hidden">
       <section class="panel">
@@ -62,7 +77,7 @@
       <section class="panel">
         <h2>Пароль</h2>
         <label>Минимальная длина пароля
-          <input name="password_min" type="number" min="{{ 4 if local_rules else 10 }}" max="64" required="required" value="{{ policy.password_min }}" />
+          <input name="password_min" type="number" min="8" max="64" required="required" value="{{ policy.password_min }}" />
         </label>
         <label class="switch">
           <input type="checkbox" name="password_needs_letter" {% if policy.password_needs_letter %}checked="checked"{% endif %} />
@@ -74,7 +89,7 @@
           <span class="switch-ui" aria-hidden="true"></span>
           <span>В пароле нужна цифра</span>
         </label>
-        <p class="quiet">{% if local_rules %}На этом компьютере пароль можно сократить до 4 символов. В рабочей среде нижняя граница — 10. Уже созданные пароли продолжают работать.{% else %}Пароль не короче 10 символов. Букву и цифру можно не требовать. Уже созданные пароли продолжают работать.{% endif %}</p>
+        <p class="quiet">Пароль не короче 8 символов. Букву и цифру можно не требовать. Уже созданные пароли продолжают работать.</p>
       </section>
     </div>
     <div id="panel-sessions" class="settings-panel" role="tabpanel" aria-labelledby="tab-sessions" hidden="hidden">
@@ -149,6 +164,9 @@
       </div>
       <button type="submit"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-save"/></svg> Сохранить</button>
     </div>
+  </form>
+  <form id="site-broadcast" method="post" action="/admin/site/broadcast">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
   </form>
   <form id="end-sessions" method="post" action="/admin/site/sessions" hidden="hidden">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />

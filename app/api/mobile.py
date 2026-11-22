@@ -203,6 +203,8 @@ async def api_captcha(request: Request, ref: str = "") -> JSONResponse:
 async def api_register(request: Request, body: RegisterBody) -> JSONResponse:
     client = await _first_party(request, body.client_id)
     policy = await current(request)
+    if policy.maintenance:
+        raise AppError(503, "maintenance", policy.maintenance_text)
     code = await _signup_code(request, policy, body.referral)
     await _require_human(request, body.captcha)
     try:
@@ -233,12 +235,28 @@ async def api_register(request: Request, body: RegisterBody) -> JSONResponse:
 async def api_login(request: Request, body: ApiLoginBody) -> JSONResponse:
     client = await _first_party(request, body.client_id)
     record = await authenticate(request, normalize_username(body.username), body.password)
+    policy = await current(request)
+    if policy.maintenance and record.role != "admin":
+        raise AppError(503, "maintenance", policy.maintenance_text)
     return _json(await _issue_for(request, record.id, client.id))
 
 
 @router.post("/auth/refresh")
 async def api_refresh(request: Request, body: RefreshBody) -> JSONResponse:
     policy = await current(request)
+    if policy.maintenance:
+        async with request.app.state.pool.acquire() as conn:
+            owner = await conn.fetchval(
+                """
+                SELECT user_id FROM api_tokens
+                WHERE token_hash = $1 AND kind = 'refresh' AND revoked_at IS NULL AND expires_at > now()
+                """,
+                api_access.token_digest(body.refresh_token),
+            )
+            if owner is not None:
+                seated = await api_access.load_user(conn, owner)
+                if seated is not None and not seated.is_admin:
+                    raise AppError(503, "maintenance", policy.maintenance_text)
     async with request.app.state.pool.acquire() as conn:
         issued, _reused = await api_access.rotate(
             conn,
@@ -284,6 +302,11 @@ async def api_token(request: Request, body: AuthCodeBody) -> JSONResponse:
         )
         if user_id is None:
             raise AppError(401, "invalid_grant", "Код входа недействителен.")
+        user = await api_access.load_user(conn, user_id)
+        if user is None:
+            raise AppError(401, "invalid_grant", "Код входа недействителен.")
+        if policy.maintenance and not user.is_admin:
+            raise AppError(503, "maintenance", policy.maintenance_text)
         issued = await api_access.issue_pair(
             conn,
             user_id=user_id,
@@ -292,10 +315,7 @@ async def api_token(request: Request, body: AuthCodeBody) -> JSONResponse:
             user_agent=request.headers.get("user-agent"),
             ip_address=request.state.client_ip,
         )
-        user = await api_access.load_user(conn, user_id)
-        chips = int(await balance(conn, user_id)) if user is not None else 0
-    if user is None:
-        raise AppError(401, "invalid_grant", "Код входа недействителен.")
+        chips = int(await balance(conn, user_id))
     return _json(_pair_payload(issued, user, chips))
 
 

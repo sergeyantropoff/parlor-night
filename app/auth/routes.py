@@ -165,7 +165,7 @@ async def login_submit(request: Request) -> Response:
     policy = await current(request)
     if policy.maintenance and record.role != "admin":
         if "application/json" in request.headers.get("accept", ""):
-            raise AppError(503, "maintenance", "Сайт находится в режиме технического обслуживания. Вход невозможен.")
+            raise AppError(503, "maintenance", policy.maintenance_text)
         return _login_page(request, status=200, next_url=nxt, maintenance=True)
     pool = request.app.state.pool
     async with pool.acquire() as conn:
@@ -264,6 +264,10 @@ async def register_captcha(request: Request) -> JSONResponse:
 @router.post("/register")
 async def register(request: Request) -> Response:
     policy = await current(request)
+    if policy.maintenance:
+        if "application/json" in request.headers.get("accept", ""):
+            raise AppError(503, "maintenance", policy.maintenance_text)
+        return _entry_page(request, "auth/register.html", cookie_path="/register", maintenance=True)
     await _guard_signup(request, policy)
     form = await request.form()
     username = str(form.get("username") or "")
@@ -369,6 +373,17 @@ async def register_welcome(request: Request) -> Response:
         )
     pool = request.app.state.pool
     policy = await current(request)
+    if policy.maintenance:
+        return _entry_page(
+            request,
+            "auth/register.html",
+            cookie_path="/register",
+            welcome=True,
+            maintenance=True,
+            family=family,
+            given=given,
+            patronymic=patronymic,
+        )
     async with pool.acquire() as conn:
         account = await conn.fetchrow(
             "SELECT id, is_active FROM users WHERE id = $1",

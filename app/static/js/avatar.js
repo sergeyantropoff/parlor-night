@@ -142,7 +142,8 @@ async function send(file) {
     return false;
   }
   paint(`${data.src}?t=${Date.now()}`);
-  say("Портрет сохранён.");
+  if (note) note.textContent = "";
+  window.pnToast?.("Портрет сохранён.");
   return true;
 }
 
@@ -283,7 +284,8 @@ clear?.addEventListener("click", async () => {
     return;
   }
   paint("");
-  say("Портрет убран.");
+  if (note) note.textContent = "";
+  window.pnToast?.("Портрет убран.");
 });
 
 window.addEventListener("resize", () => {

@@ -1,9 +1,8 @@
 const tabs = [...document.querySelectorAll("#player-settings .settings-tab")];
 const tabNames = tabs.map((tab) => tab.id);
 const savedTab = sessionStorage.getItem("pn-settings-tab");
-const openPassword = Boolean(
-  document.querySelector("#password-saved, #password-panel .banner[role='alert']:not([hidden])"),
-);
+const openPassword = new URLSearchParams(location.search).get("password") === "changed"
+  || Boolean(document.querySelector("#password-panel .banner[role='alert']:not([hidden])"));
 
 function showSettingsTab(id) {
   const chosen = tabNames.includes(id) ? id : "tab-personal";

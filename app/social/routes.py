@@ -10,6 +10,7 @@ import asyncpg
 from fastapi import APIRouter, Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
 
+from app.broadcast import dismiss, for_user
 from app.cards.registry import ADULT_GAMES
 from app.catalog import GAMES, visible_games
 from app.clock import current_zone
@@ -17,8 +18,8 @@ from app.db.repositories import games as games_repo
 from app.db.repositories.users import User
 from app.errors import AppError
 from app.games.present import computer_names
-from app.leaderboard import fetch_people, rank
 from app.geo import device_label
+from app.leaderboard import fetch_people, rank
 from app.names import shown
 from app.paging import clamp_page, page_count, page_links, read_page, window
 from app.site_policy import current
@@ -382,7 +383,27 @@ async def notices(request: Request) -> JSONResponse:
         items = await fresh_notices(conn, user.id)
         counts = await nav_counts(conn, user.id)
         threads = await unread_threads(conn, user.id)
-    return JSONResponse({"items": items, "counts": counts, "threads": threads})
+        note = await for_user(conn, user.id)
+    return JSONResponse({"items": items, "counts": counts, "threads": threads, "broadcast": note})
+
+
+@router.post("/api/v1/broadcast/dismiss")
+async def dismiss_broadcast(request: Request) -> JSONResponse:
+    user = request.state.user
+    if user is None:
+        raise AppError(401, "unauthorized", "Нужно войти в систему.")
+    try:
+        payload = await request.json()
+    except Exception as exc:
+        raise AppError(422, "broadcast", "Не удалось прочитать сообщение.") from exc
+    raw = str(payload.get("revision") or "") if isinstance(payload, dict) else ""
+    try:
+        revision = uuid.UUID(raw)
+    except ValueError as exc:
+        raise AppError(422, "broadcast", "Сообщение уже сменилось.") from exc
+    async with request.app.state.pool.acquire() as conn:
+        await dismiss(conn, user.id, revision)
+    return JSONResponse({"ok": True})
 
 
 @router.get("/chats")

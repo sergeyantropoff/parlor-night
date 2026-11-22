@@ -216,10 +216,10 @@ Access кладётся в память и подставляется в `Author
   "referral_required": false,
   "username_min": 3,
   "username_max": 32,
-  "password_min": 10,
+  "password_min": 8,
   "password_letter": true,
   "password_digit": true,
-  "password_rules": "Не меньше 10 символов, хотя бы одна буква, хотя бы одна цифра, не длиннее 128 символов.",
+  "password_rules": "Не меньше 8 символов, хотя бы одна буква, хотя бы одна цифра, не длиннее 128 символов.",
   "client_ids": ["parlor-ios", "parlor-android"]
 }
 ```
