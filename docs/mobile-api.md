@@ -147,7 +147,7 @@ Accept: application/json
 | `POST /games/{id}/chat` | Реплика за столом |
 | `POST /settings` | То же тело, что у `PUT /account/settings` |
 | `POST /settings/theme` | Только тема |
-| `GET /avatars/{файл}` | Портрет, нужен вход |
+| `GET /avatars/{файл}` | Портрет, без входа |
 | `GET /news-images/{файл}` | Обложка новости, без входа |
 | `GET /ws/tables/{id}` | Сокет видео и голоса |
 | `GET /oauth/authorize`, `POST /oauth/authorize` | Подтверждение чужого приложения на сайте |
@@ -425,7 +425,7 @@ https://app.example/callback?code=...&state=xyz
 
 `DELETE /api/v1/account/avatar` — `{ "src": "" }`.
 
-Портрет читается так: `GET /avatars/<файл>` с тем же Bearer. Без входа сервер портрет не отдаёт.
+Портрет читается так: `GET /avatars/<файл>`. Имя файла не угадать, и портрет отдаётся без входа, чтобы его было видно на открытых страницах.
 
 `GET /api/v1/account/chips?page=1` — начисления фишек. Страница по 50 записей.
 

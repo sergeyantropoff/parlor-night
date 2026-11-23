@@ -1,10 +1,9 @@
-"""Ужимает растровые картинки и сохраняет WebP.
+"""Ужимает декоративные картинки до нужного размера на большом экране плюс 40%.
 
-Потолок вёрстки — окно около 2560×1600: стол, фон и обложки на таком экране
-крупные, поэтому их пиксели не уменьшаем, только сжимаем. Мелкие значки
-считаем как 2× их CSS-размера и ещё 40% запаса, чтобы картинку можно было
-увеличить. Логотип шапки остаётся PNG. Крупные дубли «Идёт игра» не храним:
-для карточки хватает варианта на 480px.
+Большой экран — окно 2560px. Публичные блоки шире 1280 не становятся.
+Пиксели файла = CSS-ширина этого места × 1.4, чтобы картинка оставалась
+чёткой и не весила лишнего. Игровые спрайты, сукно и логотип не трогаем:
+их рисуют крупно и в разном масштабе. Логотип шапки остаётся PNG.
 """
 
 from __future__ import annotations
@@ -14,67 +13,35 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1] / "app" / "static"
-RETINA = 2 * 1.4
+HEADROOM = 1.4
 
 
-def css_px(rel: str) -> int:
-    """Ширина картинки в CSS-пикселях на большом мониторе."""
+def css_px(rel: str) -> int | None:
+    """Ширина в CSS-пикселях на большом экране. None — файл не уменьшаем."""
     name = rel.rsplit("/", 1)[-1]
-    if "logo-mark" in name:
-        return 92
-    if "logo-lockup" in name:
-        return 480
-    if name.startswith("table-"):
-        return 2200
-    if name.startswith("chips-stack") or name.startswith("chip-coin"):
-        return 180
-    if name.startswith("card-back") or "/cards/" in rel:
-        return 240
-    if name == "computer-avatar.jpg":
-        return 128
-    if name.startswith("go-board") or name == "go-felt.png":
-        return 1600
-    if name.startswith("go-bowl"):
-        return 200
-    if name.startswith("go-stone"):
-        return 88
-    if "pieces/" in rel or (rel.startswith("images/nardy/") and not name.startswith("board")):
-        return 180
-    if name.startswith("board") and rel.startswith("images/nardy/"):
-        return 1024
-    if rel.startswith("images/yahtzy/die-"):
-        return 112
-    if "images/games/" in rel:
-        return 240
-    if "images/podium/" in rel:
-        return 460
-    if "images/table-tools/" in rel:
-        return 64
     if name.startswith("game-") and rel.startswith("parlor/"):
-        return 720
-    if name.startswith("news-"):
-        return 1280
+        return 533
+    if name.startswith("news-") or "hero-parlor" in name:
+        return 1280 if name.startswith("news-") else 680
     if "hero-background" in name:
         return 2560
-    if "hero-parlor" in name:
-        return 960
     if "footer-still" in name:
         return 520
+    if name.startswith("plans"):
+        return 640
     if name.startswith("github-star"):
         return 186
-    if "sidebar-walnut" in name:
-        return 280
-    if name.startswith("ongoing-"):
-        return 200
-    if "invite-still" in name:
-        return 960
-    if "/cats/" in rel:
-        return 420
     if "/call/" in rel:
-        return 320
+        return 125
+    if "invite-still" in name:
+        return 949
     if name.startswith("error-"):
-        return 720
-    return 960
+        return 600
+    if "images/podium/" in rel:
+        return 233
+    if "images/games/" in rel:
+        return 311
+    return None
 
 
 def quality(rel: str) -> int:
@@ -98,7 +65,6 @@ def main() -> None:
             continue
         rel = path.relative_to(ROOT).as_posix()
         size = path.stat().st_size
-        before += size
         name = path.name
         if name.startswith("ongoing-") and not name.endswith("-480.webp"):
             path.unlink()
@@ -108,9 +74,15 @@ def main() -> None:
             path.unlink()
             print(f"drop  {size / 1024:7.0f}K  {rel}", flush=True)
             continue
-        limit = max(1, round(css_px(rel) * RETINA))
+        needed = css_px(rel)
+        if needed is None:
+            continue
+        limit = max(1, round(needed * HEADROOM))
         image = Image.open(path)
         image.load()
+        if image.width <= limit:
+            continue
+        before += size
         resized = fit(image, limit)
         keep_png = "logo-mark" in name
         dest = path if keep_png or path.suffix.lower() == ".webp" else path.with_suffix(".webp")

@@ -6,6 +6,9 @@ Parlor Night поставлен в пространство {{ .Release.Namespac
 Веб слушает сервис {{ include "parlor.fullname" . }}:80.
 {{- if .Values.ingress.enabled }}
 Адрес: http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.host }}/
+{{- range .Values.ingress.extraHosts }}
+Дополнительно: http{{ if $.Values.ingress.tls }}s{{ end }}://{{ . }}/
+{{- end }}
 {{- else }}
 Локально: kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "parlor.fullname" . }} 8000:80
 {{- end }}

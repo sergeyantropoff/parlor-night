@@ -7,15 +7,20 @@
       <span class="brand-rule">гостиная</span>
     </a>
     <nav aria-label="Страница">
-      <a href="/#features">Возможности</a>
       <a href="/#games">Игры</a>
-      <a href="/news"{% if path.startswith("/news") %} aria-current="page"{% endif %}>Новости</a>
       <a href="/#leaders">Топ игроков</a>
+      <a href="/news"{% if path.startswith("/news") %} aria-current="page"{% endif %}>Новости</a>
+      <a href="/#features">Возможности</a>
+      <a href="/#plans">Планы</a>
       <a href="/#about">О проекте</a>
     </nav>
     <div class="mast-actions">
+      {% if user %}
+      <a class="button" href="/">Кабинет</a>
+      {% else %}
       {% if can_register %}<a class="button" href="/register">Регистрация</a>{% endif %}
       <a class="button{% if can_register %} secondary{% endif %}" href="/login">Войти</a>
+      {% endif %}
       <div class="theme-switch" role="group" aria-label="Тема">
         <button type="button" class="tip-host" data-theme-value="light" data-tip="Светлая" data-tip-below aria-pressed="false" aria-label="Светлая"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sun"/></svg></button>
         <button type="button" class="tip-host" data-theme-value="dark" data-tip="Тёмная" data-tip-below data-tip-edge aria-pressed="false" aria-label="Тёмная"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-moon"/></svg></button>

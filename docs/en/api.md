@@ -147,7 +147,7 @@ Every JSON method of the project is listed here. The sections below give the bod
 | `POST /games/{id}/chat` | A line at the table |
 | `POST /settings` | The same body as `PUT /account/settings` |
 | `POST /settings/theme` | Theme only |
-| `GET /avatars/{file}` | A portrait. Sign-in required |
+| `GET /avatars/{file}` | A portrait. No sign-in |
 | `GET /news-images/{file}` | A news cover. No sign-in |
 | `GET /ws/tables/{id}` | Video and voice socket |
 | `GET /oauth/authorize`, `POST /oauth/authorize` | Third-party confirmation on the website |
@@ -425,7 +425,7 @@ The password rules are the same as on the website. The response is `{ "saved": t
 
 `DELETE /api/v1/account/avatar` returns `{ "src": "" }`.
 
-Read a portrait with `GET /avatars/<file>` and the same Bearer token. Without sign-in the server does not serve a portrait.
+Read a portrait with `GET /avatars/<file>`. The file name is unguessable, and the portrait is served without sign-in so the public pages can show it.
 
 `GET /api/v1/account/chips?page=1` is the chip ledger. A page holds 50 rows.
 

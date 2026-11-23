@@ -37,10 +37,22 @@ app.kubernetes.io/name: {{ include "parlor.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
+{{- define "parlor.tlsSecret" -}}
+{{- $root := .root -}}
+{{- if and $root.Values.turn.enabled (eq .host $root.Values.turn.host) -}}
+{{- include "parlor.fullname" $root }}-tls
+{{- else -}}
+{{- include "parlor.fullname" $root }}-tls-{{ .host | replace "." "-" }}
+{{- end -}}
+{{- end }}
+
 {{- define "parlor.trustedHosts" -}}
 {{- $hosts := .Values.web.trustedHosts }}
 {{- if .Values.ingress.host }}
 {{- $hosts = printf "%s,%s" $hosts .Values.ingress.host }}
+{{- end }}
+{{- range .Values.ingress.extraHosts }}
+{{- $hosts = printf "%s,%s" $hosts . }}
 {{- end }}
 {{- $hosts }}
 {{- end }}

@@ -81,7 +81,9 @@ engines:
 ingress:
   enabled: true
   className: nginx
-  host: pn.antropoff.ru
+  host: parlornight.ru
+  extraHosts:
+    - pn.antropoff.ru
   clusterIssuer: letsencrypt-prod
   proxyBodySize: 12m
   annotations: {}

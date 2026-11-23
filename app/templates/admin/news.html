@@ -32,12 +32,12 @@
       {% if post.cover|cover_kind or post.cover_dark|cover_kind %}
       <a class="admin-cover" href="/news/{{ post.id }}" aria-label="{{ post.title }}">
         {% include "public/_news_shot.html" %}
-        <span class="kind">{{ kinds[post.kind] }}</span>
+        <span class="kind kind-{{ post.kind }}">{{ kinds[post.kind] }}</span>
       </a>
       {% endif %}
       <div class="pad">
         <p class="news-meta">
-          {% if not post.cover|cover_kind and not post.cover_dark|cover_kind %}<span class="kind">{{ kinds[post.kind] }}</span>{% endif %}
+          {% if not post.cover|cover_kind and not post.cover_dark|cover_kind %}<span class="kind kind-{{ post.kind }}">{{ kinds[post.kind] }}</span>{% endif %}
           <span class="news-date below"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg> {{ post.published_on.day }} {{ months[post.published_on.month - 1] }}</span>
         </p>
         <h3><a href="/news/{{ post.id }}">{{ post.title }}</a></h3>

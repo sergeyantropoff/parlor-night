@@ -716,13 +716,10 @@ async def settings_password(request: Request) -> Response:
 
 @router.get("/avatars/{name}")
 async def avatar_image(request: Request, name: str) -> Response:
-    user = _user_or_login(request)
-    if isinstance(user, Response):
-        return user
     path = avatar_file(Path(request.app.state.settings.avatar_dir), name)
     if path is None:
         raise AppError(404, "not_found", "Портрет не найден.")
-    return FileResponse(path, media_type=avatar_media(name), headers={"cache-control": "private, max-age=86400"})
+    return FileResponse(path, media_type=avatar_media(name), headers={"cache-control": "public, max-age=86400"})
 
 
 @router.post("/settings/avatar")

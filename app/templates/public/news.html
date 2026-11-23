@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% set public_shell = true %}
 {% from "_seo.html" import search_tags with context %}
 {% block title %}{{ post.title }} — Parlor Night{% endblock %}
 {% block seo %}
@@ -59,19 +60,19 @@
 {% if preview %}
 <p class="preview-ribbon">Предпросмотр. Так новость выглядит на сайте.</p>
 {% endif %}
-{% if not user or preview %}{% include "public/_mast.html" %}{% endif %}
+{% include "public/_mast.html" %}
 <article class="landing article-page">
   <p class="back"><a class="text-link" href="/news">← Все новости</a></p>
   <div class="paper">
     {% if post.cover|cover_kind or post.cover_dark|cover_kind %}
     <div class="shot article-cover">
       {% include "public/_news_shot.html" %}
-      <span class="kind">{{ kinds[post.kind] }}</span>
+      <span class="kind kind-{{ post.kind }}">{{ kinds[post.kind] }}</span>
     </div>
     {% endif %}
     <div class="paper-body">
       <p class="news-meta">
-        {% if not post.cover|cover_kind and not post.cover_dark|cover_kind %}<span class="kind">{{ kinds[post.kind] }}</span>{% endif %}
+        {% if not post.cover|cover_kind and not post.cover_dark|cover_kind %}<span class="kind kind-{{ post.kind }}">{{ kinds[post.kind] }}</span>{% endif %}
         <span class="news-date below"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg> {{ post.published_on.day }} {{ months[post.published_on.month - 1] }} {{ post.published_on.year }}</span>
       </p>
       <h1>{{ post.title }}</h1>
@@ -91,17 +92,18 @@
       <a class="stretch" href="/news/{{ post.id }}">{{ post.title }}</a>
       <div class="shot">
         {% include "public/_news_shot.html" %}
-        <span class="kind">{{ kinds[post.kind] }}</span>
-        <p class="news-date on-cover"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg> {{ post.published_on.day }} {{ months[post.published_on.month - 1] }} {{ post.published_on.year }}</p>
+        <span class="kind kind-{{ post.kind }}">{{ kinds[post.kind] }}</span>
       </div>
-      <p class="news-date below"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg> {{ post.published_on.day }} {{ months[post.published_on.month - 1] }} {{ post.published_on.year }}</p>
       <h3>{{ post.title }}</h3>
       <p>{{ post.summary }}</p>
-      <a class="news-read" href="/news/{{ post.id }}">{{ "Подробнее" if post.kind == "event" else "Читать" }}</a>
+      <div class="news-foot">
+        <p class="news-date"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg> {{ post.published_on.day }} {{ months[post.published_on.month - 1] }} {{ post.published_on.year }}</p>
+        <a class="news-read" href="/news/{{ post.id }}">{{ "Подробнее" if post.kind == "event" else "Читать" }}</a>
+      </div>
     </article>
     {% endfor %}
   </div>
 </section>
 {% endif %}
-{% if not user or preview %}{% include "public/_foot.html" %}{% endif %}
+{% include "public/_foot.html" %}
 {% endblock %}

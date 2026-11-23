@@ -31,7 +31,7 @@
   <script src="/static/js/tz-init.js?v={{ asset_version }}"></script>
   <script src="/static/js/theme-init.js?v={{ asset_version }}"></script>
 </head>
-<body class="{% if user and not preview %}shell{% elif public_page or preview %}public{% else %}auth{% endif %}" data-board="{{ board_style|default('classic') }}">
+<body class="{% if user and not preview and not public_shell %}shell{% elif public_page or preview or public_shell %}public{% else %}auth{% endif %}" data-board="{{ board_style|default('classic') }}">
   <a class="skip" href="#content">К содержанию</a>
   {% include "_maintenance.html" %}
   <svg class="sprite" aria-hidden="true" focusable="false">
@@ -81,7 +81,7 @@
     <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6.5v11l9-5.5z"/></symbol>
     <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10"/></symbol>
   </svg>
-  {% if user and not preview %}
+  {% if user and not preview and not public_shell %}
   <div class="app">
     <aside class="sidebar">
       <a class="brand" href="/">
@@ -134,13 +134,13 @@
         <span class="top-gap" aria-hidden="true"></span>
         {{ theme_switch() }}
       </header>
-  {% elif not public_page and not preview %}
+  {% elif not public_page and not preview and not public_shell %}
   <div class="auth-switch">{{ theme_switch() }}</div>
   {% endif %}
   <main id="content">
     {% block content %}{% endblock %}
   </main>
-  {% if user and not preview %}
+  {% if user and not preview and not public_shell %}
     </div>
   </div>
   {% endif %}
