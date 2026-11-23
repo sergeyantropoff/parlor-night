@@ -33,20 +33,39 @@ if (document.documentElement.dataset.signedIn === "1" && stack) {
   }
 
   function paintCount(href, count) {
-    const link = document.querySelector(`nav.nav a[href="${href}"]`);
-    if (!link) return;
-    let badge = link.querySelector(".nav-count");
     const value = Number(count) || 0;
-    if (value <= 0) {
-      badge?.remove();
-      return;
-    }
-    if (!badge) {
-      badge = document.createElement("span");
-      badge.className = "nav-count";
-      link.append(badge);
-    }
-    badge.textContent = value < 100 ? String(value) : "99+";
+    const text = value < 100 ? String(value) : "99+";
+    document.querySelectorAll(`a[href="${href}"]`).forEach((link) => {
+      const icon = link.closest(".shell-bar") ? link.querySelector(".shell-ico") : null;
+      if (icon) {
+        let badge = icon.querySelector(".shell-badge");
+        if (value <= 0) {
+          badge?.remove();
+          return;
+        }
+        if (!badge) {
+          badge = document.createElement("span");
+          badge.className = "shell-badge";
+          icon.append(badge);
+        }
+        badge.textContent = text;
+        return;
+      }
+      if (!link.closest("nav.nav") && !link.closest(".shell-menu-card")) return;
+      let badge = link.querySelector(".nav-count");
+      if (value <= 0) {
+        badge?.remove();
+        return;
+      }
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "nav-count";
+        const chevron = link.querySelector(".chev");
+        if (chevron) link.insertBefore(badge, chevron);
+        else link.append(badge);
+      }
+      badge.textContent = text;
+    });
   }
 
   function paintThreads(threads) {

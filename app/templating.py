@@ -130,6 +130,10 @@ def _chip(name: str, avatar: object) -> str:
     return f'<span class="avatar tone-{_tone(name)}">{letter}</span>'
 
 
+def avatar_mark(name: object, avatar: object = "") -> Markup:
+    return Markup(_chip(str(name or ""), avatar))
+
+
 def player_link(
     name: object,
     username: object = "",
@@ -159,6 +163,7 @@ TEMPLATES.filters["tone"] = _tone
 TEMPLATES.filters["story"] = _story
 TEMPLATES.filters["cover_kind"] = _cover_kind
 TEMPLATES.globals["player_link"] = player_link
+TEMPLATES.globals["avatar_mark"] = avatar_mark
 
 
 def safe_json(data: object) -> str:

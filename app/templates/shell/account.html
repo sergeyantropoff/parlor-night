@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Профиль — Parlor Night{% endblock %}
+{% block content %}
+<section class="shell-menu shell-account">
+  <header class="shell-account-head">
+    {% if chips is not none %}
+    <a class="chips-pill" href="/chips">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-coins"/></svg>
+      {{ chips|grouped }} фишек
+    </a>
+    {% endif %}
+    <div class="shell-account-portrait">{{ avatar_mark(user.display_name, user.avatar) }}</div>
+    <p class="shell-account-name">{{ user.display_name }}</p>
+    <p class="shell-account-login">{{ user.username }}</p>
+  </header>
+  <hr />
+  <nav class="shell-menu-card" aria-label="Учётная запись">
+    <a href="/players/{{ user.username }}">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-user"/></svg>
+      <span>Профиль</span>
+      <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
+    </a>
+    <a href="/settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-gear"/></svg>
+      <span>Настройки</span>
+      <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
+    </a>
+    <form method="post" action="/logout">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <button type="submit" class="shell-menu-out">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-logout"/></svg>
+        <span>Выход</span>
+      </button>
+    </form>
+  </nav>
+</section>
+{% endblock %}

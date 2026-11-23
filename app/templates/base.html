@@ -130,6 +130,29 @@
       </form>
     </aside>
     <div class="workspace">
+      {% set shelf = namespace(tab="more") %}
+      {% if path == "/" %}{% set shelf.tab = "home" %}
+      {% elif path == "/lobby" or path.startswith("/lobby/") %}{% set shelf.tab = "lobby" %}
+      {% elif path.startswith("/games/new") %}{% set shelf.tab = "new" %}
+      {% elif path.startswith("/chats") %}{% set shelf.tab = "chats" %}
+      {% elif path == "/me" %}{% set shelf.tab = "account" %}
+      {% endif %}
+      <div class="shell-head">
+        <header class="shell-phone">
+          <a class="brand" href="/">
+            <img class="mark theme-light" src="/static/images/logo-mark-for-light.png?v={{ asset_version }}" alt="" />
+            <img class="mark theme-dark" src="/static/images/logo-mark-for-dark.png?v={{ asset_version }}" alt="" />
+            <span class="brand-title">Parlor Night</span>
+            <span class="brand-rule">гостиная</span>
+          </a>
+          <div class="shell-phone-tools">
+            {% include "public/_theme_toggle.html" %}
+            <a class="shell-avatar" href="/me" data-shell="account"{% if path == "/me" %} aria-current="page"{% endif %} aria-label="{{ user.display_name }}">
+              {{ avatar_mark(user.display_name, user.avatar) }}
+            </a>
+          </div>
+        </header>
+      </div>
       <header class="topbar">
         {% block topbar_lead %}{% endblock %}
         {{ player_link(user.called_name, user.username, user.avatar, false, false, true) }}
@@ -240,6 +263,33 @@
   <script type="module" src="/static/js/theme.js?v={{ asset_version }}"></script>
   {% if preview or public_shell or (public_page and not user) %}
   {% include "public/_phone.html" %}
+  {% elif user and not preview and not public_shell %}
+  <nav class="shell-bar" aria-label="Разделы">
+    <a href="/" {% if shelf.tab == "home" %}class="is-on" aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-home"/></svg>
+      <span>Кабинет</span>
+    </a>
+    <a href="/lobby" {% if shelf.tab == "lobby" %}class="is-on" aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-lobby"/></svg>
+      <span>Гостиная</span>
+    </a>
+    <a class="is-new{% if shelf.tab == "new" %} is-on{% endif %}" href="/games/new" {% if shelf.tab == "new" %}aria-current="page"{% endif %}>
+      <span class="shell-plus" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#i-add"/></svg></span>
+      <span>Новая</span>
+    </a>
+    <a href="/chats" {% if shelf.tab == "chats" %}class="is-on" aria-current="page"{% endif %}>
+      <span class="shell-ico">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chat"/></svg>
+        {% if nav_chats %}<span class="shell-badge">{{ nav_chats if nav_chats < 100 else "99+" }}</span>{% endif %}
+      </span>
+      <span>Беседы</span>
+    </a>
+    <a href="/menu" data-shell="more" {% if shelf.tab == "more" %}class="is-on" aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-more"/></svg>
+      <span>Ещё</span>
+    </a>
+  </nav>
+  <script src="/static/js/shell-nav.js?v={{ asset_version }}"></script>
   {% endif %}
   <script type="module" src="/static/js/copy.js?v={{ asset_version }}"></script>
   {% block scripts %}{% endblock %}

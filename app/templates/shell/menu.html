@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Ещё — Parlor Night{% endblock %}
+{% block topbar_lead %}
+<div class="topbar-lead"><h1>Ещё</h1></div>
+{% endblock %}
+{% block content %}
+{% macro row(href, label, icon, count=0) -%}
+<a href="{{ href }}">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-{{ icon }}"/></svg>
+  <span>{{ label }}</span>
+  {% if count %}<span class="nav-count">{{ count if count < 100 else "99+" }}</span>{% endif %}
+  <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
+</a>
+{%- endmacro %}
+<section class="shell-menu">
+  <nav class="shell-menu-card" aria-label="Разделы">
+    {{ row('/', 'Кабинет', 'home') }}
+    {{ row('/live', 'Идёт игра', 'eye', nav_live) }}
+    {{ row('/join', 'Сесть за стол', 'code') }}
+    {{ row('/friends', 'Друзья', 'user', nav_requests) }}
+    {{ row('/top', 'Топ игроков', 'trophy') }}
+  </nav>
+  {% if user.is_admin %}
+  <p class="shell-menu-label">Администратор</p>
+  <nav class="shell-menu-card" aria-label="Администратор">
+    {{ row('/admin/overview', 'Обзор', 'chart') }}
+    {{ row('/admin/users', 'Гости', 'lobby') }}
+    {{ row('/admin/site', 'Сайт', 'screen') }}
+    {{ row('/admin/terms', 'Игры', 'dice') }}
+    {{ row('/admin/news', 'Новости', 'news') }}
+  </nav>
+  {% endif %}
+</section>
+{% endblock %}

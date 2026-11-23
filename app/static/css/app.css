@@ -6782,7 +6782,89 @@ html[data-theme="dark"] #card-table.is-yahtzy {
   color: var(--ink);
 }
 .theme-toggle svg { width: 18px; height: 18px; }
-.phone-bar { display: none; }
+.phone-bar, .shell-head, .shell-bar, .shell-only { display: none; }
+.shell-menu { display: grid; gap: 0.85rem; width: min(520px, 100%); }
+.shell-menu-label {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.shell-menu-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+}
+.shell-menu-card a {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 52px;
+  padding: 0.7rem 0.9rem;
+  color: var(--ink);
+  font-weight: 550;
+  text-decoration: none;
+}
+.shell-menu-card a + a { border-top: 1px solid var(--line); }
+.shell-menu-card a svg { width: 22px; height: 22px; flex: none; color: var(--brass); }
+.shell-menu-card a span { min-width: 0; }
+.shell-menu-card .nav-count { position: static; margin-left: auto; }
+.shell-menu-card .chev { width: 16px; height: 16px; margin-left: 0.35rem; color: color-mix(in srgb, var(--brass) 70%, var(--muted)); }
+.shell-menu-card a:not(:has(.nav-count)) .chev { margin-left: auto; }
+.shell-menu-card a:hover,
+.shell-menu-card a:focus-visible { background: color-mix(in srgb, var(--brass) 10%, transparent); text-decoration: none; }
+.shell-logout { margin: 0.35rem 0 0; }
+.shell-logout button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.7rem;
+  width: 100%;
+  min-height: 52px;
+  padding: 0.7rem 0.95rem;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--danger) 16%, var(--panel));
+  color: var(--danger);
+  font-weight: 650;
+}
+.shell-logout button svg { width: 20px; height: 20px; }
+.shell-logout button:hover { background: color-mix(in srgb, var(--danger) 24%, var(--panel)); color: var(--danger); }
+.shell-account { display: grid; justify-items: center; gap: 0.85rem; width: min(520px, 100%); }
+.shell-account-head { display: grid; justify-items: center; gap: 0.2rem; width: 100%; }
+.shell-account-head .chips-pill { margin-bottom: 0.55rem; }
+.shell-account-portrait {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  margin-top: 0.15rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 68%, var(--line));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--panel) 82%, var(--bg));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 32%, transparent);
+}
+.shell-account-portrait .avatar { width: 80px; height: 80px; font-size: 1.7rem; }
+.shell-account-name { margin: 0.45rem 0 0; font-size: 1.25rem; font-weight: 650; text-align: center; }
+.shell-account-login { margin: 0; color: var(--muted); font-size: 0.82rem; text-align: center; }
+.shell-account hr { width: 100%; margin: 0.15rem 0 0; border: 0; border-top: 1px solid var(--line); }
+.shell-account .shell-menu-card { width: 100%; }
+.shell-menu-card form { margin: 0; }
+.shell-menu-card a + form { border-top: 1px solid var(--line); }
+.shell-menu-out {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 52px;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0;
+  background: transparent;
+  color: var(--danger);
+  font-weight: 550;
+}
+.shell-menu-out svg { width: 22px; height: 22px; color: var(--danger); }
+.shell-menu-out:hover { background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--danger); }
 .phone-more { width: min(520px, calc(100% - 2.5rem)); padding-bottom: 2rem; }
 .phone-more h1,
 .phone-more h2 {
@@ -7217,6 +7299,191 @@ html[data-theme="dark"] #card-table.is-yahtzy {
   body.auth .login-card button[type="submit"] { min-height: 44px; margin-top: 0.15rem; }
   body.auth .signup-link { margin-top: 0.7rem; padding: 0.62rem 0.8rem; }
   html[data-theme="dark"] body.auth .login-screen { color: #d5bb85; }
+}
+@media (max-width: 719px) {
+  body.shell:not(:has(.play)) .app { grid-template-columns: 1fr; }
+  body.shell:not(:has(.play)) .sidebar { display: none; }
+  body.shell:not(:has(.play)) .shell-head {
+    display: block;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+  }
+  body.shell:not(:has(.play)) .shell-phone {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-height: 64px;
+    padding: calc(0.4rem + env(safe-area-inset-top)) 1.05rem 0.45rem;
+  }
+  body.shell:not(:has(.play)) .shell-phone .brand {
+    display: grid;
+    grid-template-columns: 42px auto;
+    column-gap: 0.45rem;
+    align-items: center;
+    justify-items: start;
+    margin: 0;
+    text-align: left;
+    color: inherit;
+  }
+  body.shell:not(:has(.play)) .shell-phone .mark {
+    width: 42px;
+    height: 42px;
+    grid-row: 1 / span 2;
+    object-fit: contain;
+  }
+  body.shell:not(:has(.play)) .shell-phone .brand-title {
+    margin: 0;
+    font-size: 1.2rem;
+    line-height: 1;
+    color: var(--ink);
+  }
+  html[data-theme="dark"] body.shell:not(:has(.play)) .shell-phone .brand-title { color: #d5bb85; }
+  body.shell:not(:has(.play)) .shell-phone .brand-rule {
+    display: flex;
+    margin: 0.12rem 0 0;
+    color: var(--brass);
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+  }
+  body.shell:not(:has(.play)) .shell-phone .brand-rule::before,
+  body.shell:not(:has(.play)) .shell-phone .brand-rule::after { width: 0.7rem; }
+  .shell-phone-tools {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-left: auto;
+  }
+  body.shell:not(:has(.play)) .shell-phone .theme-toggle { display: grid; }
+  .shell-avatar {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid color-mix(in srgb, var(--brass) 68%, var(--line));
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--panel) 82%, var(--bg));
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 32%, transparent);
+    color: inherit;
+    text-decoration: none;
+  }
+  .shell-avatar:hover,
+  .shell-avatar:focus-visible { text-decoration: none; border-color: var(--brass); }
+  .shell-avatar[aria-current="page"] {
+    border-color: var(--brass);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--brass) 28%, transparent);
+  }
+  .shell-avatar .avatar { width: 32px; height: 32px; font-size: 0.85rem; }
+  .shell-ico { position: relative; display: grid; width: 22px; height: 22px; }
+  .shell-badge {
+    position: absolute;
+    top: -7px;
+    right: -9px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border: 2px solid var(--bg);
+    border-radius: 999px;
+    background: var(--brass);
+    color: #2b2118;
+    font-size: 0.6rem;
+    font-weight: 700;
+    line-height: 12px;
+    text-align: center;
+  }
+  body.shell:not(:has(.play)) .topbar {
+    display: block;
+    height: auto;
+    min-height: 0;
+    padding: 0.95rem 1.05rem 0;
+    background: transparent;
+  }
+  body.shell:not(:has(.play)) .topbar:not(:has(h1)) { display: none; }
+  body.shell:not(:has(.play)) .topbar > .person-link,
+  body.shell:not(:has(.play)) .topbar > .chips-pill,
+  body.shell:not(:has(.play)) .topbar > .top-gap,
+  body.shell:not(:has(.play)) .topbar > .theme-switch { display: none; }
+  body.shell:not(:has(.play)) .topbar-lead {
+    flex: none;
+    width: auto;
+    margin: 0;
+    overflow: visible;
+  }
+  body.shell:not(:has(.play)) .topbar-lead h1 {
+    font-size: 1.85rem;
+    line-height: 1.15;
+    white-space: normal;
+  }
+  body.shell:not(:has(.play)) .greet-title { display: none; }
+  body.shell:not(:has(.play)) .shell-only { display: block; }
+  body.shell:not(:has(.play)) main {
+    padding: 0.85rem 1.05rem calc(5.5rem + env(safe-area-inset-bottom));
+  }
+  body.shell:not(:has(.play)) .shell-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: end;
+    padding: 0.15rem 0.1rem calc(0.28rem + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    background: var(--bg);
+  }
+  .shell-bar a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.16rem;
+    min-height: 52px;
+    margin: 0 0.12rem;
+    padding: 0.2rem 0.1rem 0.28rem;
+    border: 1px solid transparent;
+    border-radius: 16px;
+    color: #8a7356;
+    font-size: 0.68rem;
+    font-weight: 650;
+    line-height: 1;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html[data-theme="dark"] .shell-bar a { color: #c6b59a; }
+  .shell-bar a svg { width: 22px; height: 22px; }
+  .shell-bar a,
+  .shell-bar a:hover,
+  .shell-bar a:focus-visible { text-decoration: none; }
+  .shell-bar a.is-on {
+    color: #3f634c;
+    border: 1px solid color-mix(in srgb, var(--brass) 62%, transparent);
+    background: color-mix(in srgb, var(--panel) 46%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 32%, transparent);
+    backdrop-filter: blur(14px);
+  }
+  html[data-theme="dark"] .shell-bar a.is-on {
+    color: #d7e6d2;
+    border-color: color-mix(in srgb, #d5bb85 48%, transparent);
+    background: color-mix(in srgb, #2a241c 55%, transparent);
+  }
+  .shell-plus {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 34px;
+    margin-top: -16px;
+    border-radius: 12px;
+    background: #415e4e;
+    color: #f4efe5;
+  }
+  .shell-plus svg { width: 20px; height: 20px; color: #f4efe5; }
+  .shell-bar a.is-new { color: #8a7356; }
+  html[data-theme="dark"] .shell-bar a.is-new { color: #c6b59a; }
+  .shell-bar a.is-new.is-on { color: #3f634c; }
+  html[data-theme="dark"] .shell-bar a.is-new.is-on { color: #d7e6d2; }
 }
 @media (max-width: 719px) and (max-height: 760px) {
   body.public .hero { padding: 0.9rem 0 0.35rem; }

@@ -244,6 +244,22 @@ async def more(request: Request) -> Response:
     return render(request, "public/more.html", {"public_page": True, "public_shell": True})
 
 
+@router.get("/menu")
+async def menu(request: Request) -> Response:
+    user = _user_or_login(request)
+    if isinstance(user, Response):
+        return user
+    return render(request, "shell/menu.html")
+
+
+@router.get("/me")
+async def me_menu(request: Request) -> Response:
+    user = _user_or_login(request)
+    if isinstance(user, Response):
+        return user
+    return render(request, "shell/account.html")
+
+
 @router.get("/robots.txt")
 async def robots_txt(request: Request) -> Response:
     origin = str(request.base_url).rstrip("/")
@@ -263,6 +279,8 @@ async def robots_txt(request: Request) -> Response:
         "Disallow: /chips",
         "Disallow: /oauth",
         "Disallow: /top",
+        "Disallow: /menu",
+        "Disallow: /me",
         "Disallow: /name",
         "Disallow: /age",
         f"Sitemap: {origin}/sitemap.xml",

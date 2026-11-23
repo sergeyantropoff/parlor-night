@@ -2,7 +2,8 @@
 {% block title %}Кабинет — Parlor Night{% endblock %}
 {% block topbar_lead %}
 <div class="topbar-lead">
-  <h1 data-greeting="{{ user.called_name }}">{{ greeting }}</h1>
+  <h1 class="greet-title" data-greeting="{{ user.called_name }}">{{ greeting }}</h1>
+  <h1 class="shell-only">Кабинет</h1>
 </div>
 {% endblock %}
 {% block content %}
