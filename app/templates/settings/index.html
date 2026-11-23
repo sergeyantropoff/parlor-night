@@ -306,7 +306,7 @@
         <p class="quiet">Сила</p>
         <div class="meter" role="radiogroup" aria-labelledby="pick-level">
           <span class="meter-track" aria-hidden="true"></span>
-          <span class="meter-fill" id="meter-fill" style="width: {{ ((checkers - 1) / 4 * 80)|round(1) }}%" aria-hidden="true"></span>
+          <span class="meter-fill" id="meter-fill" data-level="{{ checkers }}" aria-hidden="true"></span>
           {% for level, title in ((1, "Новичок"), (2, "Любитель"), (3, "Опытный"), (4, "Сильный"), (5, "Мастер")) %}
           <label class="meter-step pick{% if level <= checkers %} is-hot{% endif %}{% if level == checkers %} is-on{% endif %}">
             <input type="radio" name="checkers_level" value="{{ level }}" data-title="{{ title }}" {% if level == checkers %}checked="checked"{% endif %} required="required" />

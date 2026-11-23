@@ -112,7 +112,7 @@ if (form) {
       step.classList.toggle("is-on", n === level);
     }
     const fill = document.querySelector("#meter-fill");
-    if (fill) fill.style.width = `${((level - 1) / 4) * 80}%`;
+    if (fill) fill.dataset.level = String(level);
   }
 
   function paintSummary() {

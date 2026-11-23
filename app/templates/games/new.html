@@ -1,7 +1,15 @@
 {% extends "base.html" %}
 {% block title %}{% if setup_title %}Игра {{ setup_title }}{% else %}Новая партия{% endif %} — Parlor Night{% endblock %}
 {% block topbar_lead %}
-<div class="topbar-lead"><h1>{% if setup_title %}Игра {{ setup_title }}{% else %}Новая партия{% endif %}</h1></div>
+<div class="topbar-lead">
+  {% if setup_title %}
+  <a class="setup-back" href="/games/new">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
+    Другая игра
+  </a>
+  {% endif %}
+  <h1>{% if setup_title %}Игра {{ setup_title }}{% else %}Новая партия{% endif %}</h1>
+</div>
 {% endblock %}
 {% block content %}
 {% set chess_on = not site or site.allows('chess') %}
@@ -35,7 +43,7 @@
       </span>
     </a>
     <div class="shot-actions">
-      <button type="button" class="round tip-host choice-rules" data-rules="{{ key }}" data-tip="Правила" aria-haspopup="dialog" aria-controls="rules-dialog" aria-label="Правила: {{ rules }}"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-help"/></svg></button>
+      <button type="button" class="round tip-host choice-rules" data-rules="{{ key }}" data-tip="Правила" aria-haspopup="dialog" aria-controls="rules-dialog" aria-label="Правила: {{ rules }}"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-help"/></svg><span class="qmark" aria-hidden="true">?</span></button>
       <a class="round tip-host" href="/games/new/{{ key }}" data-tip="{{ title }}" data-tip-edge aria-label="{{ title }}"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
     </div>
   </div>
@@ -97,6 +105,7 @@
         </label>
         {% endfor %}
       </div>
+      <p class="pool-note" id="pool-note"></p>
     </section>
 
     <section class="panel" id="preferans-stake" {% if game != 'preferans' %}hidden="hidden"{% endif %}>
@@ -209,6 +218,7 @@
               <img class="piece-chess" src="/static/images/pieces/chess-w-k.webp?v={{ asset_version }}" alt="" />
               <img class="piece-checkers" src="/static/images/pieces/checkers-w-man.webp?v={{ asset_version }}" alt="" />
               <img class="piece-go" src="/static/images/go/go-stone-white.webp?v={{ asset_version }}" alt="" />
+              <img class="piece-nardy" src="/static/images/nardy/checker-light.webp?v={{ asset_version }}" alt="" />
             </span>
             <span><strong>Белые</strong><small>Снизу, ходят первыми</small></span>
           </label>
@@ -218,6 +228,7 @@
               <img class="piece-chess" src="/static/images/pieces/chess-b-k.webp?v={{ asset_version }}" alt="" />
               <img class="piece-checkers" src="/static/images/pieces/checkers-b-man.webp?v={{ asset_version }}" alt="" />
               <img class="piece-go" src="/static/images/go/go-stone-black.webp?v={{ asset_version }}" alt="" />
+              <img class="piece-nardy" src="/static/images/nardy/checker-dark.webp?v={{ asset_version }}" alt="" />
             </span>
             <span><strong>Чёрные</strong><small>Снизу, отвечают на ход</small></span>
           </label>
@@ -225,15 +236,30 @@
       </section>
       <section class="panel" id="card-seats" {% if not cards %}hidden="hidden"{% endif %}>
         <h2>Места за столом</h2>
+        <p class="seat-you">Ваше место уже учтено</p>
         <p class="quiet" id="seat-room">Вы уже сидите. Вместе с вами за столом шесть мест: компьютеры и свободные стулья делят оставшиеся пять.</p>
         <div class="seat-picks">
-          <label>Компьютеры
-            <input id="computers" name="computers" type="number" min="0" max="5" value="1" inputmode="numeric" />
-          </label>
-          <label>Свободные места
-            <input id="open-seats" name="open_seats" type="number" min="0" max="5" value="0" inputmode="numeric" />
-          </label>
+          <div class="seat-row">
+            <span class="seat-copy"><label for="computers">Компьютеры</label></span>
+            <span class="stepper">
+              <button class="step" type="button" data-step="computers" data-dir="-1" aria-label="Меньше компьютеров">−</button>
+              <input id="computers" name="computers" type="number" min="0" max="5" value="1" inputmode="numeric" />
+              <button class="step" type="button" data-step="computers" data-dir="1" aria-label="Больше компьютеров">+</button>
+            </span>
+          </div>
+          <div class="seat-row">
+            <span class="seat-copy">
+              <label for="open-seats">Свободные места</label>
+              <small class="seat-hint">Места для других игроков</small>
+            </span>
+            <span class="stepper">
+              <button class="step" type="button" data-step="open-seats" data-dir="-1" aria-label="Меньше свободных мест">−</button>
+              <input id="open-seats" name="open_seats" type="number" min="0" max="5" value="0" inputmode="numeric" />
+              <button class="step" type="button" data-step="open-seats" data-dir="1" aria-label="Больше свободных мест">+</button>
+            </span>
+          </div>
         </div>
+        <p class="seat-tally" id="seat-tally"><strong></strong><span id="seat-limit"></span></p>
         <p id="seat-note" class="quiet">Один компьютер отвечает за другую сторону.</p>
       </section>
     </div>
@@ -243,7 +269,7 @@
       <p id="engine-level-label" class="quiet">Сила игры</p>
       <div class="meter" role="radiogroup" aria-labelledby="pick-level">
         <span class="meter-track" aria-hidden="true"></span>
-        <span class="meter-fill" id="meter-fill" style="width: 40%" aria-hidden="true"></span>
+        <span class="meter-fill" id="meter-fill" data-level="3" aria-hidden="true"></span>
         {% for level, title in ((1, "Новичок"), (2, "Любитель"), (3, "Опытный"), (4, "Сильный"), (5, "Мастер")) %}
         <label class="meter-step pick{% if level <= 3 %} is-hot{% endif %}{% if level == 3 %} is-on{% endif %}">
           <input type="radio" name="engine_level" value="{{ level }}" data-title="{{ title }}" {% if level == 3 %}checked{% endif %} required="required" />
@@ -254,11 +280,11 @@
       </div>
     </section>
 
-    <details class="panel advanced" id="advanced"{% if cards %} hidden="hidden"{% endif %}{% if error and not cards %} open{% endif %}>
+    <details class="panel advanced" id="advanced"{% if cards %} hidden="hidden"{% endif %}>
       <summary>
         <svg class="twist" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
         Своя позиция и готовые ходы
-        <span class="quiet">необязательно</span>
+        <span class="quiet">Необязательно</span>
       </summary>
       <div class="advanced-body">
         <label id="fen-field"{% if game != 'chess' %} hidden="hidden"{% endif %}>Начальный FEN, если нужен не старт

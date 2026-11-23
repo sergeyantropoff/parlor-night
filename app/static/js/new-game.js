@@ -159,6 +159,32 @@ if (form) {
                 ? `Один компьютер отвечает за другую сторону. ${limit}`
                 : `Компьютеров за столом: ${computers}. ${limit}`;
       }
+      const tally = byId("#seat-tally");
+      const limitLine = byId("#seat-limit");
+      if (tally) tally.querySelector("strong").textContent = `За столом: ${1 + total} из ${1 + seatCap}`;
+      if (limitLine) {
+        limitLine.textContent = preferans
+          ? "В преферансе трое"
+          : blackjack
+            ? "Дилер играет за дом"
+            : domino
+              ? "В домино от двух до четырёх игроков"
+              : yahtzy
+                ? "В яцзы от двух до четырёх игроков"
+                : bura
+                  ? "В буру играют двое"
+                  : "Вместе с вами за столом шесть мест";
+      }
+    }
+    for (const field of [computerInput, openInput]) {
+      if (!field) continue;
+      const value = Number(field.value);
+      field.classList.toggle("is-zero", value === 0);
+      for (const button of form.querySelectorAll(`button.step[data-step="${field.id}"]`)) {
+        const dir = Number(button.dataset.dir);
+        const edge = dir < 0 ? Number(field.min || 0) : Number(field.max || 0);
+        button.disabled = dir < 0 ? value <= edge : value >= edge;
+      }
     }
     if (go) {
       for (const name of ["initial_fen", "pgn", "initial_position", "moves"]) {
@@ -207,6 +233,12 @@ if (form) {
       whiteSmall.textContent = nardy ? "Ходят первыми" : go ? "Ходят вторыми" : "Снизу, ходят первыми";
       blackSmall.textContent = nardy ? "Отвечают на бросок" : go ? "Ходят первыми" : "Снизу, отвечают на ход";
     }
+    const randomSmall = form.querySelector('input[name="player_side"][value="random"]')?.closest("label")?.querySelector("small");
+    if (randomSmall) {
+      randomSmall.textContent = go || nardy ? "Цвет определится при создании" : "Белые или чёрные, решится при создании";
+    }
+    const poolNote = byId("#pool-note");
+    if (poolNote) poolNote.textContent = checked("pool")?.closest("label")?.querySelector("small")?.textContent || "";
     if (whiteInput && blackInput) {
       whiteInput.dataset.title = go ? "Белые" : "Белые снизу";
       blackInput.dataset.title = go ? "Чёрные" : "Чёрные снизу";
@@ -235,7 +267,7 @@ if (form) {
       step.classList.toggle("is-on", n === levelValue);
     }
     const fill = byId("#meter-fill");
-    if (fill) fill.style.width = `${((levelValue - 1) / 4) * 80}%`;
+    if (fill) fill.dataset.level = String(levelValue);
 
     const parts = [game?.dataset.title];
     if (cards) {
@@ -273,6 +305,20 @@ if (form) {
   });
   form.addEventListener("submit", (event) => {
     if (form.querySelector('button[type="submit"]')?.disabled) event.preventDefault();
+  });
+  form.addEventListener("click", (event) => {
+    const button = event.target.closest("button.step");
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return;
+    const input = form.querySelector(`#${button.dataset.step}`);
+    if (!(input instanceof HTMLInputElement)) return;
+    const dir = Number(button.dataset.dir);
+    const min = Number(input.min || 0);
+    const max = Number(input.max || 0);
+    const next = Math.min(max, Math.max(min, Number(input.value) + dir));
+    if (String(next) === input.value) return;
+    input.value = String(next);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
   });
   form.addEventListener("input", () => sync(false, false));
   form.addEventListener("change", (event) => {

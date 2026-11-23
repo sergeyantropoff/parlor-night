@@ -48,9 +48,9 @@
           {% set opp = game.opponent_id and game.opponent_id|string == uid %}
           <tr>
             <td>
-              <a href="/games/{{ game.id }}">
+              <a class="game-open" href="/games/{{ game.id }}">
                 <span class="glyph" aria-hidden="true"><img class="theme-light game-mark" src="/static/images/games/game-{{ game.game_type }}-light.webp?v={{ asset_version }}" alt="" /><img class="theme-dark game-mark" src="/static/images/games/game-{{ game.game_type }}-dark.webp?v={{ asset_version }}" alt="" /></span>
-                {{ type_label[game.game_type] }}
+                <span class="game-title">{{ type_label[game.game_type] }}</span>
               </a>
             </td>
             <td>{{ mode_label[game.mode] }}</td>
@@ -109,6 +109,7 @@
       {% else %}
       <span class="pager-step is-off">Назад</span>
       {% endif %}
+      <span class="pager-count">{{ dashboard.page }} из {{ dashboard.pages }}</span>
       <ol>
         {% for number in dashboard.page_links %}
         {% if number is none %}
