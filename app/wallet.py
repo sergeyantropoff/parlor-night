@@ -55,6 +55,41 @@ async def charge(
     )
 
 
+async def take(
+    conn: asyncpg.Connection,
+    user_id: uuid.UUID | None,
+    amount: int,
+    *,
+    reason: str,
+    game_id: uuid.UUID | None,
+) -> int:
+    """Списывает фишки, но не больше остатка и не срывает уже законченную партию."""
+    if amount <= 0 or user_id is None:
+        return 0
+    await ensure(conn, user_id)
+    row = await conn.fetchrow(
+        "SELECT balance FROM wallets WHERE user_id = $1 FOR UPDATE",
+        user_id,
+    )
+    have = int(row["balance"] or 0) if row else 0
+    taken = min(have, amount)
+    if taken <= 0:
+        return 0
+    await conn.execute(
+        "UPDATE wallets SET balance = balance - $2, updated_at = now() WHERE user_id = $1",
+        user_id,
+        taken,
+    )
+    await conn.execute(
+        "INSERT INTO ledger (user_id, amount, reason, game_id) VALUES ($1, $2, $3, $4)",
+        user_id,
+        -taken,
+        reason,
+        game_id,
+    )
+    return taken
+
+
 async def credit(
     conn: asyncpg.Connection,
     user_id: uuid.UUID,

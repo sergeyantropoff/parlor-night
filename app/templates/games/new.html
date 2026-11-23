@@ -15,158 +15,45 @@
 {% set domino_on = not site or site.allows('domino') %}
 {% set nardy_on = not site or site.allows('nardy') %}
 {% set yahtzy_on = not site or site.allows('yahtzy') %}
-{% set cards = game in ['uno', 'poker', 'durak', 'blackjack', 'preferans', 'domino', 'yahtzy'] %}
-{% set titles = {'chess': 'Шахматы', 'checkers': 'Русские шашки', 'go': 'Го', 'uno': 'Уно', 'poker': 'Покер', 'durak': 'Дурак', 'blackjack': 'Блэкджек', 'preferans': 'Преферанс', 'domino': 'Домино', 'nardy': 'Нарды', 'yahtzy': 'Яцзы'} %}
+{% set bura_on = not site or site.allows('bura') %}
+{% set cards = game in ['uno', 'poker', 'durak', 'blackjack', 'preferans', 'domino', 'yahtzy', 'bura'] %}
+{% set titles = {'chess': 'Шахматы', 'checkers': 'Русские шашки', 'go': 'Го', 'uno': 'Уно', 'poker': 'Покер', 'durak': 'Дурак', 'blackjack': 'Блэкджек', 'preferans': 'Преферанс', 'domino': 'Домино', 'nardy': 'Нарды', 'yahtzy': 'Яцзы', 'bura': 'Бура'} %}
 <section class="page">
   {% if not game %}
   <p class="lede">Выберите игру.</p>
   {% if error %}<p class="banner" role="alert">{{ error }}</p>{% endif %}
+  {% macro game_card(key, title, note, rules, width, height, grown=false) %}
+  <div class="choice pick">
+    <a class="choice-open" href="/games/new/{{ key }}">
+      <span class="shot">
+        <img class="theme-light" src="/static/parlor/light/game-{{ key }}.webp?v={{ asset_version }}" width="{{ width }}" height="{{ height }}" alt="" />
+        <img class="theme-dark" src="/static/parlor/dark/game-{{ key }}.webp?v={{ asset_version }}" width="{{ width }}" height="{{ height }}" alt="" />
+        {% if grown %}<span class="age">18+</span>{% endif %}
+      </span>
+      <span class="shot-body">
+        <span><strong>{{ title }}</strong><small>{{ note }}</small></span>
+      </span>
+    </a>
+    <div class="shot-actions">
+      <button type="button" class="round tip-host choice-rules" data-rules="{{ key }}" data-tip="Правила" aria-haspopup="dialog" aria-controls="rules-dialog" aria-label="Правила: {{ rules }}"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-help"/></svg></button>
+      <a class="round tip-host" href="/games/new/{{ key }}" data-tip="{{ title }}" data-tip-edge aria-label="{{ title }}"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+    </div>
+  </div>
+  {% endmacro %}
   <div class="setup-form">
     <div class="setup-games">
-      {% if chess_on %}
-      <a class="choice pick" href="/games/new/chess">
-        <span class="shot">
-          <img class="theme-light" src="/static/parlor/light/game-chess.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
-          <img class="theme-dark" src="/static/parlor/dark/game-chess.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
-        </span>
-        <span class="shot-body">
-          <span><strong>Шахматы</strong><small>Партия на классической доске</small></span>
-          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
-        </span>
-      </a>
-      {% endif %}
-      {% if checkers_on %}
-      <a class="choice pick" href="/games/new/checkers">
-        <span class="shot">
-          <img class="theme-light" src="/static/parlor/light/game-checkers.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
-          <img class="theme-dark" src="/static/parlor/dark/game-checkers.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
-        </span>
-        <span class="shot-body">
-          <span><strong>Русские шашки</strong><small>Дамки и обязательный бой</small></span>
-          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
-        </span>
-      </a>
-      {% endif %}
-      {% if go_on %}
-      <a class="choice pick" href="/games/new/go">
-        <span class="shot">
-          <img class="theme-light" src="/static/parlor/light/game-go.webp?v={{ asset_version }}" width="1440" height="1080" alt="" />
-          <img class="theme-dark" src="/static/parlor/dark/game-go.webp?v={{ asset_version }}" width="1440" height="1080" alt="" />
-        </span>
-        <span class="shot-body">
-          <span><strong>Го</strong><small>С человеком или с компьютером</small></span>
-          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
-        </span>
-      </a>
-      {% endif %}
-      {% if domino_on %}
-      <a class="choice pick" href="/games/new/domino">
-        <span class="shot">
-          <img class="theme-light" src="/static/parlor/light/game-domino.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
-          <img class="theme-dark" src="/static/parlor/dark/game-domino.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
-        </span>
-        <span class="shot-body">
-          <span><strong>Домино</strong><small>Кости в линию, от двух до четырёх</small></span>
-          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
-        </span>
-      </a>
-      {% endif %}
-      {% if nardy_on %}
-      <a class="choice pick" href="/games/new/nardy">
-        <span class="shot">
-          <img class="theme-light" src="/static/parlor/light/game-nardy.webp?v={{ asset_version }}" width="768" height="576" alt="" />
-          <img class="theme-dark" src="/static/parlor/dark/game-nardy.webp?v={{ asset_version }}" width="768" height="576" alt="" />
-        </span>
-        <span class="shot-body">
-          <span><strong>Нарды</strong><small>Длинные и короткие</small></span>
-          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
-        </span>
-      </a>
-      {% endif %}
-      {% if yahtzy_on %}
-      <a class="choice pick" href="/games/new/yahtzy">
-        <span class="shot">
-          <img class="theme-light" src="/static/parlor/light/game-yahtzy.webp?v={{ asset_version }}" width="1024" height="768" alt="" />
-          <img class="theme-dark" src="/static/parlor/dark/game-yahtzy.webp?v={{ asset_version }}" width="1024" height="768" alt="" />
-        </span>
-        <span class="shot-body">
-          <span><strong>Яцзы</strong><small>Пять костей и бланк</small></span>
-          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
-        </span>
-      </a>
-      {% endif %}
-      {% if uno_on %}
-      <a class="choice pick" href="/games/new/uno">
-        <span class="shot">
-          <img class="theme-light" src="/static/parlor/light/game-uno.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
-          <img class="theme-dark" src="/static/parlor/dark/game-uno.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
-        </span>
-        <span class="shot-body">
-          <span><strong>Уно</strong><small>Цвета, цифры и дикие карты</small></span>
-          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
-        </span>
-      </a>
-      {% endif %}
-      {% if poker_on and adult %}
-      <a class="choice pick" href="/games/new/poker">
-        <span class="shot">
-          <img class="theme-light" src="/static/parlor/light/game-poker.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
-          <img class="theme-dark" src="/static/parlor/dark/game-poker.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
-          <span class="age">18+</span>
-        </span>
-        <span class="shot-body">
-          <span><strong>Покер</strong><small>Техасский холдем на фишки</small></span>
-          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
-        </span>
-      </a>
-      {% endif %}
-      {% if durak_on %}
-      <a class="choice pick" href="/games/new/durak">
-        <span class="shot">
-          <img class="theme-light" src="/static/parlor/light/game-durak.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
-          <img class="theme-dark" src="/static/parlor/dark/game-durak.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
-        </span>
-        <span class="shot-body">
-          <span><strong>Дурак</strong><small>Подкидной или переводной</small></span>
-          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
-        </span>
-      </a>
-      {% endif %}
-      {% if blackjack_on and adult %}
-      <a class="choice pick" href="/games/new/blackjack">
-        <span class="shot">
-          <img class="theme-light" src="/static/parlor/light/game-blackjack.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
-          <img class="theme-dark" src="/static/parlor/dark/game-blackjack.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
-          <span class="age">18+</span>
-        </span>
-        <span class="shot-body">
-          <span><strong>Блэкджек</strong><small>Против дилера на фишки</small></span>
-          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
-        </span>
-      </a>
-      {% endif %}
-      {% if preferans_on and adult %}
-      <a class="choice pick" href="/games/new/preferans">
-        <span class="shot">
-          <img class="theme-light" src="/static/parlor/light/game-preferans.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
-          <img class="theme-dark" src="/static/parlor/dark/game-preferans.webp?v={{ asset_version }}" width="1448" height="1086" alt="" />
-          <span class="age">18+</span>
-        </span>
-        <span class="shot-body">
-          <span><strong>Преферанс</strong><small>Торг и взятки на троих</small></span>
-          <span class="round" aria-hidden="true"><svg class="idle" viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
-        </span>
-      </a>
-      {% endif %}
-      <div class="choice is-soon">
-        <span class="shot">
-          <img class="theme-light" src="/static/parlor/light/game-bura.webp?v={{ asset_version }}" width="1024" height="768" alt="Бура скоро появится в гостиной" />
-          <img class="theme-dark" src="/static/parlor/dark/game-bura.webp?v={{ asset_version }}" width="1024" height="768" alt="" />
-        </span>
-        <span class="shot-body">
-          <span><strong>Бура</strong><small>Три карты и козырь. Скоро в гостиной</small></span>
-        </span>
-      </div>
+      {% if chess_on %}{{ game_card("chess", "Шахматы", "Партия на классической доске", "шахматы", 1448, 1086) }}{% endif %}
+      {% if checkers_on %}{{ game_card("checkers", "Русские шашки", "Дамки и обязательный бой", "русские шашки", 1448, 1086) }}{% endif %}
+      {% if go_on %}{{ game_card("go", "Го", "С человеком или с компьютером", "го", 1440, 1080) }}{% endif %}
+      {% if domino_on %}{{ game_card("domino", "Домино", "Кости в линию, от двух до четырёх игроков", "домино", 1448, 1086) }}{% endif %}
+      {% if nardy_on %}{{ game_card("nardy", "Нарды", "Длинные и короткие", "нарды", 768, 576) }}{% endif %}
+      {% if yahtzy_on %}{{ game_card("yahtzy", "Яцзы", "Пять костей и бланк", "яцзы", 1024, 768) }}{% endif %}
+      {% if uno_on %}{{ game_card("uno", "Уно", "Цвета, цифры и дикие карты", "Уно", 1448, 1086) }}{% endif %}
+      {% if poker_on and adult %}{{ game_card("poker", "Покер", "Техасский холдем на фишки", "покер", 1448, 1086, true) }}{% endif %}
+      {% if durak_on %}{{ game_card("durak", "Дурак", "Подкидной или переводной", "дурак", 1448, 1086) }}{% endif %}
+      {% if blackjack_on and adult %}{{ game_card("blackjack", "Блэкджек", "Против дилера на фишки", "блэкджек", 1448, 1086, true) }}{% endif %}
+      {% if preferans_on and adult %}{{ game_card("preferans", "Преферанс", "Торг и взятки на троих", "преферанс", 1448, 1086, true) }}{% endif %}
+      {% if bura_on %}{{ game_card("bura", "Бура", "Три карты и козырь", "бура", 1024, 768) }}{% endif %}
     </div>
   </div>
   {% else %}
@@ -178,6 +65,10 @@
   <form method="post" action="/games" id="new-game" class="setup-form" data-game="{{ game }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
     <input type="hidden" name="game_type" value="{{ game }}" data-title="{{ titles[game] }}" />
+    <section class="panel">
+      <h2>Фишки</h2>
+      <p>{{ terms.note(game) }}</p>
+    </section>
 
     <section class="panel" id="durak-kind" {% if game != 'durak' %}hidden="hidden"{% endif %}>
       <h2 id="pick-durak">Вид дурака</h2>
@@ -219,11 +110,12 @@
         <span id="preferans-stake-warn">При цене очка 1 для партии нужно {{ opening_stack }} фишек. Если их меньше, партию не открыть.</span>
       </p>
       <div class="mode-grid" role="radiogroup" aria-labelledby="pick-stake">
-        {% for size, note in ((1, "Одна фишка"), (2, "Две фишки"), (5, "Пять фишек"), (10, "Десять фишек")) %}
+        {% set price_note = {1: "Одна фишка", 2: "Две фишки", 5: "Пять фишек", 10: "Десять фишек"} %}
+        {% for size in terms.preferans.prices %}
         <label class="mode-choice pick">
-          <input type="radio" name="stake" value="{{ size }}" data-title="очко за {{ size }}" data-stack="{{ size * preferans_stack_points }}" {% if size == 1 %}checked="checked"{% endif %} />
+          <input type="radio" name="stake" value="{{ size }}" data-title="очко за {{ size }}" data-stack="{{ size * preferans_stack_points }}" {% if loop.first %}checked="checked"{% endif %} />
           <strong>{{ size }}</strong>
-          <small>{{ note }}</small>
+          <small>{{ price_note.get(size, "фишек за очко") }}</small>
         </label>
         {% endfor %}
       </div>
@@ -268,7 +160,7 @@
           ('analysis', 'Анализ', 'Подсказки по позиции', 'chart'),
           ('lesson', 'Разбор партии', 'Чужая запись, ход за ходом', 'book'),
         ) %}
-        {% if not (game in ['domino', 'nardy', 'yahtzy'] and value in ['free', 'analysis', 'lesson']) %}
+        {% if not (game in ['domino', 'nardy', 'yahtzy', 'bura'] and value in ['free', 'analysis', 'lesson']) %}
         <label class="mode-choice pick">
           <input type="radio" name="mode" value="{{ value }}" data-title="{{ title }}" {% if value == 'vs_computer' %}checked{% endif %} required="required" />
           <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-{{ icon }}"/></svg>
@@ -403,8 +295,32 @@
   </dialog>
   {% endif %}
   {% endif %}
+  {% if not game %}
+  <dialog id="rules-dialog" class="rules-dialog" aria-labelledby="rules-title">
+    <div class="rules-body">
+      <p class="kicker">За столом</p>
+      <h2 id="rules-title">Правила</h2>
+      {% if chess_on %}<div data-rules-pane="chess" data-rules-title="Шахматы" hidden>{% with rules_game="chess" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+      {% if checkers_on %}<div data-rules-pane="checkers" data-rules-title="Русские шашки" hidden>{% with rules_game="checkers" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+      {% if go_on %}<div data-rules-pane="go" data-rules-title="Го" hidden>{% with rules_game="go" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+      {% if domino_on %}<div data-rules-pane="domino" data-rules-title="Домино" hidden>{% with rules_game="domino" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+      {% if nardy_on %}<div data-rules-pane="nardy" data-rules-title="Нарды" hidden>{% with rules_game="nardy" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+      {% if yahtzy_on %}<div data-rules-pane="yahtzy" data-rules-title="Яцзы" hidden>{% with rules_game="yahtzy" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+      {% if bura_on %}<div data-rules-pane="bura" data-rules-title="Бура" hidden>{% with rules_game="bura" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+      {% if uno_on %}<div data-rules-pane="uno" data-rules-title="Уно" hidden>{% with rules_game="uno" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+      {% if poker_on %}<div data-rules-pane="poker" data-rules-title="Покер" hidden>{% with rules_game="poker" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+      {% if durak_on %}<div data-rules-pane="durak" data-rules-title="Дурак" hidden>{% with rules_game="durak" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+      {% if blackjack_on %}<div data-rules-pane="blackjack" data-rules-title="Блэкджек" hidden>{% with rules_game="blackjack" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+      {% if preferans_on %}<div data-rules-pane="preferans" data-rules-title="Преферанс" hidden>{% with rules_game="preferans" %}{% include "games/_rules.html" %}{% endwith %}</div>{% endif %}
+    </div>
+    <div class="rules-actions">
+      <button type="button" class="secondary" data-close>Закрыть</button>
+    </div>
+  </dialog>
+  {% endif %}
 </section>
 {% endblock %}
 {% block scripts %}
 {% if game %}<script type="module" src="/static/js/new-game.js?v={{ asset_version }}"></script>{% endif %}
+{% if not game %}<script type="module" src="/static/js/rules-dialog.js?v={{ asset_version }}"></script>{% endif %}
 {% endblock %}

@@ -22,6 +22,7 @@ from app.geo import country_for
 from app.site_policy import current, visitor_may_register
 from app.social.notices import nav_counts
 from app.templating import render
+from app.terms import current as current_terms
 from app.wallet import balance
 
 logger = logging.getLogger(__name__)
@@ -147,6 +148,7 @@ class RequestMiddleware:
                 request.state.bearer = False
                 request.state.user = None
             request.state.site = await current(request)
+            request.state.terms = await current_terms(request)
             request.state.can_register = await visitor_may_register(request, request.state.site)
             staff = request.state.user
             if staff is not None and staff.is_admin:
@@ -365,6 +367,8 @@ class RequestMiddleware:
         }:
             return None
         if request.method == "GET" and user is None and (path == "/" or path.startswith("/news")):
+            return None
+        if path == "/api/v1/maintenance" and request.method == "GET":
             return None
         if path.startswith("/api/"):
             body = {

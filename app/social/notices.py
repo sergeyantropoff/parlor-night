@@ -43,11 +43,22 @@ async def nav_counts(conn: asyncpg.Connection, user_id: uuid.UUID) -> dict[str, 
                 FROM games
                 WHERE mode IN ('online', 'vs_computer')
                   AND status IN ('waiting', 'active')
-            ) AS live
+            ) AS live,
+            (
+                SELECT count(*)
+                FROM seekers
+                WHERE created_at > now() - interval '15 minutes'
+                  AND user_id <> $1
+            ) AS seek
         """,
         user_id,
     )
-    return {"requests": int(row["requests"]), "chats": int(row["chats"]), "live": int(row["live"])}
+    return {
+        "requests": int(row["requests"]),
+        "chats": int(row["chats"]),
+        "live": int(row["live"]),
+        "seek": int(row["seek"]),
+    }
 
 
 async def unread_threads(conn: asyncpg.Connection, user_id: uuid.UUID) -> list[dict[str, object]]:
@@ -79,6 +90,8 @@ def notice_text(body: object) -> str:
     text = " ".join(str(body or "").split())
     if _INVITE_LINE.search(text) or text.casefold() in _TABLE_READY:
         return "Приглашение в партию"
+    if text.startswith("Сообщение из формы обратной связи"):
+        return "Сообщение из формы обратной связи"
     return clip_notice(text)
 
 

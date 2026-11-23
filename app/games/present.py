@@ -492,7 +492,7 @@ def _project_cards(
     stopped = stopped_badge(status, _optional(game.get("result")), _optional(game.get("result_reason")))
     if stopped:
         line = stopped
-    elif status == "finished" and str(game["game_type"]) in {"poker", "preferans", "yahtzy"}:
+    elif status == "finished" and str(game["game_type"]) in {"poker", "preferans", "yahtzy", "bura"}:
         line = message or finished
     elif status == "finished":
         line = finished or message
@@ -566,6 +566,9 @@ def _project_cards(
         picture = card.get("yahtzy") if isinstance(card.get("yahtzy"), dict) else {}
         totals = picture.get("totals") if isinstance(picture.get("totals"), dict) else {}
         marks = {str(key): str(int(value)) for key, value in totals.items()}
+    elif str(game["game_type"]) == "bura":
+        scores = card.get("scores") if isinstance(card.get("scores"), dict) else {}
+        marks = {str(key): str(int(value)) for key, value in scores.items()}
     else:
         marks = (report.get("last") or {}) if report else {}
     for item in public_seats:
@@ -583,7 +586,8 @@ def _project_cards(
             rival = ordered[0]
         elif ordered:
             rival = ", ".join(ordered)
-    if not public_seats and str(game["game_type"]) in {"durak", "blackjack", "preferans", "domino", "nardy", "yahtzy"}:
+    salon = {"durak", "blackjack", "preferans", "domino", "nardy", "yahtzy", "bura"}
+    if not public_seats and str(game["game_type"]) in salon:
         public_seats = _salon_faces(
             card,
             mode=mode,
@@ -625,6 +629,13 @@ def _project_cards(
         card["actions"] = []
         if status == "active":
             line = _gallery_line(str(card.get("phase") or ""))
+    shown_moves = list(card.get("actions") or [])
+    if not your_turn:
+        shown_moves = [
+            item
+            for item in shown_moves
+            if str(game["game_type"]) == "uno" and list(item.get("path") or [])[:1] == ["catch"]
+        ]
     winner_hand = str(card.get("winner_hand") or "")
     if str(game["game_type"]) == "poker":
         winner_hand = _poker_caption(report if isinstance(report, dict) else None, public_seats, winner_hand)
@@ -646,7 +657,7 @@ def _project_cards(
         "gallery": stepped and status == "active",
         "black_at_bottom": str(game["game_type"]) == "nardy" and seat == "black" and mode in {"vs_computer", "online"},
         "cells": [],
-        "legal_moves": card["actions"] if your_turn else [],
+        "legal_moves": shown_moves,
         "hand": card["hand"],
         "board": card.get("board") or [],
         "winner_hand": winner_hand,
@@ -657,6 +668,7 @@ def _project_cards(
         "button": card.get("button") or "",
         "cpu_opponent": cpu_opponent,
         "top": card.get("top") or "",
+        "pile": card.get("pile") or [],
         "color": card.get("color"),
         "deck": int(card.get("deck") or 0),
         "chain": card.get("chain") or [],
@@ -684,7 +696,7 @@ def _project_cards(
         "seats": public_seats
         if len(public_seats) > 2
         or (
-            str(game["game_type"]) in {"uno", "durak", "blackjack", "preferans", "domino", "nardy", "yahtzy"}
+            str(game["game_type"]) in {"uno", "durak", "blackjack", "preferans", "domino", "nardy", "yahtzy", "bura"}
             and len(public_seats) >= 1
         )
         else [],
@@ -974,6 +986,7 @@ def _parlor_summary(
         "domino": "Домино",
         "nardy": "Нарды",
         "yahtzy": "Яцзы",
+        "bura": "Бура",
     }
     return {
         "kind": "parlor",
@@ -1025,7 +1038,7 @@ def _halted_card_summary(
         )
     counts = report.get("counts") if isinstance(report, dict) and isinstance(report.get("counts"), dict) else {}
     pot = int(report.get("pot") or 0) if isinstance(report, dict) else 0
-    parlor = kind in {"durak", "blackjack", "preferans", "domino", "nardy", "yahtzy"}
+    parlor = kind in {"durak", "blackjack", "preferans", "domino", "nardy", "yahtzy", "bura"}
     return {
         "kind": "parlor" if parlor else ("uno" if kind == "uno" else "poker"),
         "winner": "",

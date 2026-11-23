@@ -2,7 +2,19 @@
 {% block title %}{{ "Анализ" if analysis else "Партия" }} — Parlor Night{% endblock %}
 {% block topbar_lead %}
 <div class="topbar-lead">
-  <h1 title="{{ type_label[state.game_type] }} · {{ mode_label[state.mode] }}">{{ type_label[state.game_type] }} · {{ mode_label[state.mode] }}</h1>
+  <div class="title-stack">
+    <h1 title="{{ type_label[state.game_type] }} · {{ mode_label[state.mode] }}">{{ type_label[state.game_type] }} · {{ mode_label[state.mode] }}</h1>
+    {% if state.mode in ["online", "vs_computer"] or state.watching %}
+    <div class="stage-marks">
+      {% if state.mode in ["online", "vs_computer"] %}
+      <p class="audience-badge {% if state.audience == 'open' %}is-open{% else %}is-closed{% endif %}">{% if state.audience == "open" %}Стол открыт: смотреть может каждый.{% else %}Стол закрыт для наблюдателей.{% endif %}</p>
+      {% endif %}
+      {% if state.watching %}
+      <p class="audience-badge is-watch"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"/></svg>Вы наблюдаете за столом и не делаете ходов.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}
 {% block content %}
@@ -33,16 +45,6 @@
   <div class="stage">
     <div class="stage-head">
       <div class="stage-lead">
-        {% if state.mode in ["online", "vs_computer"] or state.watching %}
-        <div class="stage-marks">
-          {% if state.mode in ["online", "vs_computer"] %}
-          <p class="audience-badge {% if state.audience == 'open' %}is-open{% else %}is-closed{% endif %}">{% if state.audience == "open" %}Стол открыт: смотреть может каждый.{% else %}Стол закрыт для наблюдателей.{% endif %}</p>
-          {% endif %}
-          {% if state.watching %}
-          <p class="audience-badge is-watch"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eye"/></svg>Вы наблюдаете за столом и не делаете ходов.</p>
-          {% endif %}
-        </div>
-        {% endif %}
         {% if state.can_sit %}
         <div class="stage-extra">
           <form class="sit-open" method="post" action="/live/{{ state.id }}/sit">

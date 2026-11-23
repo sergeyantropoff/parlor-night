@@ -1,5 +1,14 @@
 {% extends "base.html" %}
+{% from "_seo.html" import search_tags with context %}
 {% block title %}Регистрация — Parlor Night{% endblock %}
+{% block seo %}
+{{ search_tags(
+  "Регистрация в гостиной Parlor Night. Создайте учётную запись и садитесь за стол: шахматы, шашки, го, нарды, домино и карты.",
+  "Parlor Night, регистрация, создать учётную запись, гостиная, настольные игры, шахматы, шашки, го, нарды, домино",
+  "/register",
+  "Регистрация — Parlor Night"
+) }}
+{% endblock %}
 {% block content %}
 <section class="login">
   <div class="login-brand">

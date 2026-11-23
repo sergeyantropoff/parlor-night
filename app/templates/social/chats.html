@@ -48,12 +48,16 @@
     <section class="talk-pane" aria-label="Переписка">
       {% if thread %}
       <header class="talk-head">
-        {{ player_link(thread.name, thread.username, thread.avatar, false, true) }}
+        {{ player_link(thread.name, thread.username, thread.avatar, false, not thread.closed) }}
         <span>
+          {% if thread.closed %}
+          <span class="presence">Форма обратной связи</span>
+          {% else %}
           <span class="presence{% if not thread.live %} is-idle{% endif %}">
             <span class="dot{% if not thread.live %} is-idle{% endif %}"></span>
             {{ thread.label }}
           </span>
+          {% endif %}
         </span>
         {% if thread.friendship_id %}
         <details class="call-menu">
@@ -103,7 +107,7 @@
             </div>
           </article>
           {% else %}
-          <p class="bubble">{{ message.body }} <time>{{ message.clock }}</time></p>
+          <p class="bubble{% if message.feedback %} is-note{% endif %}">{{ message.body }} <time>{{ message.clock }}</time></p>
           {% endif %}
         </div>
         </div>
@@ -112,6 +116,11 @@
         <p class="quiet transcript-empty">Напишите первое сообщение.</p>
         {% endif %}
       </div>
+      {% if thread.closed %}
+      <div class="composer is-closed">
+        <p>Это сообщения из формы обратной связи. Ответить в диалоге нельзя — напишите на почту, которая указана в сообщении.</p>
+      </div>
+      {% else %}
       <form class="composer" method="post" action="/chats/{{ thread.username }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
         <label class="sr" for="chat-body">Сообщение</label>
@@ -122,6 +131,7 @@
         </button>
         <p class="hint">Enter — отправить · Shift + Enter — новая строка</p>
       </form>
+      {% endif %}
       {% else %}
       <div class="talk-empty">
         <h2>Выберите беседу</h2>

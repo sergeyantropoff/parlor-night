@@ -38,7 +38,7 @@
               {{ event.note }}
               {% endif %}
             </td>
-            <td>{% if event.amount is not none %}<span class="chip-plus">+{{ event.amount|grouped }}</span>{% else %}<span class="quiet">—</span>{% endif %}</td>
+            <td>{% if event.amount is not none and event.amount > 0 %}<span class="chip-plus">+{{ event.amount|grouped }}</span>{% elif event.amount is not none and event.amount < 0 %}<span class="chip-minus">−{{ (0 - event.amount)|grouped }}</span>{% else %}<span class="quiet">—</span>{% endif %}</td>
             <td>{{ event.at|dt }}</td>
           </tr>
           {% endfor %}

@@ -200,6 +200,7 @@ if (document.documentElement.dataset.signedIn === "1" && stack) {
     paintCount("/friends", counts.requests);
     paintCount("/chats", counts.chats);
     paintCount("/live", counts.live);
+    paintCount("/lobby", counts.seek);
     paintThreads(data.threads);
     showBroadcast(data.broadcast);
     const items = Array.isArray(data.items) ? data.items : [];

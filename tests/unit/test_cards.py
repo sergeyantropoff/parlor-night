@@ -432,14 +432,81 @@ def test_preferans_pass_and_miser_are_not_named_as_a_card() -> None:
     assert _move_title(nardy, {}, {"dice": [6, 6], "motion": {}}, ["dice", "roll"]) == "Дубль 6"
 
 
-def test_uno_without_a_call_draws_two() -> None:
+def _uno_two_cards() -> dict:
     state = deal_uno()
     state["hands"]["white"] = ["R5", "B2"]
+    state["hands"]["black"] = ["R9"]
     state["discard"] = ["R1"]
     state["color"] = "R"
     state["deck"] = ["Y3", "B4", "G5"]
     state["to_move"] = "white"
-    played = play_uno(state, ["play", "R5"])
+    return state
+
+
+def test_uno_without_a_call_waits_for_someone_else() -> None:
+    from app.cards.uno import suggest
+
+    played = play_uno(_uno_two_cards(), ["play", "R5"])
+    assert played["hands"]["white"] == ["B2"]
+    assert played["exposed"] == "white"
+    assert played["acts"]["white"] == "play"
+    assert played["said"] == []
+    assert suggest(played, 5) == ["catch"]
+    caught = play_uno(played, ["catch"])
+    assert caught["hands"]["white"] == ["B2", "G5", "B4"]
+    assert caught["acts"]["white"] == "miss"
+    assert caught["to_move"] == "black"
+    assert not caught.get("exposed")
+
+
+def test_uno_neighbor_marks_two_cards_before_the_play() -> None:
+    from app.cards.uno import chronicle, dumps, replay
+
+    state = _uno_two_cards()
+    marked = play_uno(state, ["catch", "black"])
+    assert marked["called_out"] == "white"
+    assert marked["hands"]["white"] == ["R5", "B2"]
+    played = play_uno(marked, ["play", "R5"])
     assert played["hands"]["white"] == ["B2", "G5", "B4"]
     assert played["acts"]["white"] == "miss"
-    assert played["said"] == []
+    restored = replay(dumps(state), [{"path": ["catch", "black"]}, {"path": ["play", "R5"]}])
+    assert restored["hands"]["white"] == ["B2", "G5", "B4"]
+    report = chronicle(dumps(state), [{"path": ["play", "R5"]}, {"path": ["catch"]}])
+    assert report["counts"]["play"] == 1
+    assert report["counts"]["miss"] == 1
+
+
+def test_uno_own_button_cancels_the_neighbors_mark() -> None:
+    marked = play_uno(_uno_two_cards(), ["catch"])
+    safe = play_uno(marked, ["uno"])
+    assert not safe.get("called_out")
+    played = play_uno(safe, ["play", "R5"])
+    assert played["hands"]["white"] == ["B2"]
+    assert played["said"] == ["white"]
+    assert not played.get("exposed")
+
+
+def test_uno_next_move_closes_the_window() -> None:
+    played = play_uno(_uno_two_cards(), ["play", "R5"])
+    escaped = play_uno(played, ["play", "R9"])
+    assert escaped["hands"]["white"] == ["B2"]
+    assert not escaped.get("exposed")
+
+
+def test_uno_view_keeps_ten_discards_and_offers_the_catch() -> None:
+    from app.cards.uno import view
+
+    state = _uno_two_cards()
+    colors = ["R", "Y", "G", "B"]
+    state["discard"] = [colors[index % 4] + str(index % 10) for index in range(12)]
+    state["color"] = "B"
+    seen = view(state, "black")
+    assert len(seen["pile"]) == 10
+    assert seen["pile"][0] == {"card": "G2", "n": 2}
+    assert seen["pile"][-1]["n"] == 11
+    assert seen["top"] == seen["pile"][-1]["card"]
+    assert seen["actions"] == [{"path": ["catch"], "notation": "УНО", "promotion": None}]
+    assert "Можно сказать Уно." in seen["message"]
+    own = view(state, "white")
+    assert ["catch"] not in [item["path"] for item in own["actions"]]
+    assert ["uno"] in [item["path"] for item in own["actions"]]

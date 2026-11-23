@@ -13,6 +13,7 @@ from starlette.responses import JSONResponse, RedirectResponse, Response
 from app.broadcast import dismiss, for_user
 from app.cards.registry import ADULT_GAMES
 from app.catalog import GAMES, visible_games
+from app.contact_desk import DESK_USERNAME, MARKER
 from app.clock import current_zone
 from app.db.repositories import games as games_repo
 from app.db.repositories.users import User
@@ -37,6 +38,7 @@ _SEEK_SEATS = {
     "domino": (2, 4),
     "nardy": (2, 2),
     "yahtzy": (2, 4),
+    "bura": (2, 2),
 }
 ONLINE_FOR = timedelta(minutes=2)
 _OVERVIEW_GAMES = 8
@@ -374,6 +376,13 @@ async def lobby_accept(request: Request, seeker_id: uuid.UUID) -> Response:
     return RedirectResponse(f"/games/{game_id}", status_code=303)
 
 
+@router.get("/api/v1/maintenance")
+async def maintenance_state(request: Request) -> JSONResponse:
+    site = request.state.site
+    on = bool(getattr(site, "maintenance", False))
+    return JSONResponse({"maintenance": on, "text": site.maintenance_text if on else ""})
+
+
 @router.get("/api/v1/notices")
 async def notices(request: Request) -> JSONResponse:
     user = request.state.user
@@ -463,6 +472,8 @@ async def thread_send(request: Request, username: str) -> Response:
     user = _user(request)
     if isinstance(user, Response):
         return user
+    if username.lower() == DESK_USERNAME:
+        raise AppError(422, "closed_dialog", "На это сообщение отвечают только по почте.")
     form = await request.form()
     body = _message_text(form.get("body"))
     if not body or len(body) > 1000:
@@ -597,7 +608,20 @@ _REASONS = {
     "score": "По бланку",
 }
 _LEVELS = ("Новичок", "Любитель", "Опытный", "Сильный", "Мастер")
-_GAME_ORDER = ("chess", "checkers", "go", "domino", "nardy", "yahtzy", "uno", "poker", "durak", "blackjack", "preferans")
+_GAME_ORDER = (
+    "chess",
+    "checkers",
+    "go",
+    "domino",
+    "nardy",
+    "yahtzy",
+    "bura",
+    "uno",
+    "poker",
+    "durak",
+    "blackjack",
+    "preferans",
+)
 
 
 _RING = 263.89
@@ -1324,11 +1348,14 @@ def _message_text(value: object) -> str:
 
 
 def _inbox_preview(body: object) -> str:
+    text = str(body or "")
+    if text.startswith(MARKER):
+        return MARKER
     title, code = _invite_parts(body)
     if code:
         label = f"{title} · " if title else ""
         return f"Приглашение в партию · {label}{code}"
-    return " ".join(str(body or "").split())
+    return " ".join(text.split())
 
 
 def _decorate(
@@ -1348,6 +1375,7 @@ def _decorate(
         prepared.append(
             {
                 "body": row["body"],
+                "feedback": str(row["kind"] if "kind" in row.keys() else "") == "feedback",
                 "username": row["username"],
                 "name": shown(row["full_name"], row["username"]),
                 "mine": row["username"] == mine,
@@ -1584,6 +1612,7 @@ async def _chats_context(
             "live": live,
             "label": label,
             "friendship_id": friend["id"] if friend else None,
+            "closed": str(other["username"]) == DESK_USERNAME,
             "messages": _decorate(
                 messages or [],
                 user.username,
@@ -1597,7 +1626,7 @@ async def _chats_context(
 async def _thread(conn: asyncpg.Connection, left: uuid.UUID, right: uuid.UUID) -> list[asyncpg.Record]:
     return await conn.fetch(
         """
-        SELECT m.sender_id, m.body, m.created_at, u.username, u.full_name
+        SELECT m.sender_id, m.body, m.kind, m.created_at, u.username, u.full_name
         FROM messages AS m
         JOIN users AS u ON u.id = m.sender_id
         WHERE m.game_id IS NULL

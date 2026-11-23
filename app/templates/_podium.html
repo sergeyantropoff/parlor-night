@@ -4,7 +4,15 @@
   <h2>Топ игроков</h2>
   {% endif %}
   {% if caption|default(true) %}
-  <p>Первые трое по победам.</p>
+  <div class="top-lead">
+    <p>Первые трое по победам.</p>
+    {% if mine is defined and mine %}
+    <aside class="my-place">
+      <span>Моё место в топе</span>
+      <strong>{{ mine.place }}</strong>
+    </aside>
+    {% endif %}
+  </div>
   {% endif %}
   <ol class="players">
     {% set place_title = {1: 'Первое место', 2: 'Второе место', 3: 'Третье место'} %}

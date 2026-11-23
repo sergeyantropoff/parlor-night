@@ -23,6 +23,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="csrf-token" content="{{ csrf_token }}" />
   <title>{% block title %}Parlor Night{% endblock %}</title>
+  {% block seo %}{% endblock %}
   <link rel="icon" href="/static/images/logo-mark-for-light.png" type="image/png" media="(prefers-color-scheme: light)" />
   <link rel="icon" href="/static/images/logo-mark-for-dark.png" type="image/png" media="(prefers-color-scheme: dark)" />
   <link rel="stylesheet" href="/static/css/app.css?v={{ asset_version }}" />
@@ -93,7 +94,7 @@
         <nav class="nav" aria-label="Разделы">
           {{ nav_link('/games/new', 'Новая партия', 'plus') }}
           {{ nav_link('/', 'Кабинет', 'home') }}
-          {{ nav_link('/lobby', 'Гостиная', 'lobby') }}
+          {{ nav_link('/lobby', 'Гостиная', 'lobby', false, nav_seek) }}
           {{ nav_link('/live', 'Идёт игра', 'eye', false, nav_live) }}
           {{ nav_link('/join', 'Сесть за стол', 'code') }}
           {{ nav_link('/friends', 'Друзья', 'user', false, nav_requests) }}
@@ -107,6 +108,7 @@
           {{ nav_link('/admin/overview', 'Обзор', 'chart') }}
           {{ nav_link('/admin/users', 'Гости', 'lobby') }}
           {{ nav_link('/admin/site', 'Сайт', 'gear') }}
+          {{ nav_link('/admin/terms', 'Игры', 'coins') }}
           {{ nav_link('/admin/news', 'Новости', 'news', true) }}
         </nav>
         {% endif %}
@@ -223,6 +225,7 @@
   <script type="module" src="/static/js/notices.js?v={{ asset_version }}"></script>
   {% endif %}
   <script type="module" src="/static/js/flash.js?v={{ asset_version }}"></script>
+  <script type="module" src="/static/js/maintenance.js?v={{ asset_version }}"></script>
   <script type="module" src="/static/js/age.js?v={{ asset_version }}"></script>
   <script type="module" src="/static/js/lightbox.js?v={{ asset_version }}"></script>
   <script type="module" src="/static/js/theme.js?v={{ asset_version }}"></script>

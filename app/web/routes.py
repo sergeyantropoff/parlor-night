@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import re
 import secrets
 import uuid
@@ -36,7 +35,7 @@ from app.games.schemas import SettingsBody
 from app.games.service import _summarize
 from app.greeting import greeting
 from app.leaderboard import fetch_people, rank
-from app.mail import send_letter
+from app.contact_desk import DESK_ID, feedback_text
 from app.names import called, parse_full_name, shown, split_full_name
 from app.news_images import image_file, media_type
 from app.paging import clamp_page, list_href, page_count, page_links, read_page
@@ -201,7 +200,7 @@ async def contact_send(request: Request) -> Response:
     try:
         await _require_human(request, str(form.get("captcha") or ""))
         if not await request.app.state.gate.allow(f"contact:{request.state.client_ip}", 5, 600):
-            raise AppError(429, "rate_limited", "Слишком много писем. Подождите и напишите снова.")
+            raise AppError(429, "rate_limited", "Слишком много сообщений. Подождите и напишите снова.")
         if not name or len(name) > 120:
             raise AppError(422, "bad_name", "Укажите, как к вам обращаться.")
         try:
@@ -216,16 +215,20 @@ async def contact_send(request: Request) -> Response:
             raise AppError(422, "bad_admin", "Выберите администратора из списка.")
         user = request.state.user
         account = f"@{user.username}" if user is not None else "гость не вошёл"
-        subject = f"Parlor Night — сообщение от {name}"[:180]
-        body = f"От: {name}\nПочта для ответа: {reply_to}\nУчётка: {account}\n\n{message}\n"
-        await asyncio.to_thread(
-            send_letter,
-            request.app.state.settings,
-            recipient=str(chosen["email"]),
-            reply_to=reply_to,
-            subject=subject,
-            body=body,
-        )
+        body = feedback_text(name, reply_to, account, message)
+        async with request.app.state.pool.acquire() as conn:
+            desk = await conn.fetchval("SELECT id FROM users WHERE id = $1", DESK_ID)
+            if desk is None:
+                raise AppError(503, "no_desk", "Сейчас форму принять некуда. Напишите чуть позже.")
+            await conn.execute(
+                """
+                INSERT INTO messages (sender_id, recipient_id, body, kind)
+                VALUES ($1, $2, $3, 'feedback')
+                """,
+                DESK_ID,
+                chosen["id"],
+                body,
+            )
     except AppError as exc:
         return await _contact_page(request, error=exc.message, status=exc.status, **posted)
     return pin(RedirectResponse("/contact", status_code=303), request, "contact")
@@ -234,6 +237,46 @@ async def contact_send(request: Request) -> Response:
 @router.get("/about")
 async def about(request: Request) -> Response:
     return _public_page(request, "public/about.html")
+
+
+@router.get("/robots.txt")
+async def robots_txt(request: Request) -> Response:
+    origin = str(request.base_url).rstrip("/")
+    lines = [
+        "User-agent: *",
+        "Allow: /",
+        "Disallow: /admin",
+        "Disallow: /api/",
+        "Disallow: /games",
+        "Disallow: /settings",
+        "Disallow: /chats",
+        "Disallow: /friends",
+        "Disallow: /lobby",
+        "Disallow: /live",
+        "Disallow: /join",
+        "Disallow: /players",
+        "Disallow: /chips",
+        "Disallow: /oauth",
+        "Disallow: /top",
+        "Disallow: /name",
+        "Disallow: /age",
+        f"Sitemap: {origin}/sitemap.xml",
+        "",
+    ]
+    return Response("\n".join(lines), media_type="text/plain; charset=utf-8")
+
+
+@router.get("/sitemap.xml")
+async def sitemap_xml(request: Request) -> Response:
+    origin = str(request.base_url).rstrip("/")
+    pages = ["/", "/about", "/rules", "/privacy", "/contact", "/news", "/login", "/register"]
+    async with request.app.state.pool.acquire() as conn:
+        posts = await news.list_news(conn, 500, 0)
+    urls = pages + [f"/news/{post['id']}" for post in posts]
+    body = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>", "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">"]
+    body.extend(f"<url><loc>{origin}{item}</loc></url>" for item in urls)
+    body.append("</urlset>")
+    return Response("\n".join(body) + "\n", media_type="application/xml; charset=utf-8")
 
 
 @router.get("/news/{news_id}")
@@ -357,7 +400,9 @@ async def _new_game_page(
             "theme": prefs["theme"],
             "prefs": prefs,
             "board_style": prefs["board_style"],
-            "preferans_stack_points": STACK_POINTS,
+            "preferans_stack_points": getattr(request.state, "terms", None).preferans.points
+            if getattr(request.state, "terms", None)
+            else STACK_POINTS,
             **birth,
         },
         status=status,
@@ -531,7 +576,9 @@ async def top_players(request: Request) -> Response:
         return user
     async with request.app.state.pool.acquire() as conn:
         guests = rank(await fetch_people(conn))
-    return render(request, "top.html", {"podium": guests[:3], "rest": guests[3:]})
+    login = user.username.casefold()
+    mine = next((person for person in guests if str(person["login"]).casefold() == login), None)
+    return render(request, "top.html", {"podium": guests[:3], "rest": guests[3:], "mine": mine})
 
 
 @router.get("/settings")
@@ -1157,7 +1204,7 @@ async def _board_page(request: Request, game_id: uuid.UUID, *, analysis: bool) -
         if exc.status == 404:
             return error_response(request, 404, note=exc.message)
         raise
-    if analysis and state.get("game_type") in {"domino", "nardy", "yahtzy"}:
+    if analysis and state.get("game_type") in {"domino", "nardy", "yahtzy", "bura"}:
         return RedirectResponse(f"/games/{game_id}", status_code=303)
     prefs = await _prefs(request, user.id)
     return render(
@@ -1497,6 +1544,8 @@ async def _referral_link(request: Request, user_id: object) -> str:
 
 
 def _earn_note(amount: int, reason: str) -> str:
+    if reason == "loss":
+        return "Проигрыш"
     if reason == "pot":
         return "Выигрыш"
     if amount == 30:
@@ -1512,7 +1561,10 @@ async def _chip_events(conn: object, user_id: uuid.UUID) -> list[dict[str, objec
         SELECT l.amount, l.reason, l.created_at, g.id AS game_id, g.game_type
         FROM ledger l
         LEFT JOIN games g ON g.id = l.game_id
-        WHERE l.user_id = $1 AND l.amount > 0 AND l.reason IN ('table', 'pot')
+        WHERE l.user_id = $1 AND (
+          (l.amount > 0 AND l.reason IN ('table', 'pot'))
+          OR (l.amount < 0 AND l.reason = 'loss')
+        )
         ORDER BY l.created_at DESC
         """,
         user_id,

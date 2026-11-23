@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Игры — Parlor Night{% endblock %}
+{% block topbar_lead %}
+<div class="topbar-lead"><h1>Настройки игр</h1></div>
+{% endblock %}
+{% block content %}
+<section class="card wide">
+  {% if error %}<p class="banner" role="alert">{{ error }}</p>{% endif %}
+  <p class="lede">Фишки за победу, ничью и проигрыш и лимиты стола. Правила и страница новой партии берут эти числа отсюда. В покере, блэкджеке и преферансе ставка уже списывается, а «За проигрыш» — добавка сверх неё. Ноль значит, что добавки нет.</p>
+  <form method="post" action="/admin/terms">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <div class="terms-grid">
+    {% for row in terms.rows %}
+    <section class="panel terms-row">
+      <div class="terms-copy">
+        <h2>{{ row.title }}</h2>
+        <p class="quiet">{{ terms.note(row.game) }}</p>
+      </div>
+      <div class="terms-fields">
+        {% for field in row.fields() %}
+        <label>{{ field.label }}
+          <input name="{{ row.game }}_{{ field.key }}" required="required" value="{{ field.value }}" />
+        </label>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+    </div>
+    <button type="submit"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-save"/></svg> Сохранить</button>
+  </form>
+</section>
+{% endblock %}

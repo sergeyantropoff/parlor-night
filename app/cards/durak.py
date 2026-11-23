@@ -48,7 +48,7 @@ def deal(order: list[str] | None = None, variant: str = "podkidnoy", purses: dic
     del purses
     seats = list(order or ["white", "black"])
     if not 2 <= len(seats) <= 6:
-        raise ValueError("В дурака играют от двух до шести.")
+        raise ValueError("В дурака играют от двух до шести игроков.")
     kind = variant if variant in VARIANTS else "podkidnoy"
     deck = pack(RANKS)
     trump_card = deck[0]

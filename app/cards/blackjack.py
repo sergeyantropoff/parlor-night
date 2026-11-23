@@ -18,6 +18,20 @@ STACK = 200
 BETS = (10, 25, 50, 100)
 
 
+def _menu(state: dict[str, Any]) -> tuple[int, ...]:
+    raw = state.get("bet_menu")
+    if isinstance(raw, list) and raw:
+        values: list[int] = []
+        for item in raw:
+            try:
+                values.append(int(item))
+            except (TypeError, ValueError):
+                continue
+        if values:
+            return tuple(values)
+    return BETS
+
+
 def waiting(order: list[str] | None = None, variant: str = "classic") -> dict[str, Any]:
     del variant
     seats = list(order or ["white"])
@@ -32,6 +46,9 @@ def deal(
     order: list[str] | None = None,
     variant: str = "classic",
     purses: dict[str, int] | None = None,
+    *,
+    stack: int = STACK,
+    bets: tuple[int, ...] | list[int] | None = None,
 ) -> dict[str, Any]:
     del variant
     seats = list(order or ["white"])
@@ -39,10 +56,11 @@ def deal(
         raise ValueError("За блэкджеком от одного до шести игроков.")
     stacks = {}
     for seat in seats:
-        chosen = int(purses[seat]) if purses and seat in purses else STACK
+        chosen = int(purses[seat]) if purses and seat in purses else stack
         stacks[seat] = max(0, chosen)
     state = _shell(seats, "bet")
     state["stacks"] = stacks
+    state["bet_menu"] = list(bets or BETS)
     state["deck"] = pack(RANKS) + pack(RANKS)
     state["to_move"] = _next_bettor(state, "")
     if state["to_move"] is None:
@@ -57,8 +75,11 @@ def deal_table(
     seat_keys: list[str],
     variant: str = "classic",
     purses: dict[str, int] | None = None,
+    *,
+    stack: int = STACK,
+    bets: tuple[int, ...] | list[int] | None = None,
 ) -> dict[str, Any]:
-    return deal(seat_keys, variant, purses)
+    return deal(seat_keys, variant, purses, stack=stack, bets=bets)
 
 
 def _shell(seats: list[str], phase: str) -> dict[str, Any]:
@@ -132,13 +153,15 @@ def _next_bettor(state: dict[str, Any], after: str) -> str | None:
         seat = order[(start + step) % len(order)]
         if after and seat == after:
             continue
-        if int(state["stacks"].get(seat, 0)) >= BETS[0] and int(state["committed"].get(seat, 0)) == 0:
+        floor = _menu(state)[0]
+        if int(state["stacks"].get(seat, 0)) >= floor and int(state["committed"].get(seat, 0)) == 0:
             return seat
-        if after == "" and seat == order[-1] and int(state["stacks"].get(seat, 0)) < BETS[0]:
+        if after == "" and seat == order[-1] and int(state["stacks"].get(seat, 0)) < floor:
             continue
     if after == "":
+        floor = _menu(state)[0]
         for seat in order:
-            if int(state["stacks"].get(seat, 0)) >= BETS[0]:
+            if int(state["stacks"].get(seat, 0)) >= floor:
                 return seat
     return None
 
@@ -151,7 +174,7 @@ def legal(state: dict[str, Any]) -> list[dict[str, Any]]:
     actions: list[dict[str, Any]] = []
     if phase == "bet":
         stack = int(state["stacks"].get(seat, 0))
-        for amount in BETS:
+        for amount in _menu(state):
             if amount <= stack:
                 actions.append({"path": ["bet", str(amount)], "notation": f"Ставка {amount}", "promotion": None})
         return actions

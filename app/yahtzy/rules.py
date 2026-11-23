@@ -4,7 +4,7 @@
 Низ — три и четыре одинаковых, фул-хаус 25, стриты 30 и 40, яцзы 50, шанс.
 Вторая и следующие яцзы, когда клетка яцзы уже взята за 50, дают по 100
 и закрывают подходящую клетку по правилам джокера.
-За столом от двух до четырёх. У каждого три броска и тринадцать клеток.
+За столом от двух до четырёх игроков. У каждого три броска и тринадцать клеток.
 """
 
 from __future__ import annotations
@@ -289,7 +289,7 @@ def view(state: dict[str, Any], seat: str | None) -> dict[str, Any]:
 
 def _check_table(seats: list[str]) -> None:
     if len(seats) not in {2, 3, 4} or len(set(seats)) != len(seats):
-        raise ValueError("В яцзы играют от двух до четырёх.")
+        raise ValueError("В яцзы играют от двух до четырёх игроков.")
 
 
 def _shell(seats: list[str], phase: str) -> dict[str, Any]:

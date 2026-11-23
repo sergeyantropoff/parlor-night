@@ -124,3 +124,16 @@ def _preferans_mark(seat: str, state: dict[str, Any]) -> str:
     if len(leaders) == len(order) or seat in leaders:
         return "draw"
     return "loss"
+
+
+def loss_seats(
+    game_type: str,
+    result: str | None,
+    seats: list[str],
+    position: dict[str, Any] | None = None,
+) -> list[str]:
+    return [
+        seat
+        for seat in seats
+        if personal_mark(game_type, result, seat, position=position) == "loss"
+    ]

@@ -20,6 +20,20 @@ SB = 5
 BB = 10
 ANTE = BB
 STACK = 1000
+
+
+def _big(state: dict[str, Any]) -> int:
+    try:
+        return max(1, int(state.get("bb") or BB))
+    except (TypeError, ValueError):
+        return BB
+
+
+def _small(state: dict[str, Any]) -> int:
+    try:
+        return max(1, int(state.get("sb") or SB))
+    except (TypeError, ValueError):
+        return SB
 MAX_BETS = 4
 _STREET_CARDS = {"flop": 3, "turn": 1, "river": 1}
 _NEXT = {"preflop": "flop", "flop": "turn", "turn": "river"}
@@ -55,8 +69,10 @@ _RANK_MANY = {
 }
 
 
-def blind_for(seat: str) -> int:
-    return SB if seat == "white" else BB
+def blind_for(seat: str, small: int | None = None, big: int | None = None) -> int:
+    low = SB if small is None else small
+    high = BB if big is None else big
+    return low if seat == "white" else high
 
 
 def _deck() -> list[str]:
@@ -82,6 +98,7 @@ def _bankroll(
     committed: dict[str, int],
     buy_in: int = STACK,
     purses: dict[str, int] | None = None,
+    big: int = BB,
 ) -> dict[str, Any]:
     posted = {str(seat): int(amount) for seat, amount in committed.items()}
     stacks: dict[str, int] = {}
@@ -91,13 +108,13 @@ def _bankroll(
     return {
         "stacks": stacks,
         "invested": dict(posted),
-        "last_size": BB,
+        "last_size": big,
     }
 
 
-def spread_purses(seats: list[str], median: int, seed: int) -> dict[str, int]:
+def spread_purses(seats: list[str], median: int, seed: int, big: int = BB) -> dict[str, int]:
     """Разные стеки компьютеров вокруг медианы, не одна и та же сумма."""
-    center = max(BB * 8, int(median))
+    center = max(big * 8, int(median))
     factors = (0.58, 0.7, 0.82, 0.94, 1.06, 1.18)
     order = list(factors)
     random.Random(seed).shuffle(order)
@@ -105,7 +122,7 @@ def spread_purses(seats: list[str], median: int, seed: int) -> dict[str, int]:
     used: set[int] = set()
     for index, seat in enumerate(seats):
         raw = int(round(center * order[index % len(order)] / 10.0) * 10)
-        raw = max(BB * 8, raw)
+        raw = max(big * 8, raw)
         while raw in used:
             raw += 10
         used.add(raw)
@@ -122,9 +139,15 @@ def cash_out(state: dict[str, Any]) -> dict[str, int] | None:
     return {str(seat): int(stacks.get(seat) or 0) + int(payout.get(seat) or 0) for seat in seats}
 
 
-def deal(buy_in: int = STACK, purses: dict[str, int] | None = None) -> dict[str, Any]:
+def deal(
+    buy_in: int = STACK,
+    purses: dict[str, int] | None = None,
+    *,
+    small: int = SB,
+    big: int = BB,
+) -> dict[str, Any]:
     deck = _deck()
-    committed = {"white": SB, "black": BB}
+    committed = {"white": small, "black": big}
     return {
         "kind": "poker",
         "variant": "holdem",
@@ -132,14 +155,16 @@ def deal(buy_in: int = STACK, purses: dict[str, int] | None = None) -> dict[str,
         "hands": {"white": deck[:2], "black": deck[2:4]},
         "board": [],
         "deck": deck[4:],
-        "pot": SB + BB,
+        "pot": small + big,
         "to_move": "white",
         "button": "white",
         "committed": committed,
-        "stake": BB,
+        "sb": small,
+        "bb": big,
+        "stake": big,
         "bets": 1,
         "acted": [],
-        **_bankroll(committed, buy_in, purses),
+        **_bankroll(committed, buy_in, purses, big),
         "result": None,
         "reason": None,
         "winner_hand": "",
@@ -166,9 +191,12 @@ def deal_table(
     buy_in: int = STACK,
     purses: dict[str, int] | None = None,
     busted: list[str] | None = None,
+    *,
+    small: int = SB,
+    big: int = BB,
 ) -> dict[str, Any]:
     if seat_keys == ["white", "black"]:
-        dealt = deal(buy_in, purses)
+        dealt = deal(buy_in, purses, small=small, big=big)
         if busted:
             dealt["busted"] = [str(item) for item in busted]
         return dealt
@@ -177,13 +205,13 @@ def deal_table(
     rest = deck[len(seat_keys) * 2 :]
     button = seat_keys[0]
     if len(seat_keys) == 2:
-        small, big, first = seat_keys[0], seat_keys[1], seat_keys[0]
+        low_seat, high_seat, first = seat_keys[0], seat_keys[1], seat_keys[0]
     else:
-        small, big = seat_keys[1], seat_keys[2]
+        low_seat, high_seat = seat_keys[1], seat_keys[2]
         first = seat_keys[3 % len(seat_keys)]
     committed = dict.fromkeys(seat_keys, 0)
-    committed[small] = SB
-    committed[big] = BB
+    committed[low_seat] = small
+    committed[high_seat] = big
     return {
         "kind": "poker",
         "variant": "holdem",
@@ -192,15 +220,17 @@ def deal_table(
         "hands": hands,
         "board": [],
         "deck": rest,
-        "pot": SB + BB,
+        "pot": small + big,
         "to_move": first,
         "button": button,
         "committed": committed,
-        "stake": BB,
+        "sb": small,
+        "bb": big,
+        "stake": big,
         "bets": 1,
         "acted": [],
         "folded": [],
-        **_bankroll(committed, buy_in, purses),
+        **_bankroll(committed, buy_in, purses, big),
         "busted": [str(item) for item in busted or []],
         "result": None,
         "reason": None,
@@ -510,8 +540,10 @@ def _showdown(state: dict[str, Any]) -> None:
     state["winner_hand"] = f"Ничья: {names[winners[0]]}."
 
 
-def _bet_size(phase: str) -> int:
-    return BB if phase in {"preflop", "flop"} else BB * 2
+def _bet_size(state: dict[str, Any]) -> int:
+    big = _big(state)
+    phase = str(state.get("phase") or "")
+    return big if phase in {"preflop", "flop"} else big * 2
 
 
 def _open_street(state: dict[str, Any]) -> None:
@@ -525,7 +557,7 @@ def _open_street(state: dict[str, Any]) -> None:
     state["stake"] = 0
     state["bets"] = 0
     state["acted"] = []
-    state["last_size"] = BB
+    state["last_size"] = _big(state)
     button = str(state.get("button") or _seats(state)[0])
     state["to_move"] = _next_actor(state, button)
 
@@ -556,9 +588,10 @@ def _bounds(state: dict[str, Any], seat: str) -> tuple[str, int, int, int] | Non
     if high <= 0:
         return None
     if stake <= 0:
-        low = BB if high >= BB else high
+        floor = _big(state)
+        low = floor if high >= floor else high
         return ("bet", low, high, put)
-    step = max(BB, int(state.get("last_size") or BB))
+    step = max(_big(state), int(state.get("last_size") or _big(state)))
     low = stake + step
     if high < low:
         return None
@@ -643,7 +676,7 @@ def legal(state: dict[str, Any]) -> list[dict[str, Any]]:
     seat = str(state["to_move"])
     owed = int(state["stake"]) - int(state["committed"][seat])
     actions: list[dict[str, Any]] = []
-    size = _bet_size(str(state["phase"]))
+    size = _bet_size(state)
     can_raise = int(state.get("bets") or 0) < MAX_BETS
     if owed <= 0:
         actions.append({"path": ["act", "check"], "notation": "Чек", "promotion": None})
@@ -681,7 +714,7 @@ def _stake_money(
         nxt["last_size"] = total
     else:
         nxt["bets"] = int(nxt.get("bets") or 0) + 1
-        nxt["last_size"] = max(BB, total - previous)
+        nxt["last_size"] = max(_big(nxt), total - previous)
     nxt["acted"] = [seat]
     if _closed(nxt):
         _next_street(nxt)
@@ -761,7 +794,7 @@ def apply(state: dict[str, Any], path: list[str]) -> tuple[dict[str, Any], list[
     if action == "bet":
         if money:
             return _stake_money(nxt, seat, path, opening=True)
-        size = _bet_size(str(nxt["phase"]))
+        size = _bet_size(nxt)
         nxt["stake"] = size
         nxt["bets"] = 1
         nxt["committed"][seat] = size
@@ -772,7 +805,7 @@ def apply(state: dict[str, Any], path: list[str]) -> tuple[dict[str, Any], list[
     if action == "raise":
         if money:
             return _stake_money(nxt, seat, path, opening=False)
-        size = _bet_size(str(nxt["phase"]))
+        size = _bet_size(nxt)
         pay = int(nxt["stake"]) + size - int(nxt["committed"][seat])
         nxt["stake"] = int(nxt["stake"]) + size
         nxt["bets"] = int(nxt.get("bets") or 0) + 1
@@ -839,7 +872,7 @@ def _pressure(state: dict[str, Any], seat: str) -> tuple[int, int, int]:
     stake = int(state.get("stake") or 0)
     put = int((state.get("committed") or {}).get(seat) or 0)
     owed = max(0, stake - put)
-    step = max(BB, int(state.get("last_size") or BB))
+    step = max(_big(state), int(state.get("last_size") or _big(state)))
     return behind, brought, owed if owed else step
 
 
@@ -852,8 +885,10 @@ def _should_stop(state: dict[str, Any], seat: str, monster: bool) -> bool:
     spent = 1 - (behind / brought)
     bets = int(state.get("bets") or 0)
     if monster:
-        return spent >= 0.34 or price >= max(BB, int(behind * 0.45)) or bets >= 3
-    return spent >= 0.22 or price >= max(BB, int(behind * 0.28)) or bets >= 2
+        floor = _big(state)
+        return spent >= 0.34 or price >= max(floor, int(behind * 0.45)) or bets >= 3
+    floor = _big(state)
+    return spent >= 0.22 or price >= max(floor, int(behind * 0.28)) or bets >= 2
 
 
 def suggest(state: dict[str, Any], level: int = 5) -> list[str] | None:
@@ -885,7 +920,7 @@ def suggest(state: dict[str, Any], level: int = 5) -> list[str] | None:
         if category == 0 and not draw:
             return take("fold")
         behind, _spent, price = _pressure(state, seat)
-        if monster or (category >= 2 and price <= max(BB, int(behind * 0.35))):
+        if monster or (category >= 2 and price <= max(_big(state), int(behind * 0.35))):
             return take("call")
         return take("fold")
     if strength == 1:

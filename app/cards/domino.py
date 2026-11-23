@@ -78,7 +78,7 @@ def deal(
     del purses
     seats = list(order or ["white", "black"])
     if len(seats) not in HAND:
-        raise ValueError("В домино играют от двух до четырёх.")
+        raise ValueError("В домино играют от двух до четырёх игроков.")
     tiles = list(deck) if deck is not None else _shuffled()
     if sorted(tiles) != sorted(_pack()):
         raise ValueError("В наборе домино должно быть 28 костей.")

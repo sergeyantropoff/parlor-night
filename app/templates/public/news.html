@@ -1,5 +1,46 @@
 {% extends "base.html" %}
+{% from "_seo.html" import search_tags with context %}
 {% block title %}{{ post.title }} — Parlor Night{% endblock %}
+{% block seo %}
+{% set seo = namespace(
+  lead=post.summary|trim,
+  image="/static/parlor/light/hero-parlor.webp",
+) %}
+{% if not seo.lead %}{% set seo.lead = post.title ~ ". Новость гостиной Parlor Night." %}{% endif %}
+{% if seo.lead|length > 180 %}{% set seo.lead = seo.lead[:177] ~ "…" %}{% endif %}
+{% set preset = {
+  "light-theme": "news-light-theme.webp",
+  "uno-evening": "news-uno-evening.webp",
+  "welcome": "news-welcome.webp",
+  "card-games": "news-card-games.webp",
+  "go": "news-go.webp",
+  "beta": "news-beta.webp",
+  "domino": "news-domino.webp",
+  "nardy": "news-nardy.webp",
+  "yahtzy": "news-yahtzy.webp",
+  "bura": "news-bura.webp",
+} %}
+{% if post.cover|cover_kind == "upload" %}
+{% set seo.image = "/news-images/" ~ post.cover %}
+{% elif post.cover_dark|cover_kind == "upload" %}
+{% set seo.image = "/news-images/" ~ post.cover_dark %}
+{% elif post.cover|cover_kind == "preset" and preset[post.cover] %}
+{% set seo.image = "/static/parlor/light/" ~ preset[post.cover] %}
+{% endif %}
+{{ search_tags(
+  seo.lead,
+  "Parlor Night, новости гостиной, " ~ post.title,
+  "/news/" ~ post.id,
+  post.title ~ " — Parlor Night",
+  image=seo.image,
+  kind="article",
+  robots="noindex, nofollow" if preview else "index, follow",
+  published=post.published_on.isoformat()
+) }}
+{% if not preview %}
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"NewsArticle","headline":{{ post.title|tojson }},"description":{{ seo.lead|tojson }},"datePublished":{{ post.published_on.isoformat()|tojson }},"inLanguage":"ru","mainEntityOfPage":{{ (origin ~ "/news/" ~ post.id)|tojson }},"image":{{ (origin ~ seo.image)|tojson }},"publisher":{"@type":"Organization","name":"Parlor Night","url":{{ (origin ~ "/")|tojson }}}}</script>
+{% endif %}
+{% endblock %}
 {% block content %}
 {% set covers = {
   "light-theme": "news-light-theme.webp",
@@ -11,6 +52,7 @@
   "domino": "news-domino.webp",
   "nardy": "news-nardy.webp",
   "yahtzy": "news-yahtzy.webp",
+  "bura": "news-bura.webp",
 } %}
 {% set months = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"] %}
 {% set kinds = {"update": "Обновление", "event": "Событие", "announce": "Анонс"} %}

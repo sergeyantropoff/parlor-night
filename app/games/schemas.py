@@ -18,12 +18,25 @@ class ErrorResponse(BaseModel):
 
 
 class CreateGameBody(BaseModel):
-    game_type: Literal["chess", "checkers", "go", "poker", "uno", "durak", "blackjack", "preferans", "domino", "nardy", "yahtzy"]
+    game_type: Literal[
+        "chess",
+        "checkers",
+        "go",
+        "poker",
+        "uno",
+        "durak",
+        "blackjack",
+        "preferans",
+        "domino",
+        "nardy",
+        "yahtzy",
+        "bura",
+    ]
     board_size: int | None = Field(default=None, ge=9, le=19)
     durak_kind: Literal["podkidnoy", "perevodnoy"] | None = None
     nardy_kind: Literal["long", "short"] | None = None
     pool: int | None = Field(default=None, ge=6, le=20)
-    stake: int | None = Field(default=None, ge=1, le=10)
+    stake: int | None = Field(default=None, ge=1, le=10000)
     mode: Literal["vs_computer", "free", "analysis", "lesson", "online"]
     player_side: Literal["white", "black"]
     engine_level: int = Field(default=3, ge=1, le=5)
@@ -75,7 +88,18 @@ class SettingsBody(BaseModel):
     theme: Literal["system", "light", "dark"]
     board_style: Literal["classic", "contrast"]
     default_game: Literal[
-        "chess", "checkers", "go", "uno", "poker", "durak", "blackjack", "preferans", "domino", "nardy", "yahtzy"
+        "chess",
+        "checkers",
+        "go",
+        "uno",
+        "poker",
+        "durak",
+        "blackjack",
+        "preferans",
+        "domino",
+        "nardy",
+        "yahtzy",
+        "bura",
     ]
     default_side: Literal["white", "black"]
     chess_depth: int = Field(default=12, ge=1, le=30)

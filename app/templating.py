@@ -16,6 +16,7 @@ from app.clock import current_zone
 from app.names import split_full_name
 from app.news_html import sanitize_news
 from app.news_images import cover_kind
+from app.terms import defaults as default_terms
 
 TEMPLATES = Environment(
     loader=FileSystemLoader(Path(__file__).parent / "templates"),
@@ -41,6 +42,7 @@ TEMPLATES.globals["type_label"] = {
     "domino": "Домино",
     "nardy": "Нарды",
     "yahtzy": "Яцзы",
+    "bura": "Бура",
 }
 TEMPLATES.globals["result_label"] = {
     "white_win": "Победа белых",
@@ -207,11 +209,14 @@ def render(request: Request, name: str, context: dict[str, object] | None = None
             "csrf_token": getattr(request.state, "csrf", ""),
             "asset_version": _asset_version(request),
             "path": request.url.path,
+            "origin": str(request.base_url).rstrip("/"),
             "site": getattr(request.state, "site", None),
+            "terms": getattr(request.state, "terms", None) or default_terms(),
             "can_register": bool(getattr(request.state, "can_register", False)),
             "nav_requests": int(getattr(request.state, "nav_counts", {}).get("requests", 0)),
             "nav_chats": int(getattr(request.state, "nav_counts", {}).get("chats", 0)),
             "nav_live": int(getattr(request.state, "nav_counts", {}).get("live", 0)),
+            "nav_seek": int(getattr(request.state, "nav_counts", {}).get("seek", 0)),
         }
     )
     return HTMLResponse(html, status_code=status, media_type="text/html; charset=utf-8")

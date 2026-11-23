@@ -11,7 +11,20 @@ from starlette.requests import Request
 
 from app.errors import AppError
 
-_GAMES = ("chess", "checkers", "go", "uno", "poker", "durak", "blackjack", "preferans", "domino", "nardy", "yahtzy")
+_GAMES = (
+    "chess",
+    "checkers",
+    "go",
+    "uno",
+    "poker",
+    "durak",
+    "blackjack",
+    "preferans",
+    "domino",
+    "nardy",
+    "yahtzy",
+    "bura",
+)
 _MODES = ("closed", "referral", "open")
 _REFERRAL = re.compile(r"^[a-z0-9]{6,12}$")
 MAINTENANCE_TEXT = "Сайт находится в режиме технического обслуживания. Вход невозможен."
@@ -41,6 +54,7 @@ class SitePolicy:
     domino: bool
     nardy: bool
     yahtzy: bool
+    bura: bool
     notice: str
     maintenance: bool
 
@@ -72,6 +86,7 @@ class SitePolicy:
             domino=True,
             nardy=True,
             yahtzy=True,
+            bura=True,
         )
 
     @property
@@ -107,6 +122,7 @@ def defaults() -> SitePolicy:
         domino=True,
         nardy=True,
         yahtzy=True,
+        bura=True,
         notice="",
         maintenance=False,
     )
@@ -186,6 +202,7 @@ def normalize(data: dict[str, object], *, local: bool) -> SitePolicy:
         domino=chosen["domino"],
         nardy=chosen["nardy"],
         yahtzy=chosen["yahtzy"],
+        bura=chosen["bura"],
         notice=notice,
         maintenance=_flag(data.get("maintenance")),
     )
@@ -215,6 +232,7 @@ def from_row(row: asyncpg.Record) -> SitePolicy:
         domino=bool(row["domino_open"]),
         nardy=bool(row["nardy_open"]),
         yahtzy=bool(row["yahtzy_open"]),
+        bura=bool(row["bura_open"]),
         notice=str(row["notice"] or ""),
         maintenance=bool(row["maintenance"]),
     )
@@ -265,6 +283,7 @@ async def save_policy(conn: asyncpg.Connection, policy: SitePolicy) -> None:
             domino_open = $23,
             nardy_open = $24,
             yahtzy_open = $25,
+            bura_open = $26,
             updated_at = now()
         WHERE id = TRUE
         """,
@@ -293,6 +312,7 @@ async def save_policy(conn: asyncpg.Connection, policy: SitePolicy) -> None:
         policy.domino,
         policy.nardy,
         policy.yahtzy,
+        policy.bura,
     )
 
 

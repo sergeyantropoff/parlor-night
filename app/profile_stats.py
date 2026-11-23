@@ -19,6 +19,7 @@ TITLES = {
     "domino": "Домино",
     "nardy": "Нарды",
     "yahtzy": "Яцзы",
+    "bura": "Бура",
 }
 
 

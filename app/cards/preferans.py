@@ -124,16 +124,18 @@ def _shell(seats: list[str], phase: str) -> dict[str, Any]:
     }
 
 
-def stake_of(value: object) -> int:
+def stake_of(value: object, allowed: tuple[int, ...] | None = None) -> int:
+    choices = allowed or STAKES
     try:
         stake = int(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
-        return 1
-    return stake if stake in STAKES else 1
+        return choices[0]
+    return stake if stake in choices else choices[0]
 
 
-def stack_for(value: object) -> int:
-    return stake_of(value) * STACK_POINTS
+def stack_for(value: object, points: int | None = None, allowed: tuple[int, ...] | None = None) -> int:
+    size = STACK_POINTS if points is None else int(points)
+    return stake_of(value, allowed) * size
 
 
 def _stacks(seats: list[str], purses: dict[str, int] | None) -> dict[str, int]:
@@ -157,7 +159,7 @@ def _chip_word(count: int) -> str:
 
 def _staked(state: dict[str, Any]) -> bool:
     stacks = state.get("stacks")
-    return int(state.get("stake") or 0) in STAKES and isinstance(stacks, dict) and bool(stacks)
+    return int(state.get("stake") or 0) > 0 and isinstance(stacks, dict) and bool(stacks)
 
 
 def _pool_of(variant: str) -> int:
@@ -722,7 +724,7 @@ def _public_sheet(state: dict[str, Any], *, closed: bool) -> dict[str, Any]:
             for seat in seats
         },
         "total": {seat: _balance(state, seat) for seat in seats},
-        "stake": int(state["stake"]) if int(state.get("stake") or 0) in STAKES else 0,
+        "stake": int(state["stake"]) if int(state.get("stake") or 0) > 0 else 0,
         "stacks": _named_bag(state.get("stacks"), seats) if state.get("stacks") else {},
         "chips": _named_bag(state.get("chips"), seats) if state.get("chips") else {},
         "unpaid": _named_bag(state.get("unpaid"), seats) if state.get("unpaid") else {},
@@ -952,7 +954,7 @@ def view(state: dict[str, Any], seat: str | None) -> dict[str, Any]:
     title = _contract_title(state.get("contract"))
     progress = _progress(state)
     price = ""
-    if int(state.get("stake") or 0) in STAKES:
+    if int(state.get("stake") or 0) > 0:
         stake = int(state["stake"])
         price = f"Очко стоит {stake} {_chip_word(stake)}. "
     if phase == "waiting":

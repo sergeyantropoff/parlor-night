@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="{{ page.title }}. Страница гостиной настольных игр Parlor Night сейчас недоступна." />
+  <meta name="keywords" content="Parlor Night, гостиная, настольные игры" />
   <meta name="robots" content="noindex, nofollow" />
   <meta name="csrf-token" content="{{ csrf_token }}" />
   <title>{{ page.code }} — {{ page.title }} — Parlor Night</title>
@@ -65,5 +67,6 @@
     </footer>
   </div>
   <script type="module" src="/static/js/theme.js?v={{ asset_version }}"></script>
+  <script type="module" src="/static/js/maintenance.js?v={{ asset_version }}"></script>
 </body>
 </html>

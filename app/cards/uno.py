@@ -204,7 +204,74 @@ def legal(state: dict[str, Any]) -> list[dict[str, Any]]:
             {"path": [*item["path"], "uno"], "notation": item["notation"], "promotion": None}
             for item in plays
         )
+    if _can_catch(state, str(seat)):
+        actions.append({"path": ["catch"], "notation": "УНО", "promotion": None})
     return actions
+
+
+def catch_target(state: dict[str, Any]) -> str:
+    """Кого ловят на Уно: уже ушёл в одну карту или ходит, держа две и не сказав сам."""
+    state = _heal(state)
+    if state.get("phase") != "play":
+        return ""
+    exposed = str(state.get("exposed") or "")
+    if exposed and exposed in _order(state):
+        return exposed
+    seat = str(state.get("to_move") or "")
+    hand = list((state.get("hands") or {}).get(seat) or [])
+    if len(hand) == 2 and state.get("uno_called") != seat:
+        return seat
+    return ""
+
+
+def _can_catch(state: dict[str, Any], seat: str | None) -> bool:
+    if not seat or seat not in _order(state):
+        return False
+    target = catch_target(state)
+    return bool(target) and target != str(seat)
+
+
+def _drop_window(state: dict[str, Any], seat: str) -> None:
+    if state.get("exposed"):
+        state["exposed"] = ""
+    called = str(state.get("called_out") or "")
+    if called and called != seat:
+        state["called_out"] = ""
+
+
+def _apply_catch(state: dict[str, Any], catcher: str) -> dict[str, Any]:
+    nxt = json.loads(dumps(_heal(state)))
+    target = catch_target(nxt)
+    if not target or (catcher and catcher == target):
+        raise ValueError("Сейчас Уно сказать не на кого.")
+    if str(nxt.get("exposed") or "") == target:
+        nxt["hands"][target].extend(_draw_from(nxt, 2))
+        _remember(nxt, target, "miss")
+        said = {str(item) for item in nxt.get("said") or []}
+        said.discard(target)
+        _keep_said(nxt, said)
+        nxt["exposed"] = ""
+        nxt["called_out"] = ""
+        nxt["uno_called"] = None
+        return nxt
+    if str(nxt.get("called_out") or "") == target:
+        raise ValueError("Уно уже сказано.")
+    nxt["called_out"] = target
+    return nxt
+
+
+def _view_actions(state: dict[str, Any], seat: str | None) -> list[dict[str, Any]]:
+    actions = legal(state) if seat and state.get("to_move") == seat else []
+    if seat and state.get("to_move") != seat and _can_catch(state, seat):
+        actions.append({"path": ["catch"], "notation": "УНО", "promotion": None})
+    return actions
+
+
+def _pile(state: dict[str, Any]) -> list[dict[str, Any]]:
+    discard = [str(card) for card in (state.get("discard") or [])]
+    tail = discard[-10:]
+    start = len(discard) - len(tail)
+    return [{"card": card, "n": start + index} for index, card in enumerate(tail)]
 
 
 def _remember(state: dict[str, Any], seat: str, action: str) -> None:
@@ -223,6 +290,9 @@ def apply(state: dict[str, Any], path: list[str]) -> dict[str, Any]:
         named = path[1][1] if len(path[1]) > 1 and path[1][1] in COLORS else "R"
         path = ["play", "W", named, *path[2:]]
     healed = _heal(state)
+    if path and path[0] == "catch":
+        catcher = str(path[1]) if len(path) > 1 else ""
+        return _apply_catch(healed, catcher)
     allowed = {tuple(item["path"]) for item in legal(healed)}
     if tuple(path) not in allowed:
         raise ValueError("Такой ход в Уно не принимается.")
@@ -233,11 +303,17 @@ def apply(state: dict[str, Any], path: list[str]) -> dict[str, Any]:
     if calling:
         path = path[:-1]
         nxt["uno_called"] = seat
+        if str(nxt.get("called_out") or "") == seat:
+            nxt["called_out"] = ""
     if path[0] == "uno":
         nxt["uno_called"] = seat
+        if str(nxt.get("called_out") or "") == seat:
+            nxt["called_out"] = ""
         _remember(nxt, seat, "uno")
         return nxt
     if path[0] == "draw":
+        _drop_window(nxt, seat)
+        nxt["called_out"] = ""
         nxt["hands"][seat].extend(_draw_from(nxt, 1))
         nxt["uno_called"] = None
         said.discard(seat)
@@ -245,6 +321,7 @@ def apply(state: dict[str, Any], path: list[str]) -> dict[str, Any]:
         _keep_said(nxt, said)
         nxt["to_move"] = _advance(nxt, seat, 1)
         return nxt
+    _drop_window(nxt, seat)
     card = path[1]
     hand = list(nxt["hands"][seat])
     token = "W" if card == "W" else card
@@ -268,17 +345,28 @@ def apply(state: dict[str, Any], path: list[str]) -> dict[str, Any]:
         _remember(nxt, seat, "skip" if symbol == "S" else "draw2" if symbol == "D" else "play")
     if not nxt["hands"][seat]:
         said.discard(seat)
+        nxt["exposed"] = ""
+        nxt["called_out"] = ""
         nxt["phase"] = "done"
         nxt["result"] = f"{seat}_win"
         nxt["reason"] = "empty_hand"
     elif len(nxt["hands"][seat]) == 1 and nxt.get("uno_called") == seat:
         said.add(seat)
-    elif len(nxt["hands"][seat]) == 1:
+        nxt["called_out"] = ""
+    elif len(nxt["hands"][seat]) == 1 and str(nxt.get("called_out") or "") == seat:
         said.discard(seat)
         nxt["hands"][seat].extend(_draw_from(nxt, 2))
         _remember(nxt, seat, "miss")
+        nxt["called_out"] = ""
+        nxt["exposed"] = ""
+    elif len(nxt["hands"][seat]) == 1:
+        said.discard(seat)
+        nxt["exposed"] = seat
+        nxt["called_out"] = ""
     else:
         said.discard(seat)
+        if str(nxt.get("called_out") or "") == seat:
+            nxt["called_out"] = ""
     nxt["uno_called"] = None
     _keep_said(nxt, said)
     return nxt
@@ -286,6 +374,9 @@ def apply(state: dict[str, Any], path: list[str]) -> dict[str, Any]:
 
 def suggest(state: dict[str, Any], level: int = 5) -> list[str] | None:
     state = _heal(state)
+    exposed = str(state.get("exposed") or "")
+    if exposed and exposed != str(state.get("to_move") or ""):
+        return ["catch"]
     actions = legal(state)
     if not actions:
         return None
@@ -407,6 +498,13 @@ def _replay_counts(
             continue
         path = [str(item) for item in (payload.get("path") or [])]
         before = str(state.get("to_move") or "")
+        if path and path[0] == "catch":
+            target = str(state.get("exposed") or "")
+            state = apply(state, path)
+            if target and str((state.get("acts") or {}).get(target) or "") == "miss":
+                counts["miss"] += 1
+                last[target] = "miss"
+            continue
         if path and path[0] == "play" and path[-1] == "uno":
             counts["uno"] += 1
         kind = _chronicle_kind(path)
@@ -433,6 +531,8 @@ def _tally(start: dict[str, Any], payloads: list[dict[str, Any]]) -> tuple[dict[
             continue
         path = [str(item) for item in (payload.get("path") or [])]
         seat = str(cursor["to_move"])
+        if path and path[0] == "catch":
+            continue
         if path and path[0] == "play" and path[-1] == "uno":
             counts["uno"] += 1
             path = path[:-1]
@@ -504,16 +604,19 @@ def view(state: dict[str, Any], seat: str | None) -> dict[str, Any]:
         message = "Колода разыграна."
     else:
         message = f"Цвет стола: {color}."
+    if seat and _can_catch(state, seat):
+        message = f"{message} Можно сказать Уно."
     others = [item for item in _order(state) if item != seat]
     return {
         "hand": hand,
         "top": discard[-1] if discard else "",
+        "pile": _pile(state),
         "color": state.get("color"),
         "phase": phase,
         "roster": _roster(state),
         "opponent_count": 0 if not seat else sum(len(state.get("hands", {}).get(item, [])) for item in others),
         "deck": len(state.get("deck") or []),
-        "actions": legal(state) if seat and state.get("to_move") == seat else [],
+        "actions": _view_actions(state, seat),
         "message": message,
         "pot": 0,
         "shown": {},

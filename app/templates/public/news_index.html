@@ -1,5 +1,15 @@
 {% extends "base.html" %}
+{% from "_seo.html" import search_tags with context %}
 {% block title %}Новости гостиной — Parlor Night{% endblock %}
+{% block seo %}
+{% set news_path = "/news" if not pager_page or pager_page == 1 else "/news?page=" ~ pager_page %}
+{{ search_tags(
+  "Новости гостиной Parlor Night: новые игры, обновления столов и анонсы вечеров.",
+  "Parlor Night, новости, анонсы, обновления, шахматы, шашки, го, нарды, домино, карты",
+  news_path,
+  "Новости гостиной — Parlor Night"
+) }}
+{% endblock %}
 {% block content %}
 {% set covers = {
   "light-theme": "news-light-theme.webp",
@@ -11,6 +21,7 @@
   "domino": "news-domino.webp",
   "nardy": "news-nardy.webp",
   "yahtzy": "news-yahtzy.webp",
+  "bura": "news-bura.webp",
 } %}
 {% set months = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"] %}
 {% set kinds = {"update": "Обновление", "event": "Событие", "announce": "Анонс"} %}

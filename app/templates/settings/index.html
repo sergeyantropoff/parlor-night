@@ -250,9 +250,10 @@
           ('chess', 'Шахматы', 'Партия на классической доске', false),
           ('checkers', 'Русские шашки', 'Дамки и обязательный бой', false),
           ('go', 'Го', 'С человеком или с компьютером', false),
-          ('domino', 'Домино', 'Кости в линию, от двух до четырёх', false),
+          ('domino', 'Домино', 'Кости в линию, от двух до четырёх игроков', false),
           ('nardy', 'Нарды', 'Длинные и короткие', false),
           ('yahtzy', 'Яцзы', 'Пять костей и бланк', false),
+          ('bura', 'Бура', 'Три карты и козырь', false),
           ('uno', 'Уно', 'Цвета, цифры и дикие карты', false),
           ('poker', 'Покер', 'Техасский холдем на фишки', true),
           ('durak', 'Дурак', 'Подкидной или переводной', false),
@@ -277,15 +278,6 @@
         {% if chosen %}{% set ns.picked = true %}{% endif %}
         {% endif %}
         {% endfor %}
-        <div class="choice is-soon">
-          <span class="shot">
-            <img class="theme-light" src="/static/parlor/light/game-bura.webp?v={{ asset_version }}" width="1024" height="768" alt="Бура скоро появится в гостиной" />
-            <img class="theme-dark" src="/static/parlor/dark/game-bura.webp?v={{ asset_version }}" width="1024" height="768" alt="" />
-          </span>
-          <span class="shot-body">
-            <span><strong>Бура</strong><small>Скоро в гостиной</small></span>
-          </span>
-        </div>
       </div>
     </section>
 

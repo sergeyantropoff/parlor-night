@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import date
 from pathlib import Path
@@ -12,25 +13,31 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
 
+from app.auth.validation import clean_email
 from app.broadcast import clean_broadcast, publish
 from app.broadcast import current as current_broadcast
 from app.db.repositories import api_access, news, rate_limit, sessions, users
 from app.errors import AppError
 from app.flash import pin
+from app.mail import PROBE_BODY, PROBE_SUBJECT, deliver, load_mail, read_mail, save_mail
+from app.mail_templates import clean_template, load_templates, save_template
 from app.names import shown
 from app.news_html import sanitize_news, visible_text
 from app.news_images import is_news_image, store_news_image
 from app.paging import clamp_page, list_href, page_count, page_links, read_page
 from app.site_policy import current, load_policy, normalize, remember, save_policy
 from app.templating import render
+from app.terms import current as current_terms
+from app.terms import read_form, save_terms
+from app.terms import remember as remember_terms
 from app.wallet import set_balance
 
 router = APIRouter()
 
-_SITE_TABS = frozenset({"access", "login", "sessions", "parlor", "wipe"})
+_SITE_TABS = frozenset({"access", "login", "sessions", "parlor", "mail", "wipe"})
 _BODY_LIMIT = 20000
 _NEWS_PAGE = 4
-_COVERS = {"light-theme", "uno-evening", "welcome", "card-games", "go", "beta", "domino", "nardy", "yahtzy"}
+_COVERS = {"light-theme", "uno-evening", "welcome", "card-games", "go", "beta", "domino", "nardy", "yahtzy", "bura"}
 
 
 def _site_tab(value: object) -> str:
@@ -41,6 +48,37 @@ def _site_tab(value: object) -> str:
 def _site_url(tab: str = "") -> str:
     chosen = _site_tab(tab) if tab else ""
     return "/admin/site" + (f"?tab={chosen}" if chosen else "")
+
+
+def _mail_draft(form) -> SimpleNamespace:
+    raw_port = str(form.get("mail_port") or "587")
+    try:
+        port = int(raw_port)
+    except ValueError:
+        port = 587
+    security = str(form.get("mail_security") or "starttls")
+    if security not in {"none", "starttls", "ssl"}:
+        security = "starttls"
+    return SimpleNamespace(
+        enabled=str(form.get("mail_enabled") or "").lower() in {"1", "on", "true", "yes"},
+        host=str(form.get("mail_host") or ""),
+        port=port,
+        security=security,
+        username=str(form.get("mail_username") or ""),
+        sender_name=str(form.get("mail_from_name") or ""),
+        sender=str(form.get("mail_from") or ""),
+    )
+
+
+def _probe_text(value: object, fallback: str, limit: int, *, flat: bool) -> str:
+    raw = str(value or "")
+    text = " ".join(raw.split()) if flat else raw.strip()
+    if not text:
+        return fallback
+    if len(text) > limit:
+        label = "Тема" if flat else "Текст"
+        raise AppError(422, "bad_mail", f"{label} длиннее {limit} символов.")
+    return text
 
 
 def _site_done(request: Request, code: str, tab: str) -> Response:
@@ -88,6 +126,26 @@ async def site_save(request: Request) -> Response:
         return user
     form = await request.form()
     tab = _site_tab(form.get("tab"))
+    posted_password = str(form.get("mail_password") or "")
+    mail = None
+    if form.get("mail_host") is not None:
+        async with request.app.state.pool.acquire() as conn:
+            stored_mail = await load_mail(conn)
+        try:
+            mail = read_mail(form, stored=stored_mail)
+        except AppError as exc:
+            return render(
+                request,
+                "admin/site.html",
+                await _site_context(
+                    request,
+                    error=exc.message,
+                    tab="mail",
+                    mail=_mail_draft(form),
+                    mail_password=posted_password,
+                ),
+                status=exc.status,
+            )
     payload = {
         "registration_mode": form.get("registration_mode"),
         "registration_open": form.get("registration_open"),
@@ -111,14 +169,90 @@ async def site_save(request: Request) -> Response:
         return render(
             request,
             "admin/site.html",
-            await _site_context(request, error=exc.message, tab=tab),
+            await _site_context(
+                request,
+                error=exc.message,
+                tab=tab,
+                mail=_mail_draft(form) if form.get("mail_host") is not None else None,
+                mail_password=posted_password,
+            ),
             status=exc.status,
         )
     async with request.app.state.pool.acquire() as conn:
         await load_policy(conn)
         await save_policy(conn, policy)
+        if mail is not None:
+            await save_mail(conn, mail)
     remember(request.app, policy)
     return _site_done(request, "site", tab)
+
+
+@router.post("/admin/site/mail-test")
+async def site_mail_test(request: Request) -> Response:
+    user = _admin(request)
+    if isinstance(user, Response):
+        return user
+    form = await request.form()
+    posted_password = str(form.get("mail_password") or "")
+    async with request.app.state.pool.acquire() as conn:
+        stored_mail = await load_mail(conn)
+    draft = _mail_draft(form) if form.get("mail_host") is not None else stored_mail
+    subject_raw = str(form.get("subject") or "")
+    body_raw = str(form.get("body") or "")
+    target = str(form.get("to") or "")
+    denied = ""
+    status = 422
+    try:
+        mail = read_mail(form, stored=stored_mail) if form.get("mail_host") is not None else stored_mail
+        recipient = clean_email(target)
+        subject = _probe_text(subject_raw, PROBE_SUBJECT, 120, flat=True)
+        body = _probe_text(body_raw, PROBE_BODY, 2000, flat=False)
+        reply_to = str(getattr(user, "email", "") or "") or mail.sender
+        await asyncio.to_thread(
+            deliver,
+            mail,
+            recipient=recipient,
+            reply_to=reply_to,
+            subject=subject,
+            body=body,
+        )
+    except ValueError as exc:
+        denied = str(exc)
+    except AppError as exc:
+        denied = exc.message
+        status = exc.status
+    else:
+        return _site_done(request, "mail-test", "mail")
+    return render(
+        request,
+        "admin/site.html",
+        await _site_context(
+            request,
+            mail_error=denied,
+            tab="mail",
+            mail=draft,
+            mail_password=posted_password,
+            mail_to=target,
+            mail_subject=subject_raw,
+            mail_body=body_raw,
+        ),
+        status=status,
+    )
+
+
+@router.post("/admin/site/mail-template")
+async def site_mail_template(request: Request) -> JSONResponse:
+    user = _admin(request)
+    if isinstance(user, Response):
+        return JSONResponse({"error": "Нужно войти."}, status_code=401)
+    form = await request.form()
+    try:
+        subject, body = clean_template(str(form.get("key") or ""), form.get("subject"), form.get("body"))
+    except AppError as exc:
+        return JSONResponse({"error": exc.message}, status_code=exc.status)
+    async with request.app.state.pool.acquire() as conn:
+        await save_template(conn, str(form.get("key") or ""), subject, body)
+    return JSONResponse({"ok": True, "subject": subject, "body": body})
 
 
 @router.post("/admin/site/broadcast")
@@ -243,6 +377,35 @@ async def clear_keys(request: Request) -> Response:
         await conn.execute("DELETE FROM api_grants")
         await conn.execute("DELETE FROM sessions")
     return pin(RedirectResponse("/login", status_code=303), request, "keys")
+
+
+@router.get("/admin/terms")
+async def terms_page(request: Request) -> Response:
+    user = _admin(request)
+    if isinstance(user, Response):
+        return user
+    return render(request, "admin/terms.html", {"terms": await current_terms(request)})
+
+
+@router.post("/admin/terms")
+async def terms_save(request: Request) -> Response:
+    user = _admin(request)
+    if isinstance(user, Response):
+        return user
+    form = await request.form()
+    try:
+        book = read_form(form)
+    except AppError as exc:
+        return render(
+            request,
+            "admin/terms.html",
+            {"terms": await current_terms(request), "error": exc.message},
+            status=exc.status,
+        )
+    async with request.app.state.pool.acquire() as conn:
+        await save_terms(conn, book)
+    remember_terms(request.app, book)
+    return pin(RedirectResponse("/admin/terms", status_code=303), request, "terms")
 
 
 @router.get("/admin/news")
@@ -543,6 +706,12 @@ async def _site_context(
     wipe: str | None = None,
     wipe_error: str | None = None,
     tab: str | None = None,
+    mail: object | None = None,
+    mail_password: str = "",
+    mail_error: str = "",
+    mail_to: str | None = None,
+    mail_subject: str = "",
+    mail_body: str = "",
 ) -> dict[str, object]:
     async with request.app.state.pool.acquire() as conn:
         counts = await conn.fetchrow(
@@ -554,6 +723,10 @@ async def _site_context(
                 (SELECT count(*) FROM api_tokens WHERE revoked_at IS NULL AND expires_at > now()) AS tokens
             """
         )
+        stored_mail = await load_mail(conn)
+        templates = await load_templates(conn)
+    admin = request.state.user
+    admin_mail = str(getattr(admin, "email", "") or "")
     return {
         "policy": await current(request),
         "message": message,
@@ -567,6 +740,14 @@ async def _site_context(
         "wipe_error": wipe_error,
         "tab": tab if tab in _SITE_TABS else None,
         "broadcast": await _broadcast_fields(request),
+        "mail": stored_mail if mail is None else mail,
+        "mail_password": mail_password,
+        "mail_password_set": bool(stored_mail.password),
+        "mail_error": mail_error,
+        "mail_to": admin_mail if mail_to is None else mail_to,
+        "mail_subject": mail_subject,
+        "mail_body": mail_body,
+        "mail_templates": templates,
     }
 
 

@@ -1,5 +1,15 @@
 {% extends "base.html" %}
+{% from "_seo.html" import search_tags with context %}
 {% block title %}Гостиная закрыта — Parlor Night{% endblock %}
+{% block seo %}
+{{ search_tags(
+  "Гостиная Parlor Night временно закрыта на обслуживание. Загляните чуть позже.",
+  "Parlor Night, гостиная, обслуживание",
+  path,
+  "Гостиная закрыта — Parlor Night",
+  robots="noindex, nofollow"
+) }}
+{% endblock %}
 {% block content %}
 <section class="card narrow">
   <h1>Гостиная закрыта</h1>

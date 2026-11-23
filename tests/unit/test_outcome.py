@@ -1,6 +1,6 @@
 """Личный итог не путает ничью с победой и поражением."""
 
-from app.games.outcome import personal_mark
+from app.games.outcome import loss_seats, personal_mark
 
 
 def test_board_games_keep_a_real_draw() -> None:
@@ -45,3 +45,11 @@ def test_preferans_tie_is_a_loss_for_the_worse_score() -> None:
     assert personal_mark("preferans", "draw", "p0", position=position) == "draw"
     assert personal_mark("preferans", "draw", "p2", position=position) == "loss"
     assert personal_mark("preferans", "p1_win", "p1") == "win"
+
+
+def test_only_the_loser_pays_the_table() -> None:
+    assert loss_seats("chess", "white_win", ["white", "black"]) == ["black"]
+    assert loss_seats("chess", "draw", ["white", "black"]) == []
+    assert loss_seats("durak", "draw", ["p0", "p1", "p2"], {"loser": "p1"}) == ["p1"]
+    assert loss_seats("yahtzy", "draw", ["p0", "p1", "p2"], {"winners": ["p0", "p1"]}) == ["p2"]
+    assert loss_seats("uno", "p0_win", ["p0", "p1", "p2"]) == ["p1", "p2"]

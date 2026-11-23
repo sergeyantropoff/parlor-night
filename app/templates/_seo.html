@@ -1,0 +1,22 @@
+{% macro search_tags(description, keywords, path, title, image="/static/parlor/light/hero-parlor.webp", kind="website", robots="index, follow", published="") -%}
+{%- set picture = image if image[:4] == "http" else origin ~ image -%}
+<meta name="description" content="{{ description|e }}" />
+<meta name="keywords" content="{{ keywords|e }}" />
+<meta name="robots" content="{{ robots|e }}" />
+<meta name="author" content="Parlor Night" />
+<link rel="canonical" href="{{ origin }}{{ path }}" />
+<meta property="og:locale" content="ru_RU" />
+<meta property="og:site_name" content="Parlor Night" />
+<meta property="og:type" content="{{ kind|e }}" />
+<meta property="og:title" content="{{ title|e }}" />
+<meta property="og:description" content="{{ description|e }}" />
+<meta property="og:url" content="{{ origin }}{{ path }}" />
+<meta property="og:image" content="{{ picture|e }}" />
+{%- if published %}
+<meta property="article:published_time" content="{{ published|e }}" />
+{%- endif %}
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="{{ title|e }}" />
+<meta name="twitter:description" content="{{ description|e }}" />
+<meta name="twitter:image" content="{{ picture|e }}" />
+{%- endmacro %}

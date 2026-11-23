@@ -97,6 +97,7 @@ if (form instanceof HTMLFormElement) {
     const mode = form.querySelector('input[name="registration_mode"]:checked');
     const parts = [mode instanceof HTMLInputElement ? registration[mode.value] : ""];
     if (checked("maintenance")) parts.push("на обслуживании");
+    if (checked("mail_enabled")) parts.push("почта включена");
     parts.push(passwordPart(), sessionPart(), gamesPart());
     summary.textContent = parts.filter(Boolean).join(" · ");
   }
@@ -114,16 +115,141 @@ if (form instanceof HTMLFormElement) {
   paintSummary();
 }
 
+const probe = document.querySelector("#mail-test-form");
+if (form instanceof HTMLFormElement && probe instanceof HTMLFormElement) {
+  probe.addEventListener("submit", () => {
+    const names = [
+      "mail_enabled",
+      "mail_host",
+      "mail_port",
+      "mail_security",
+      "mail_username",
+      "mail_password",
+      "mail_password_clear",
+      "mail_from_name",
+      "mail_from",
+    ];
+    for (const name of names) {
+      const source = form.elements.namedItem(name);
+      let hidden = probe.querySelector(`input[data-mail="${name}"]`);
+      if (!(hidden instanceof HTMLInputElement)) {
+        hidden = document.createElement("input");
+        hidden.type = "hidden";
+        hidden.name = name;
+        hidden.dataset.mail = name;
+        probe.append(hidden);
+      }
+      if (source instanceof HTMLInputElement && source.type === "checkbox") hidden.value = source.checked ? "on" : "";
+      else if (source && "value" in source) hidden.value = String(source.value);
+    }
+  });
+}
+
 for (const button of document.querySelectorAll("[data-dialog]")) {
   const dialog = document.getElementById(button.dataset.dialog || "");
   if (!(dialog instanceof HTMLDialogElement)) continue;
   button.addEventListener("click", () => {
     dialog.showModal();
-    dialog.querySelector("input[type='password']")?.focus();
+    dialog.querySelector("input:not([type='hidden']), textarea")?.focus();
   });
   dialog.querySelector("[data-close]")?.addEventListener("click", () => dialog.close());
   dialog.addEventListener("click", (event) => {
     if (event.target === dialog) dialog.close();
   });
-  if (dialog.dataset.open === "1") dialog.querySelector("input[type='password']")?.focus();
+  if (dialog.dataset.open === "1") dialog.querySelector("input:not([type='hidden']), textarea")?.focus();
+}
+
+const templateDialog = document.querySelector("#mail-templates");
+const templateData = document.querySelector("#mail-template-data");
+if (templateDialog instanceof HTMLDialogElement && templateData) {
+  const items = JSON.parse(templateData.textContent || "[]");
+  const byKey = new Map(items.map((item) => [item.key, item]));
+  const editor = templateDialog.querySelector("#mail-template-form");
+  const subject = editor?.querySelector("input[name='subject']");
+  const body = editor?.querySelector("textarea[name='body']");
+  const fields = templateDialog.querySelector("#mail-template-fields");
+  const error = templateDialog.querySelector("#mail-template-error");
+  const saved = templateDialog.querySelector("#mail-template-saved");
+  const choices = [...templateDialog.querySelectorAll("[data-template]")];
+  let current = items[0]?.key || "";
+
+  function remember() {
+    const item = byKey.get(current);
+    if (!item || !(subject instanceof HTMLInputElement) || !(body instanceof HTMLTextAreaElement)) return;
+    item.subject = subject.value;
+    item.body = body.value;
+  }
+
+  function showTemplate(key) {
+    const item = byKey.get(key);
+    if (!item || !(subject instanceof HTMLInputElement) || !(body instanceof HTMLTextAreaElement)) return;
+    remember();
+    current = key;
+    subject.value = item.subject;
+    body.value = item.body;
+    if (fields) {
+      fields.textContent = item.fields
+        .map((field) => `{${field.token}} — ${field.label}`)
+        .join(", ");
+    }
+    for (const choice of choices) {
+      choice.setAttribute("aria-selected", choice.dataset.template === key ? "true" : "false");
+    }
+    if (error instanceof HTMLElement) error.hidden = true;
+    if (saved instanceof HTMLElement) saved.hidden = true;
+  }
+
+  for (const choice of choices) {
+    choice.addEventListener("click", () => showTemplate(choice.dataset.template || ""));
+  }
+  templateDialog.querySelector("#mail-template-reset")?.addEventListener("click", () => {
+    const item = byKey.get(current);
+    if (!item || !(subject instanceof HTMLInputElement) || !(body instanceof HTMLTextAreaElement)) return;
+    subject.value = item.default_subject;
+    body.value = item.default_body;
+    item.subject = item.default_subject;
+    item.body = item.default_body;
+    if (saved instanceof HTMLElement) saved.hidden = true;
+  });
+  editor?.addEventListener("input", () => {
+    if (saved instanceof HTMLElement) saved.hidden = true;
+  });
+  editor?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const item = byKey.get(current);
+    if (!item || !(subject instanceof HTMLInputElement) || !(body instanceof HTMLTextAreaElement)) return;
+    if (error instanceof HTMLElement) error.hidden = true;
+    if (saved instanceof HTMLElement) saved.hidden = true;
+    const token = document.querySelector('meta[name="csrf-token"]')?.content || "";
+    try {
+      const response = await fetch("/admin/site/mail-template", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
+          "X-CSRF-Token": token,
+        },
+        body: new URLSearchParams({ key: current, subject: subject.value, body: body.value }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        if (error instanceof HTMLElement) {
+          error.hidden = false;
+          error.textContent = payload.error || "Шаблон не сохранился.";
+        }
+        return;
+      }
+      item.subject = payload.subject;
+      item.body = payload.body;
+      subject.value = payload.subject;
+      body.value = payload.body;
+      if (saved instanceof HTMLElement) saved.hidden = false;
+    } catch {
+      if (error instanceof HTMLElement) {
+        error.hidden = false;
+        error.textContent = "Шаблон не сохранился. Попробуйте ещё раз.";
+      }
+    }
+  });
+  if (current) showTemplate(current);
 }

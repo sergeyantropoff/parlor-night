@@ -11,6 +11,7 @@
     <button type="button" class="settings-tab" id="tab-login" role="tab" aria-selected="false" aria-controls="panel-login" tabindex="-1">Логин и пароль</button>
     <button type="button" class="settings-tab" id="tab-sessions" role="tab" aria-selected="false" aria-controls="panel-sessions" tabindex="-1">Вход и сессии</button>
     <button type="button" class="settings-tab" id="tab-parlor" role="tab" aria-selected="false" aria-controls="panel-parlor" tabindex="-1">Гостиная</button>
+    <button type="button" class="settings-tab" id="tab-mail" role="tab" aria-selected="false" aria-controls="panel-mail" tabindex="-1">Почта</button>
     <button type="button" class="settings-tab" id="tab-wipe" role="tab" aria-selected="false" aria-controls="panel-wipe" tabindex="-1">Очистка</button>
   </div>
   <form id="site-form" method="post" action="/admin/site">
@@ -142,7 +143,70 @@
         <label class="switch"><input type="checkbox" name="game" value="domino" data-title="Домино" {% if policy.domino %}checked="checked"{% endif %} /><span class="switch-ui" aria-hidden="true"></span><span>Домино</span></label>
         <label class="switch"><input type="checkbox" name="game" value="nardy" data-title="Нарды" {% if policy.nardy %}checked="checked"{% endif %} /><span class="switch-ui" aria-hidden="true"></span><span>Нарды</span></label>
         <label class="switch"><input type="checkbox" name="game" value="yahtzy" data-title="Яцзы" {% if policy.yahtzy %}checked="checked"{% endif %} /><span class="switch-ui" aria-hidden="true"></span><span>Яцзы</span></label>
+        <label class="switch"><input type="checkbox" name="game" value="bura" data-title="Бура" {% if policy.bura %}checked="checked"{% endif %} /><span class="switch-ui" aria-hidden="true"></span><span>Бура</span></label>
         <p class="quiet">Выключенная игра скрыта у гостей и не открывается им. Администратор по-прежнему видит её и может сесть за стол.</p>
+      </section>
+    </div>
+    <div id="panel-mail" class="settings-panel" role="tabpanel" aria-labelledby="tab-mail" hidden="hidden">
+      <section class="panel">
+        <h2>Сервер</h2>
+        <div class="mail-head">
+          <label class="switch">
+            <input type="checkbox" name="mail_enabled" {% if mail.enabled %}checked="checked"{% endif %} />
+            <span class="switch-ui" aria-hidden="true"></span>
+            <span>Разрешить гостиной отправлять письма</span>
+          </label>
+          <button type="button" class="secondary" data-dialog="mail-templates">Шаблоны писем</button>
+        </div>
+        <p class="quiet">Письма сами пока никуда не уходят. Здесь задаётся сервер, через который их можно будет отправлять.</p>
+        <div class="pair">
+          <label>Сервер SMTP
+            <input name="mail_host" value="{{ mail.host }}" maxlength="253" autocomplete="off" placeholder="smtp.example.com" spellcheck="false" />
+          </label>
+          <label>Порт
+            <input name="mail_port" type="number" min="1" max="65535" required="required" value="{{ mail.port }}" />
+          </label>
+        </div>
+        <label>Шифрование
+          <select name="mail_security">
+            <option value="starttls" {% if mail.security == "starttls" %}selected="selected"{% endif %}>STARTTLS</option>
+            <option value="ssl" {% if mail.security == "ssl" %}selected="selected"{% endif %}>SSL</option>
+            <option value="none" {% if mail.security == "none" %}selected="selected"{% endif %}>Без шифрования</option>
+          </select>
+        </label>
+        <p class="quiet">Обычно STARTTLS использует порт 587, а SSL — 465.</p>
+      </section>
+      <section class="panel">
+        <h2>Вход на сервер</h2>
+        <label>Имя пользователя
+          <input name="mail_username" value="{{ mail.username }}" maxlength="200" autocomplete="off" spellcheck="false" />
+        </label>
+        <label>Пароль
+          <input name="mail_password" type="password" value="{{ mail_password }}" maxlength="200" autocomplete="new-password" placeholder="{% if mail_password_set and not mail_password %}Пароль сохранён{% endif %}" />
+        </label>
+        {% if mail_password_set %}
+        <label class="check">
+          <input type="checkbox" name="mail_password_clear" />
+          Стереть сохранённый пароль
+        </label>
+        <p class="quiet">Пустое поле оставляет прежний пароль. Новый пароль запишется после сохранения.</p>
+        {% else %}
+        <p class="quiet">Если сервер не спрашивает пароль, оставьте поле пустым.</p>
+        {% endif %}
+      </section>
+      <section class="panel">
+        <h2>Отправитель</h2>
+        <div class="pair">
+          <label>Имя
+            <input name="mail_from_name" value="{{ mail.sender_name }}" maxlength="80" autocomplete="off" placeholder="Parlor Night" />
+          </label>
+          <label>Адрес
+            <input name="mail_from" type="email" value="{{ mail.sender }}" maxlength="200" autocomplete="off" placeholder="parlor@example.com" />
+          </label>
+        </div>
+        <div class="site-actions">
+          <button type="button" class="secondary" data-dialog="mail-test">Проверить отправку</button>
+        </div>
       </section>
     </div>
     <div id="panel-wipe" class="settings-panel" role="tabpanel" aria-labelledby="tab-wipe" hidden="hidden">
@@ -174,6 +238,55 @@
   <form id="clear-lockouts" method="post" action="/admin/site/lockouts" hidden="hidden">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
   </form>
+  <dialog id="mail-test" class="confirm-dialog welcome-dialog" {% if mail_error %}data-open="1"{% endif %} aria-labelledby="mail-test-title">
+    <h2 id="mail-test-title">Проверить отправку</h2>
+    <p>Письмо уйдёт на указанный адрес с настройками этой вкладки. Чтобы гостиная их запомнила, нажмите «Сохранить».</p>
+    <form method="post" action="/admin/site/mail-test" id="mail-test-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <label>Кому
+        <input name="to" type="email" value="{{ mail_to }}" autocomplete="email" required="required" maxlength="200" />
+      </label>
+      <label>Тема
+        <input name="subject" value="{{ mail_subject or 'Проверка почты Parlor Night' }}" maxlength="120" required="required" />
+      </label>
+      <label>Текст
+        <textarea name="body" rows="4" maxlength="2000" required="required">{{ mail_body or 'Это проверочное письмо из настроек Parlor Night. Если вы его видите, почта настроена.' }}</textarea>
+      </label>
+      {% if mail_error %}<p class="banner" role="alert">{{ mail_error }}</p>{% endif %}
+      <div class="confirm-actions">
+        <button type="button" class="secondary" data-close>Отмена</button>
+        <button type="submit">Отправить</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="mail-templates" class="confirm-dialog mail-templates-dialog" aria-labelledby="mail-templates-title">
+    <h2 id="mail-templates-title">Шаблоны писем</h2>
+    <p>Параметры пишутся в фигурных скобках. Гостиная подставит их, когда письмо будет отправляться.</p>
+    <div class="mail-template-layout">
+      <div class="mail-template-list" role="listbox" aria-label="Шаблоны">
+        {% for item in mail_templates %}
+        <button type="button" role="option" data-template="{{ item.key }}" aria-selected="{% if loop.first %}true{% else %}false{% endif %}">{{ item.title }}</button>
+        {% endfor %}
+      </div>
+      <form id="mail-template-form" class="mail-template-form">
+        <label>Тема
+          <input name="subject" maxlength="120" required="required" value="{{ mail_templates[0].subject }}" />
+        </label>
+        <label>Текст
+          <textarea name="body" rows="12" maxlength="4000" required="required">{{ mail_templates[0].body }}</textarea>
+        </label>
+        <p class="quiet" id="mail-template-fields"></p>
+        <p class="banner" id="mail-template-error" role="alert" hidden="hidden"></p>
+        <p class="quiet" id="mail-template-saved" hidden="hidden">Шаблон сохранён.</p>
+        <div class="confirm-actions">
+          <button type="button" class="secondary" id="mail-template-reset">Текст по умолчанию</button>
+          <button type="button" class="secondary" data-close>Закрыть</button>
+          <button type="submit">Сохранить шаблон</button>
+        </div>
+      </form>
+    </div>
+    <script type="application/json" id="mail-template-data">{{ mail_templates | tojson }}</script>
+  </dialog>
   <dialog id="wipe-messages" class="confirm-dialog" {% if wipe == "messages" %}data-open="1"{% endif %}>
     <h2>Очистить все сообщения?</h2>
     <p>Удалятся личные беседы и сообщения за столом. Сейчас сообщений: {{ wipe_messages }}. Гости, партии и фишки останутся.</p>

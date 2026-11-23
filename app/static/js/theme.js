@@ -31,3 +31,33 @@ document.querySelectorAll("[data-theme-value]").forEach((button) => {
   button.addEventListener("click", () => setTheme(button.dataset.themeValue));
 });
 paintTheme();
+
+function tipHost(target) {
+  if (!(target instanceof Element)) return null;
+  const host = target.closest(".tip-host, .icon-tool, .invite-tool");
+  return host instanceof HTMLElement ? host : null;
+}
+
+function quietTip(target) {
+  const host = tipHost(target);
+  if (host) host.classList.add("is-tipped");
+}
+
+function releaseTip(host, next) {
+  if (!(host instanceof HTMLElement)) return;
+  if (next instanceof Node && host.contains(next)) return;
+  host.classList.remove("is-tipped");
+}
+
+document.addEventListener("pointerdown", (event) => quietTip(event.target), true);
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" || event.key === " ") quietTip(event.target);
+}, true);
+document.addEventListener("pointerout", (event) => {
+  releaseTip(tipHost(event.target), event.relatedTarget);
+}, true);
+document.addEventListener("focusout", (event) => {
+  const host = tipHost(event.target);
+  if (host instanceof HTMLElement && host.matches(":hover")) return;
+  releaseTip(host, event.relatedTarget);
+}, true);

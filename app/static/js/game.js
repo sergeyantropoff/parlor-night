@@ -1522,8 +1522,9 @@ function clearPassWhist(box, status, where, plateNode) {
 function unoPlate(seat, x, y) {
   const said = (current.said || []).includes(seat.key);
   const raw = (current.marks || {})[seat.key] || "";
+  const buraPoints = current.game_type === "bura" ? raw : "";
   const aside = current.game_type === "preferans" && Boolean(PREFERANS_WORD[raw]);
-  const mark = said ? "uno" : (aside ? "" : raw);
+  const mark = said ? "uno" : (aside || buraPoints !== "" ? "" : raw);
   const won = current.result === `${seat.key}_win`;
   const tone = won ? "win" : (PREFERANS_TONE[mark] || mark);
   const node = document.createElement("div");
@@ -1553,6 +1554,12 @@ function unoPlate(seat, x, y) {
     count.className = "plate-stack";
   }
   copy.append(count);
+  if (buraPoints !== "") {
+    const points = document.createElement("span");
+    points.className = "plate-action";
+    points.textContent = `${buraPoints} очк.`;
+    copy.append(points);
+  }
   const word = won ? "победитель" : (PREFERANS_WORD[mark] || UNO_WORD[tone] || "");
   if (word) {
     const action = document.createElement("span");
@@ -1564,7 +1571,7 @@ function unoPlate(seat, x, y) {
   return node;
 }
 
-function handControls(drawMove, unoMove) {
+function handControls(drawMove, unoMove, catchMove) {
   const box = document.createElement("div");
   box.className = "hand-actions";
   if (wildOpen) {
@@ -1590,6 +1597,19 @@ function handControls(drawMove, unoMove) {
       palette.append(button);
     }
     box.append(palette);
+  }
+  if (catchMove) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "is-uno tip-host";
+    button.textContent = "УНО";
+    button.dataset.tip = "Если он не скажет Уно сам — две карты";
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      submit(catchMove);
+    });
+    box.append(button);
   }
   if (unoMove) {
     const button = document.createElement("button");
@@ -1621,11 +1641,22 @@ function handControls(drawMove, unoMove) {
   return box;
 }
 
+function unoPileItems() {
+  if (Array.isArray(current.pile) && current.pile.length) return current.pile.slice(-10);
+  return current.top ? [{ card: current.top, n: 0 }] : [];
+}
+
+function unoStackKey(item, index) {
+  if (item && typeof item === "object") return `stack:${item.n}:${item.card}`;
+  return `stack:${index}:${item}`;
+}
+
 function paintUnoRing(box, youName, heroCards) {
   const seats = orderedSeats(unoRoster(youName));
   const spots = RINGS[seats.length] || RINGS[6];
   const drawMove = (current.legal_moves || []).find((move) => move.path[0] === "draw");
   const unoMove = (current.legal_moves || []).find((move) => move.path[0] === "uno");
+  const catchMove = (current.legal_moves || []).find((move) => move.path[0] === "catch");
   const waiting = current.phase === "waiting";
   seats.forEach((seat, index) => {
     const spot = spots[index] || spots[spots.length - 1];
@@ -1639,17 +1670,19 @@ function paintUnoRing(box, youName, heroCards) {
         : Array.from({ length: seat.count || 0 }, () => makeCard(backSrc(), { alt: "Закрытая карта" }));
     const place = inward(x, y, y >= 70 ? 0.18 : y <= 22 ? 0.16 : 0.34);
     if (cards.length) {
-      box.append(cardFan(cards, {
+      const row = cardFan(cards, {
         x: place.x,
         y: place.y,
         role: seat.you ? "hero" : "opponent",
         angles: fanAngles(cards.length),
         overlap: fitOverlap(cards.length, seat.you ? 7.2 : 4.2, seat.you ? -2.2 : -2.3, seat.you ? 40 : 16),
-      }));
+      });
+      row.dataset.seat = seat.key;
+      box.append(row);
     }
-    if (seat.you && (drawMove || unoMove || wildOpen)) {
+    if (seat.you && (drawMove || unoMove || wildOpen || catchMove)) {
       const controls = inward(x, y, 0.5);
-      box.append(anchor(handControls(drawMove, unoMove), controls.x, controls.y, "hand-actions"));
+      box.append(anchor(handControls(drawMove, unoMove, catchMove), controls.x, controls.y, "hand-actions"));
     }
     const plate = outward(x, y, 0.1);
     box.append(unoPlate(seat, plate.x, plate.y));
@@ -1664,11 +1697,25 @@ function paintUnoRing(box, youName, heroCards) {
     const top = makeCard(backSrc(), { alt: "Колода" });
     top.classList.add("center-card", "deck-top");
     box.append(anchor(top, 42, 46, top.className));
+    placeDeckCount(box, deck, 42, 46);
   }
-  if (current.top) {
-    const discard = makeCard(faceSrc(current.top), { alt: cardLabel(current.top), key: `pile:${current.top}` });
-    discard.classList.add("center-card");
-    box.append(anchor(discard, 58, 46, discard.className));
+  const pile = unoPileItems();
+  if (pile.length) {
+    pile.forEach((item, index) => {
+      const card = item && typeof item === "object" ? item.card : item;
+      if (!card) return;
+      const n = item && typeof item === "object" ? Number(item.n) : index;
+      const face = makeCard(faceSrc(card), { alt: cardLabel(card), key: unoStackKey(item, index) });
+      face.classList.add("center-card");
+      face.style.setProperty("--tilt", `${((n * 17) % 31) - 15}deg`);
+      face.style.setProperty("--nudge-x", `${((n * 13) % 21) - 10}px`);
+      face.style.setProperty("--nudge-y", `${((n * 9) % 15) - 7}px`);
+      const holder = document.createElement("div");
+      holder.append(face);
+      const placed = anchor(holder, 58, 46, "scrap");
+      placed.style.zIndex = String(22 + index);
+      box.append(placed);
+    });
     const arrow = document.createElement("img");
     arrow.alt = "По часовой стрелке";
     arrow.draggable = false;
@@ -1680,6 +1727,7 @@ function paintUnoRing(box, youName, heroCards) {
     color.textContent = UNO_NAME[current.color] || "цвет";
     box.append(anchor(color, 50, 34, `uno-badge is-color is-${current.color}`));
   }
+  paintFeltNote();
 }
 
 function raisePad(move) {
@@ -1786,6 +1834,7 @@ function paintCrowd(box, poker, you, heroCards) {
     const top = makeCard(backSrc(), { alt: "Колода" });
     top.classList.add("center-card", "deck-top");
     box.append(anchor(top, 43, 46, top.className));
+    placeDeckCount(box, deck, 43, 46);
   }
   if (current.top) {
     const discard = makeCard(faceSrc(current.top), { alt: cardLabel(current.top) });
@@ -1893,13 +1942,32 @@ function paintBlackjack(box, heroCards) {
   paintTableAdvice(box, 52);
 }
 
+function placeDeckCount(box, count, x, y) {
+  if (count <= 0) return;
+  box.append(anchor(deckCountBadge(count), x, y, "deck-count"));
+}
+
+function deckCountBadge(count) {
+  const badge = document.createElement("span");
+  badge.className = "deck-count";
+  badge.textContent = String(count);
+  badge.title = `В колоде ${count} ${cardsWord(count)}`;
+  return badge;
+}
+
 function paintDurakStock(box) {
   const deck = Number(current.deck || 0);
   const code = current.trump_card;
-  if (!code || deck <= 0) return;
+  const bura = current.game_type === "bura";
+  if (deck <= 0 || (!code && !bura)) return;
+  if (bura) {
+    paintBuraStock(box, deck, code);
+    return;
+  }
   if (deck === 1) {
     const trump = makeCard(faceSrc(code), { alt: `Козырь ${cardLabel(code)}` });
     box.append(anchor(trump, 16, 44, "trump-card"));
+    placeDeckCount(box, deck, 16, 44);
     return;
   }
   const trump = makeCard(faceSrc(code), { alt: `Козырь ${cardLabel(code)}` });
@@ -1911,6 +1979,130 @@ function paintDurakStock(box) {
   const top = makeCard(backSrc(), { alt: "Колода", key: "deck:top" });
   top.classList.add("deck-top");
   box.append(anchor(top, 19, 44, "stock-deck"));
+  placeDeckCount(box, deck, 19, 44);
+}
+
+function wrapCard(card) {
+  const wrap = document.createElement("div");
+  wrap.append(card);
+  return wrap;
+}
+
+function paintBuraStock(box, deck, code) {
+  const word = `В колоде ${deck} ${cardsWord(deck)}`;
+  if (code) {
+    const trump = makeCard(faceSrc(code), { alt: deck === 1 ? word : `Козырь ${cardLabel(code)}` });
+    const laid = anchor(wrapCard(trump), deck === 1 ? 16 : 12, 44, deck === 1 ? "trump-card" : "trump-laid");
+    if (deck === 1) laid.append(deckCountBadge(deck));
+    box.append(laid);
+    if (deck === 1) return;
+  }
+  const hidden = Math.max(0, deck - (code ? 1 : 0));
+  const shown = Math.min(hidden, 4);
+  for (let index = 0; index < shown; index += 1) {
+    const top = index === shown - 1;
+    const back = makeCard(backSrc(), { alt: top ? word : "", key: top ? "deck:top" : "" });
+    const pile = anchor(wrapCard(back), 19, 44, top ? "stock-deck deck-top" : "stock-deck is-under");
+    pile.style.translate = `0 calc(var(--u) * ${(-0.7 * index).toFixed(2)})`;
+    if (top) pile.append(deckCountBadge(deck));
+    box.append(pile);
+  }
+}
+
+function buraGesture() {
+  const plays = (current.legal_moves || []).filter((move) => move.path[0] === "play");
+  const answering = current.phase === "answer";
+  const need = (current.pairs || []).filter((pair) => pair && pair.attack).length;
+  const chosen = [];
+  const nodes = new Map();
+  let timer = 0;
+  let sent = false;
+
+  function same(pathCards, cards) {
+    const left = pathCards.map(String).sort();
+    const right = [...cards].sort();
+    return left.length === right.length && left.every((card, index) => card === right[index]);
+  }
+
+  function matching(cards) {
+    return plays.find((item) => same(item.path.slice(1), cards));
+  }
+
+  function extendable(cards) {
+    return plays.some((item) => {
+      const have = item.path.slice(1).map(String);
+      return cards.every((card) => have.includes(card));
+    });
+  }
+
+  function canGrow(cards) {
+    return plays.some((item) => {
+      const have = item.path.slice(1).map(String);
+      return have.length > cards.length && cards.every((card) => have.includes(card));
+    });
+  }
+
+  function paint() {
+    for (const [code, button] of nodes) button.classList.toggle("is-on", chosen.includes(code));
+  }
+
+  function reject(button) {
+    button.classList.add("is-reject");
+    window.setTimeout(() => button.classList.remove("is-reject"), 280);
+  }
+
+  function commit() {
+    if (sent || busy) return;
+    const move = matching(chosen);
+    if (!move) return;
+    sent = true;
+    window.clearTimeout(timer);
+    submit(move);
+  }
+
+  function schedule() {
+    window.clearTimeout(timer);
+    if (!chosen.length || sent) return;
+    if (answering) {
+      if (need && chosen.length === need) commit();
+      return;
+    }
+    if (matching(chosen)) timer = window.setTimeout(commit, canGrow(chosen) ? 2000 : 1500);
+  }
+
+  return {
+    bind(card, node) {
+      nodes.set(card, node);
+      node.addEventListener("click", () => {
+        if (busy || sent) return;
+        const index = chosen.indexOf(card);
+        if (index >= 0) {
+          chosen.splice(index, 1);
+          paint();
+          schedule();
+          return;
+        }
+        if (!answering && chosen.some((code) => code[1] !== card[1])) {
+          chosen.splice(0, chosen.length, card);
+          paint();
+          schedule();
+          return;
+        }
+        const next = [...chosen, card];
+        if (!extendable(next) || (answering && need && next.length > need)) {
+          reject(node);
+          return;
+        }
+        chosen.push(card);
+        paint();
+        schedule();
+      });
+    },
+    cancel() {
+      sent = true;
+      window.clearTimeout(timer);
+    },
+  };
 }
 
 function paintTableAdvice(box, y, extra = "") {
@@ -2107,7 +2299,7 @@ function paintSalonTable(box) {
   if (heldHidden()) return;
   const held = Boolean(current.held);
   const pairs = current.pairs || [];
-  if (current.game_type === "durak" && pairs.length) {
+  if ((current.game_type === "durak" || current.game_type === "bura") && pairs.length) {
     const row = document.createElement("div");
     row.className = held ? "table-row is-held" : "table-row";
     for (const pair of pairs) {
@@ -2147,42 +2339,84 @@ function dealTone(note) {
   return "draw";
 }
 
-function previousLine() {
+function appendCardBit(parent, code) {
+  const text = String(code || "");
+  const bit = document.createElement("span");
+  bit.className = "card-bit";
+  bit.append(document.createTextNode(text[0] === "T" ? "10" : (text[0] || "")));
+  const glyph = SUITS[text[1]];
+  if (glyph) {
+    const pip = document.createElement("span");
+    pip.className = `suit-pip${text[1] === "H" || text[1] === "D" ? " is-red" : ""}`;
+    pip.textContent = glyph;
+    bit.append(pip);
+  }
+  parent.append(bit);
+}
+
+function fillPrevious(body) {
   const prev = current.previous || {};
   if (current.game_type === "preferans" && prev.winner) {
     const name = seatName(prev.winner);
-    const cards = (prev.cards || []).map((card, index) => {
+    body.append(document.createTextNode(name ? `Взятку взял ${name}` : "Взятка"));
+    const cards = prev.cards || [];
+    if (!cards.length) return true;
+    body.append(document.createTextNode(". "));
+    cards.forEach((card, index) => {
+      if (index) body.append(document.createTextNode(", "));
+      appendCardBit(body, card);
       const who = seatName((prev.seats || [])[index]);
-      return who ? `${cardLabel(card)} ${who}` : cardLabel(card);
-    }).join(", ");
-    const head = name ? `Взятку взял ${name}` : "Взятка";
-    return cards ? `${head}. ${cards}` : head;
+      if (who) body.append(document.createTextNode(` ${who}`));
+    });
+    return true;
   }
-  if (current.game_type === "durak" && prev.kind) {
-    const cards = (prev.pairs || []).map((pair) => (
-      pair.defense ? `${cardLabel(pair.attack)} / ${cardLabel(pair.defense)}` : cardLabel(pair.attack)
-    )).join(", ");
-    if (prev.kind === "bito") return cards ? `Бито. ${cards}` : "Бито";
+  if ((current.game_type === "durak" || current.game_type === "bura") && prev.kind) {
     const name = seatName(prev.seat);
-    const head = name ? `${name} взял` : "Взял";
-    return cards ? `${head}. ${cards}` : head;
+    const head = prev.kind === "bito" ? "Бито" : (name ? `${name} взял` : "Взял");
+    body.append(document.createTextNode(head));
+    const pairs = prev.pairs || [];
+    if (!pairs.length) return true;
+    body.append(document.createTextNode(". "));
+    pairs.forEach((pair, index) => {
+      if (index) body.append(document.createTextNode(", "));
+      appendCardBit(body, pair.attack);
+      if (pair.defense) {
+        body.append(document.createTextNode(" / "));
+        appendCardBit(body, pair.defense);
+      }
+    });
+    return true;
   }
-  return "";
+  return false;
 }
 
 function paintThrowBadge() {
   document.querySelector("#throw-badge")?.remove();
-  const text = previousLine();
-  if (!text) return;
   const head = document.querySelector(".stage-head");
   if (!head) return;
+  const body = document.createElement("span");
+  body.className = "throw-line";
+  if (!fillPrevious(body)) return;
   const badge = document.createElement("p");
   badge.id = "throw-badge";
   badge.className = "deal-badge throw-badge";
   const kicker = document.createElement("span");
   kicker.textContent = "Прошлый ход";
-  badge.append(kicker, document.createTextNode(text));
+  badge.append(kicker, body);
   head.append(badge);
+}
+
+function paintFeltNote() {
+  document.querySelector("#felt-note")?.remove();
+  const text = (status?.textContent || current.status_line || "").trim();
+  const box = document.querySelector("#card-table");
+  if (!text || !box) return;
+  const badge = document.createElement("p");
+  badge.id = "felt-note";
+  badge.className = "deal-badge throw-badge felt-note";
+  badge.setAttribute("aria-hidden", "true");
+  badge.textContent = text;
+  box.insertAdjacentElement("afterend", badge);
 }
 
 function paintDealBadge() {
@@ -2230,8 +2464,8 @@ function paintSalon(box, heroCards) {
   }
   paintSalonPlayers(box, heroCards);
   paintSalonTable(box);
-  if (current.game_type === "durak") paintDurakStock(box);
-  paintTableAdvice(box, 30, current.game_type === "preferans" ? " is-top" : "");
+  if (current.game_type === "durak" || current.game_type === "bura") paintDurakStock(box);
+  paintFeltNote();
 }
 
 function actionButton(move, extra = "") {
@@ -2973,7 +3207,8 @@ function renderCards() {
   let box = document.querySelector("#card-table");
   if (!box) return;
   const poker = current.game_type === "poker";
-  const salon = ["durak", "blackjack", "preferans"].includes(current.game_type);
+  const salon = ["durak", "blackjack", "preferans", "bura"].includes(current.game_type);
+  const bura = current.game_type === "bura";
   const clothName = poker || current.game_type === "blackjack" ? "table-poker.webp" : "table-uno.webp";
   box.classList.toggle("oval", poker || current.game_type === "blackjack");
   box.classList.toggle("felt", clothName === "table-uno.webp");
@@ -3006,18 +3241,19 @@ function renderCards() {
     : [];
   const selected = new Set();
   const seen = new Map();
+  const buraPlay = bura && current.your_turn ? buraGesture() : null;
   const heroCards = heroCodes.map((card) => {
     const count = (seen.get(card) || 0) + 1;
     seen.set(card, count);
     const wildCard = String(card).startsWith("W");
-    const play = !poker && !discardMoves.length && !wildCard
+    const play = !bura && !poker && !discardMoves.length && !wildCard
       ? (current.legal_moves || []).find((move) => move.path[0] === "play" && move.path[1] === card)
       : null;
     const wild = !poker && wildCard && (current.legal_moves || []).some((move) => move.path[0] === "play" && move.path[1] === "W");
     const active = Boolean(play) || (wild && wildOpen);
     const node = makeCard(faceSrc(card), {
       alt: cardLabel(card),
-      button: Boolean(play) || wild || drawMoves.length > 0 || discardMoves.length > 0,
+      button: Boolean(play) || wild || drawMoves.length > 0 || discardMoves.length > 0 || (bura && current.your_turn),
       key: `hand:${card}#${count}`,
       active,
       onClick: play
@@ -3032,6 +3268,7 @@ function renderCards() {
           }
           : null,
     });
+    if (buraPlay) buraPlay.bind(card, node);
     if (drawMoves.length || discardMoves.length) {
       node.addEventListener("click", () => {
         const limit = discardMoves.length ? 2 : 3;
@@ -3060,10 +3297,31 @@ function renderCards() {
   }
   actions.replaceChildren();
   paintPreferansSheet();
-  if (salon) {
+  if (salon && !bura) {
     box.append(salonDock(discardMoves, bidMoves, selected));
     return;
   }
+  if (bura) {
+    const pass = (current.legal_moves || []).find((move) => move.path[0] === "act" && move.path[1] === "pass");
+    if (pass) {
+      const dock = document.createElement("div");
+      dock.className = "salon-dock";
+      const skip = document.createElement("button");
+      skip.type = "button";
+      skip.className = "secondary";
+      skip.textContent = "Не бить";
+      skip.addEventListener("click", () => {
+        buraPlay?.cancel();
+        submit(pass);
+      });
+      dock.append(skip);
+      box.append(dock);
+    }
+    actions.replaceChildren();
+    actions.hidden = true;
+    return;
+  }
+  actions.hidden = false;
   if (current.shown && Object.keys(current.shown).length) {
     const shown = document.createElement("p");
     shown.className = "showdown";
@@ -3141,6 +3399,7 @@ function renderCards() {
     actions.append(button);
   }
   if (wager) actions.append(raisePad(wager));
+  actions.hidden = actions.childElementCount === 0;
 }
 
 function render() {
@@ -3341,6 +3600,15 @@ async function present(next) {
   const cards = next.table === "cards" && next.game_type !== "nardy" && next.game_type !== "yahtzy" && current.table === "cards" && current.game_type !== "nardy" && current.game_type !== "yahtzy" && next.version !== current.version
     ? rememberCards()
     : null;
+  if (cards && next.game_type === "uno" && current.game_type === "uno" && next.top && next.top !== current.top) {
+    const from = cards.get(`seat:${current.side_to_move}`);
+    if (from) cards.set("__uno_from", from);
+    const pile = Array.isArray(next.pile) ? next.pile : [];
+    const last = pile[pile.length - 1];
+    const card = last && typeof last === "object" ? last.card : next.top;
+    const n = last && typeof last === "object" ? last.n : 0;
+    cards.set("__uno_key", { key: `stack:${n}:${card}` });
+  }
   const spoken = next.moves?.at(-1);
   const added = (next.moves?.length || 0) > (current.moves?.length || 0);
   const changed = next.version !== current.version || next.status !== current.status;
@@ -3577,6 +3845,11 @@ function rememberCards() {
   document.querySelectorAll("[data-card]").forEach((node) => {
     boxes.set(node.dataset.card, cardShot(node));
   });
+  document.querySelectorAll(".cards[data-seat]").forEach((row) => {
+    const fan = [...row.querySelectorAll(".card")];
+    const card = fan[Math.floor((fan.length - 1) / 2)];
+    if (card && row.dataset.seat) boxes.set(`seat:${row.dataset.seat}`, cardShot(card));
+  });
   const deck = document.querySelector(".deck-top");
   boxes.set("__deck", deck ? cardShot(deck) : null);
   return boxes;
@@ -3584,11 +3857,31 @@ function rememberCards() {
 
 function earlierCard(before, key) {
   const direct = before.get(key);
-  if (direct) return { shot: direct, source: key };
+  if (direct?.width) return { shot: direct, source: key };
+  if (key.startsWith("stack:")) {
+    const marked = before.get("__uno_key");
+    if (marked?.key !== key) return { shot: null, source: "" };
+    const card = key.slice(key.lastIndexOf(":") + 1);
+    const fromHand = [...before.entries()].find(([name, shot]) => shot?.width && (name.startsWith(`hand:${card}#`) || name === `hand:${card}`));
+    if (fromHand) return { shot: fromHand[1], source: fromHand[0] };
+    if (card.startsWith("W")) {
+      const wild = [...before.entries()].find(([name, shot]) => shot?.width && name.startsWith("hand:W"));
+      if (wild) return { shot: wild[1], source: wild[0] };
+    }
+    const thrown = before.get("__uno_from");
+    if (thrown?.width) return { shot: thrown, source: "__uno_from" };
+    return { shot: null, source: "" };
+  }
   const code = key.startsWith("table:") ? key.slice(6) : key.startsWith("pile:") ? key.slice(5) : "";
   if (code) {
     const fromHand = [...before.entries()].find(([name]) => name.startsWith(`hand:${code}#`) || name === `table:${code}`);
     if (fromHand) return { shot: fromHand[1], source: fromHand[0] };
+    if (code.startsWith("W")) {
+      const wild = [...before.entries()].find(([name]) => name.startsWith("hand:W"));
+      if (wild) return { shot: wild[1], source: wild[0] };
+    }
+    const thrown = before.get("__uno_from");
+    if (key.startsWith("pile:") && thrown?.width) return { shot: thrown, source: "__uno_from" };
   }
   if (key.startsWith("hand:") || key.startsWith("back:")) return { shot: before.get("__deck"), source: "__deck" };
   return { shot: null, source: "" };
@@ -3613,7 +3906,7 @@ async function flipCards(before) {
     const next = node.getBoundingClientRect();
     if (!prev || !next.width) {
       node.animate(
-        [{ opacity: 0, transform: "translateY(-18px) scale(0.94)" }, { opacity: 1, transform: "none" }],
+        [{ opacity: 0, translate: "0 -18px", scale: "0.94" }, { opacity: 1, translate: "0 0", scale: "1" }],
         { duration: 420, easing: "cubic-bezier(.16,.84,.24,1)" },
       );
       return;
@@ -3622,21 +3915,32 @@ async function flipCards(before) {
     const dy = prev.top - next.top;
     if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
     const arc = Math.min(42, Math.hypot(dx, dy) * 0.16);
-    jobs.push(node.animate(
+    const fromScale = current.game_type === "uno" && prev.width && next.width
+      ? Math.max(0.42, Math.min(1.05, prev.width / next.width))
+      : 0.94;
+    const anchorNode = node.closest(".anchor");
+    if (current.game_type === "uno") anchorNode?.classList.add("is-flying");
+    const anim = node.animate(
       [
-        { transform: `translate(${dx}px, ${dy}px) rotate(-8deg) scale(0.94)` },
-        { transform: `translate(${dx * 0.42}px, ${dy * 0.42 - arc}px) rotate(4deg) scale(1.05)`, offset: 0.55 },
-        { transform: "translate(0, 0) rotate(0deg) scale(1)" },
+        { translate: `${dx}px ${dy}px`, rotate: "-8deg", scale: String(fromScale) },
+        { translate: `${dx * 0.42}px ${dy * 0.42 - arc}px`, rotate: "4deg", scale: String(Math.max(fromScale, 1.04)), offset: 0.55 },
+        { translate: "0 0", rotate: "0deg", scale: "1" },
       ],
-      { duration: flight, easing: "cubic-bezier(.16,.78,.22,1)" },
-    ).finished.catch(() => {}));
+      { duration: flight, easing: "cubic-bezier(.16,.78,.22,1)", fill: "both" },
+    );
+    jobs.push(anim.finished.catch(() => {}).finally(() => {
+      anim.cancel();
+      anchorNode?.classList.remove("is-flying");
+    }));
   });
   const host = document.querySelector("#card-table");
   if (host) {
     const hostRect = host.getBoundingClientRect();
+    const livePile = [...live].some((name) => name.startsWith("pile:") || name.startsWith("stack:"));
     for (const [key, prev] of before) {
       if (!prev?.width || seen.has(key) || key === "__deck" || key === "deck:top") continue;
-      if (!key.startsWith("table:") && !key.startsWith("hand:") && !key.startsWith("pile:")) continue;
+      if (livePile && key.startsWith("pile:")) continue;
+      if (!key.startsWith("table:") && !key.startsWith("hand:") && !key.startsWith("pile:") && !key.startsWith("stack:")) continue;
       if (!prev.src) continue;
       const ghost = document.createElement("img");
       ghost.className = "card card-ghost";
@@ -3646,6 +3950,14 @@ async function flipCards(before) {
       ghost.style.top = `${prev.top - hostRect.top}px`;
       ghost.style.width = `${prev.width}px`;
       host.append(ghost);
+      if (key.startsWith("stack:")) {
+        ghost.style.zIndex = "12";
+        jobs.push(ghost.animate(
+          [{ opacity: 1 }, { opacity: 0 }],
+          { duration: 680, easing: "ease-out", fill: "forwards" },
+        ).finished.catch(() => {}).finally(() => ghost.remove()));
+        continue;
+      }
       const away = key.startsWith("table:")
         ? "translate(12vw, 10vh) rotate(8deg) scale(0.62)"
         : "translate(0, 36px) scale(0.82)";
@@ -4809,7 +5121,7 @@ function maybeEngine() {
     const still = current.table === "go" && current.status === "scoring";
     if (!still && current.status !== "active") return;
     const body = { version: current.version };
-    if (current.gallery || current.game_type === "nardy" || current.game_type === "yahtzy") body.steps = 1;
+    if (current.gallery || current.game_type === "nardy" || current.game_type === "yahtzy" || current.game_type === "uno") body.steps = 1;
     act("engine-move", body);
   }, delay);
 }
