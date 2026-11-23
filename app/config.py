@@ -98,6 +98,8 @@ class Settings(BaseSettings):
 
     @property
     def trusted_host_list(self) -> list[str]:
+        if self.env == "local":
+            return ["*"]
         hosts = [item.strip() for item in self.trusted_hosts.split(",") if item.strip()]
         if self.env == "test" and "testserver" not in hosts:
             hosts.append("testserver")

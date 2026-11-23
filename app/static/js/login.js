@@ -75,12 +75,72 @@ if (robot && robotBox && robotNote && captchaPayload && registerForm) {
     robotNote.textContent = text;
   };
   const hex = (buffer) => [...new Uint8Array(buffer)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  const sha256 = (text) => {
+    const rotate = (value, amount) => (value >>> amount) | (value << (32 - amount));
+    const words = [];
+    const hash = [];
+    const k = [];
+    let primes = 0;
+    const composite = {};
+    for (let n = 2; primes < 64; n += 1) {
+      if (composite[n]) continue;
+      for (let i = n * n; i < 313; i += n) composite[i] = 1;
+      if (primes < 8) hash[primes] = (Math.pow(n, 0.5) * 0x100000000) | 0;
+      k[primes] = (Math.pow(n, 1 / 3) * 0x100000000) | 0;
+      primes += 1;
+    }
+    const bits = text.length * 8;
+    text += "\x80";
+    while ((text.length % 64) !== 56) text += "\x00";
+    for (let i = 0; i < text.length; i += 1) words[i >> 2] = (words[i >> 2] || 0) | (text.charCodeAt(i) << ((3 - (i % 4)) * 8));
+    words.push((bits / 0x100000000) | 0);
+    words.push(bits | 0);
+    for (let j = 0; j < words.length; j += 16) {
+      const w = words.slice(j, j + 16);
+      const start = hash.slice();
+      for (let i = 0; i < 64; i += 1) {
+        const w15 = w[i - 15];
+        const w2 = w[i - 2];
+        const a = hash[0];
+        const e = hash[4];
+        const extra = i < 16 ? w[i] : (
+          w[i - 16]
+          + (rotate(w15, 7) ^ rotate(w15, 18) ^ (w15 >>> 3))
+          + w[i - 7]
+          + (rotate(w2, 17) ^ rotate(w2, 19) ^ (w2 >>> 10))
+        ) | 0;
+        w[i] = extra;
+        const t1 = (hash[7]
+          + (rotate(e, 6) ^ rotate(e, 11) ^ rotate(e, 25))
+          + ((e & hash[5]) ^ (~e & hash[6]))
+          + k[i]
+          + extra) | 0;
+        const t2 = ((rotate(a, 2) ^ rotate(a, 13) ^ rotate(a, 22))
+          + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]))) | 0;
+        hash.pop();
+        hash.unshift((t1 + t2) | 0);
+        hash[4] = (hash[4] + t1) | 0;
+      }
+      for (let i = 0; i < 8; i += 1) hash[i] = (hash[i] + start[i]) | 0;
+    }
+    return hash.map((word) => (word >>> 0).toString(16).padStart(8, "0")).join("");
+  };
+  let useSubtle = !!(globalThis.crypto && globalThis.crypto.subtle && typeof globalThis.crypto.subtle.digest === "function");
+  const hashHex = async (text) => {
+    if (useSubtle) {
+      try {
+        const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+        return hex(digest);
+      } catch (error) {
+        useSubtle = false;
+      }
+    }
+    return sha256(text);
+  };
   const solve = async (task) => {
-    const encoder = new TextEncoder();
     const ceiling = Number(task.maxnumber);
     for (let number = 0; number <= ceiling; number += 1) {
-      const digest = await crypto.subtle.digest("SHA-256", encoder.encode(`${task.salt}${number}`));
-      if (hex(digest) === task.challenge) return number;
+      if (await hashHex(`${task.salt}${number}`) === task.challenge) return number;
       if (number % 250 === 0) await new Promise((resolve) => setTimeout(resolve, 0));
     }
     throw new Error("Проверка не сошлась. Отметьте поле ещё раз.");

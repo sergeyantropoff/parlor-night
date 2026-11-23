@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% set public_shell = true %}
+{% from "_seo.html" import search_tags with context %}
+{% block title %}Ещё — Parlor Night{% endblock %}
+{% block seo %}
+{{ search_tags(
+  "Разделы гостиной Parlor Night: топ игроков, возможности, планы, правила и контакты.",
+  "Parlor Night, гостиная, топ игроков, возможности, планы, правила, конфиденциальность, контакты",
+  "/more",
+  "Ещё — Parlor Night"
+) }}
+{% endblock %}
+{% block content %}
+{% include "public/_mast.html" %}
+<section class="landing phone-more">
+  <h1>Ещё</h1>
+  <nav class="more-card" aria-label="Ещё">
+    <a href="/#leaders">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trophy"/></svg>
+      <span>Топ игроков</span>
+      <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
+    </a>
+    <a href="/#features">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-layers"/></svg>
+      <span>Возможности</span>
+      <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
+    </a>
+    <a href="/#plans">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg>
+      <span>Планы</span>
+      <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
+    </a>
+  </nav>
+  <h2>О гостиной</h2>
+  <nav class="more-card" aria-label="О гостиной">
+    <a href="/about"{% if path == "/about" %} aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-info"/></svg>
+      <span>О нас</span>
+      <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
+    </a>
+    <a href="/rules"{% if path == "/rules" %} aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-page"/></svg>
+      <span>Правила гостиной</span>
+      <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
+    </a>
+    <a href="/privacy"{% if path == "/privacy" %} aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shield"/></svg>
+      <span>Конфиденциальность</span>
+      <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
+    </a>
+    <a href="/contact"{% if path == "/contact" %} aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mail"/></svg>
+      <span>Связаться с нами</span>
+      <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
+    </a>
+    <a href="/sitemap.xml">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sitemap"/></svg>
+      <span>Карта сайта</span>
+      <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg>
+    </a>
+  </nav>
+  <p class="more-sign"><a href="https://antropoff.ru" target="_blank" rel="noopener noreferrer">© 2026 Сергей Антропов</a></p>
+</section>
+{% endblock %}

@@ -200,31 +200,12 @@ body:has(.maintenance-banner) .error-header {
 }
 html[data-theme="dark"] .brand-title { color: #d5bb85; }
 .brand .mark { transition: filter 0.18s ease; }
-.brand .brand-title {
-  background-image: linear-gradient(currentColor, currentColor);
-  background-repeat: no-repeat;
-  background-position: 0 100%;
-  background-size: 0 1px;
-  transition: background-size 0.18s ease, color 0.18s ease;
-}
 .brand:hover,
-.brand:focus-visible {
-  background: color-mix(in srgb, var(--brass, #a58b57) 22%, transparent);
-  outline: 1px solid color-mix(in srgb, var(--brass, #a58b57) 75%, transparent);
-  outline-offset: 4px;
-  border-radius: 14px;
-}
+.brand:focus-visible { text-decoration: none; }
 .brand:hover .mark,
 .brand:focus-visible .mark {
   filter: drop-shadow(0 0 0.55rem color-mix(in srgb, var(--brass, #a58b57) 90%, white));
 }
-.brand:hover .brand-title,
-.brand:focus-visible .brand-title {
-  color: var(--brass, #a58b57);
-  background-size: 100% 1px;
-}
-html[data-theme="dark"] .brand:hover .brand-title,
-html[data-theme="dark"] .brand:focus-visible .brand-title { color: #f7f1e4; }
 .brand-rule {
   display: flex;
   align-items: center;

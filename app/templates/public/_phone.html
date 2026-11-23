@@ -1,0 +1,27 @@
+{% set phone = namespace(tab="home") %}
+{% if path == "/more" or path in ["/about", "/rules", "/privacy", "/contact"] %}
+{% set phone.tab = "more" %}
+{% elif path.startswith("/news") %}
+{% set phone.tab = "news" %}
+{% elif path != "/" %}
+{% set phone.tab = "" %}
+{% endif %}
+<nav class="phone-bar" id="phone-bar" aria-label="Разделы">
+  <a href="/" data-phone="home"{% if phone.tab == "home" %} class="is-on" aria-current="page"{% endif %}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-home"/></svg>
+    <span>Главная</span>
+  </a>
+  <a href="/#games" data-phone="games"{% if phone.tab == "games" %} class="is-on" aria-current="page"{% endif %}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cards"/></svg>
+    <span>Игры</span>
+  </a>
+  <a href="/#news" data-phone="news"{% if phone.tab == "news" %} class="is-on" aria-current="page"{% endif %}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-feed"/></svg>
+    <span>Новости</span>
+  </a>
+  <a href="/more" data-phone="more"{% if phone.tab == "more" %} class="is-on" aria-current="page"{% endif %}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-more"/></svg>
+    <span>Ещё</span>
+  </a>
+</nav>
+<script src="/static/js/phone-nav.js?v={{ asset_version }}"></script>

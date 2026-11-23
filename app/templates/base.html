@@ -30,6 +30,7 @@
   {% block extra_head %}{% endblock %}
   <script src="/static/js/tz-init.js?v={{ asset_version }}"></script>
   <script src="/static/js/theme-init.js?v={{ asset_version }}"></script>
+  <script src="/static/js/section-scroll.js?v={{ asset_version }}"></script>
 </head>
 <body class="{% if user and not preview and not public_shell %}shell{% elif public_page or preview or public_shell %}public{% else %}auth{% endif %}" data-board="{{ board_style|default('classic') }}">
   <a class="skip" href="#content">К содержанию</a>
@@ -76,10 +77,17 @@
     <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></symbol>
     <symbol id="i-dots" viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.85"/><circle cx="12" cy="12" r="1.85"/><circle cx="19" cy="12" r="1.85"/></symbol>
     <symbol id="i-user-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-2.6 2.8-4 5.5-4s4.9 1.4 5.5 4M18 8v6M15 11h6"/></symbol>
     <symbol id="i-add" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 6.5v11l9-5.5z"/></symbol>
     <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10"/></symbol>
+    <symbol id="i-cards" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M7.6 7.2 6.2 16.4a1.4 1.4 0 0 0 1.05 1.65l7.4 1.85a1.4 1.4 0 0 0 1.7-1.05l1.4-9.2a1.4 1.4 0 0 0-1.05-1.65L9.3 6.15A1.4 1.4 0 0 0 7.6 7.2Z"/><rect x="4.8" y="8.2" width="10.6" height="13" rx="1.5"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4.2h8v2.2c0 2.5-1.7 4.4-4 4.7-2.3-.3-4-2.2-4-4.7V4.2z"/><path d="M8 6.2H5.7c.1 2 1.3 3.2 2.7 3.4M16 6.2h2.3c-.1 2-1.3 3.2-2.7 3.4"/><path d="M12 11.2V14M9.2 17.6h5.6M10.2 14h3.6v3.6h-3.6z"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3.8 8 3.7-8 3.7-8-3.7 8-3.7z"/><path d="m4 12 8 3.7 8-3.7"/><path d="m4 16.2 8 3.7 8-3.7"/></symbol>
+    <symbol id="i-page" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3.5" width="12" height="17" rx="1.6"/><path d="M9 8.5h6M9 12h6M9 15.5h4"/></symbol>
+    <symbol id="i-feed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4.5" width="16" height="15" rx="2"/><path d="M8 9h8M8 12.5h8M8 16h5"/></symbol>
+    <symbol id="i-sitemap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="4.2" rx="1"/><rect x="3.2" y="16.4" width="6" height="4.2" rx="1"/><rect x="14.8" y="16.4" width="6" height="4.2" rx="1"/><path d="M12 7.2v3.4M12 10.6H6.2V16.4M12 10.6h5.8V16.4"/></symbol>
   </svg>
   {% if user and not preview and not public_shell %}
   <div class="app">
@@ -137,6 +145,7 @@
   {% elif not public_page and not preview and not public_shell %}
   <div class="auth-switch">{{ theme_switch() }}</div>
   {% endif %}
+  {% block before_main %}{% endblock %}
   <main id="content">
     {% block content %}{% endblock %}
   </main>
@@ -229,6 +238,9 @@
   <script type="module" src="/static/js/age.js?v={{ asset_version }}"></script>
   <script type="module" src="/static/js/lightbox.js?v={{ asset_version }}"></script>
   <script type="module" src="/static/js/theme.js?v={{ asset_version }}"></script>
+  {% if preview or public_shell or (public_page and not user) %}
+  {% include "public/_phone.html" %}
+  {% endif %}
   <script type="module" src="/static/js/copy.js?v={{ asset_version }}"></script>
   {% block scripts %}{% endblock %}
 </body>

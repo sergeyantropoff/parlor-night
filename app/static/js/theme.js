@@ -7,6 +7,11 @@ function paintTheme() {
   document.querySelectorAll("[data-theme-value]").forEach((button) => {
     button.setAttribute("aria-pressed", button.dataset.themeValue === theme ? "true" : "false");
   });
+  const label = theme === "dark" ? "Тёмная тема" : "Светлая тема";
+  document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
+    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-pressed", theme === "dark" ? "true" : "false");
+  });
 }
 
 async function setTheme(next) {
@@ -29,6 +34,9 @@ async function setTheme(next) {
 
 document.querySelectorAll("[data-theme-value]").forEach((button) => {
   button.addEventListener("click", () => setTheme(button.dataset.themeValue));
+});
+document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
+  button.addEventListener("click", () => setTheme(currentTheme() === "dark" ? "light" : "dark"));
 });
 paintTheme();
 

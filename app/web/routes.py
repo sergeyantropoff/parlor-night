@@ -239,6 +239,11 @@ async def about(request: Request) -> Response:
     return _public_page(request, "public/about.html")
 
 
+@router.get("/more")
+async def more(request: Request) -> Response:
+    return render(request, "public/more.html", {"public_page": True, "public_shell": True})
+
+
 @router.get("/robots.txt")
 async def robots_txt(request: Request) -> Response:
     origin = str(request.base_url).rstrip("/")
@@ -269,7 +274,7 @@ async def robots_txt(request: Request) -> Response:
 @router.get("/sitemap.xml")
 async def sitemap_xml(request: Request) -> Response:
     origin = str(request.base_url).rstrip("/")
-    pages = ["/", "/about", "/rules", "/privacy", "/contact", "/news", "/login", "/register"]
+    pages = ["/", "/about", "/rules", "/privacy", "/contact", "/news", "/more", "/login", "/register"]
     async with request.app.state.pool.acquire() as conn:
         posts = await news.list_news(conn, 500, 0)
     urls = pages + [f"/news/{post['id']}" for post in posts]

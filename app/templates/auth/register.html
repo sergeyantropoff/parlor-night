@@ -9,6 +9,10 @@
   "Регистрация — Parlor Night"
 ) }}
 {% endblock %}
+{% block before_main %}
+{% include "public/_mast.html" %}
+{% include "public/_phone.html" %}
+{% endblock %}
 {% block content %}
 <section class="login">
   <div class="login-brand">
@@ -19,6 +23,7 @@
     <h1>Parlor Night</h1>
     <p>Гостиная настольных игр</p>
   </div>
+  <h1 class="login-screen">Регистрация</h1>
   <form class="login-card" method="post" action="/register">
     <input type="hidden" name="csrf_token" value="{{ login_csrf }}" />
     {% if error %}<p class="banner" role="alert">{{ error }}</p>{% endif %}
@@ -58,9 +63,12 @@
       <p id="robot-note" class="fine" hidden="hidden"></p>
     </fieldset>
     <button type="submit">Создать учётную запись</button>
-    <p class="fine"><a href="/login">Уже есть учётная запись? Войти</a></p>
+    <a class="signup-link" href="/login">
+      <span>Уже есть учётная запись?</span>
+      <strong>Войти</strong>
+    </a>
   </form>
-  <p class="fine"><a href="/">На главную</a></p>
+  <p class="fine home-link"><a href="/">На главную</a></p>
 </section>
 <dialog id="maintenance-dialog" class="confirm-dialog" {% if maintenance %}data-open="1"{% endif %} aria-labelledby="maintenance-title">
   <h2 id="maintenance-title">Техническое обслуживание</h2>

@@ -9,6 +9,10 @@
   "Вход — Parlor Night"
 ) }}
 {% endblock %}
+{% block before_main %}
+{% include "public/_mast.html" %}
+{% include "public/_phone.html" %}
+{% endblock %}
 {% block content %}
 <section class="login">
   <div class="login-brand">
@@ -19,6 +23,7 @@
     <h1>Parlor Night</h1>
     <p>Гостиная настольных игр</p>
   </div>
+  <h1 class="login-screen">Вход</h1>
   <form class="login-card" method="post" action="/login">
     <input type="hidden" name="csrf_token" value="{{ login_csrf }}" />
     {% if next %}<input type="hidden" name="next" value="{{ next }}" />{% endif %}
@@ -53,7 +58,7 @@
     <p class="fine">Учётную запись создаёт администратор</p>
     {% endif %}
   </form>
-  <p class="fine"><a href="/">На главную</a></p>
+  <p class="fine home-link"><a href="/">На главную</a></p>
 </section>
 <dialog id="locked-dialog" class="confirm-dialog" {% if locked %}data-open="1"{% endif %} aria-labelledby="locked-title">
   <h2 id="locked-title">Учётная запись заблокирована</h2>

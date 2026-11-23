@@ -48,6 +48,7 @@
         <button type="button" class="tip-host" data-theme-value="light" data-tip="Светлая" data-tip-below aria-pressed="false" aria-label="Светлая"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sun"/></svg></button>
         <button type="button" class="tip-host" data-theme-value="dark" data-tip="Тёмная" data-tip-below data-tip-edge aria-pressed="false" aria-label="Тёмная"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-moon"/></svg></button>
       </div>
+      {% include "public/_theme_toggle.html" %}
     </div>
   </div>
 </header>
@@ -56,7 +57,8 @@
     <div class="hero-copy">
       <p class="kicker">Закрытая гостиная настольных игр <i></i></p>
       <h1>Хороший вечер начинается с партии</h1>
-      <p>Играйте с друзьями в шахматы, русские шашки, го, нарды, домино, Уно, покер, дурака, блэкджек и преферанс. Общайтесь в чате или включайте видеосвязь — как вам удобнее.</p>
+      <p class="hero-long">Играйте с друзьями в шахматы, русские шашки, го, нарды, домино, Уно, покер, дурака, блэкджек и преферанс. Общайтесь в чате или включайте видеосвязь — как вам удобнее.</p>
+      <p class="hero-short">Играйте с друзьями в настольные игры.<br>Общайтесь в чате или по видеосвязи.</p>
       <div class="hero-actions">
         {% if can_register %}
         <a class="button" href="/register">Регистрация</a>
@@ -392,7 +394,7 @@
   <div class="title-row"><h2>Планы</h2><i></i></div>
   <div class="plan-hero">
     <div class="plan-intro">
-      <h3>Что дальше<br>в гостиной</h3>
+      <h3>Что дальше <br>в гостиной</h3>
       <p>У Parlor Night появится свой адрес. За столом можно будет встретиться на турнире или продолжить вечер с телефона.</p>
     </div>
     <img class="theme-light" src="/static/parlor/light/plans.webp?v={{ asset_version }}" width="896" height="597" alt="" />
